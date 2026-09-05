@@ -1,6 +1,7 @@
 import { handleTeacherContextRequest } from "../../../../../domains/teacher-context/http";
 import { readServerEnvironment } from "../../../../../platform/config/env";
 import { HttpPeosGateway } from "../../../../../platform/peos/httpGateway";
+import { resolvePeosAuthorization } from "../../../../../platform/session/peosAuthorization";
 import { PeosSessionResolver } from "../../../../../platform/session/peosSessionResolver";
 
 export const dynamic = "force-dynamic";
@@ -11,8 +12,8 @@ export async function GET(request: Request): Promise<Response> {
     return Response.json({ error: "PEOS_UNAVAILABLE" }, { status: 503 });
   }
 
-  const authorization = request.headers.get("authorization");
-  if (!authorization?.startsWith("Bearer ")) {
+  const authorization = resolvePeosAuthorization(request);
+  if (!authorization) {
     return Response.json({ error: "UNAUTHENTICATED" }, { status: 401 });
   }
 
