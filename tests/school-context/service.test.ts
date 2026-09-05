@@ -103,3 +103,55 @@ test("school context fails closed on mismatched PEOS person authority", async ()
 
   assert.deepEqual(result, { ok: false, code: "TEACHER_IDENTITY_MISMATCH" });
 });
+
+test("school context ignores local projections outside the PEOS school and class authority", async () => {
+  const repository: SchoolContextRepository = {
+    async getSchoolWorkspace() {
+      return {
+        peosSchoolId: "school-2",
+        settings: { unsafe: true },
+      };
+    },
+    async getClassWorkspaces() {
+      return [
+        {
+          peosSchoolId: "school-2",
+          peosClassId: "class-4a",
+          localSettings: { unsafe: true },
+        },
+        {
+          peosSchoolId: "school-1",
+          peosClassId: "class-not-assigned",
+          localSettings: { unsafe: true },
+        },
+      ];
+    },
+  };
+
+  const result = await resolveSchoolContext(
+    session,
+    new FakePeosGateway({
+      personId: "teacher-1",
+      schoolId: "school-1",
+      roleIds: ["teacher"],
+      classIds: ["class-4a"],
+      active: true,
+    }),
+    repository,
+  );
+
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+
+  assert.deepEqual(result.context.schoolWorkspace, {
+    configured: false,
+    settings: {},
+  });
+  assert.deepEqual(result.context.classes, [
+    {
+      classId: "class-4a",
+      workspaceConfigured: false,
+      localSettings: {},
+    },
+  ]);
+});
