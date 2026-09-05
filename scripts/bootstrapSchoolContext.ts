@@ -42,17 +42,24 @@ async function run() {
     );
 
     for (const peosClassId of peosClassIds) {
-      await client.query(
+      const classResult = await client.query(
         `
           INSERT INTO school_ops.class_workspaces(peos_school_id, peos_class_id)
           VALUES ($1, $2)
           ON CONFLICT (peos_class_id) DO UPDATE
-          SET peos_school_id = EXCLUDED.peos_school_id,
-              status = 'ACTIVE',
+          SET status = 'ACTIVE',
               updated_at = now()
+          WHERE school_ops.class_workspaces.peos_school_id = EXCLUDED.peos_school_id
+          RETURNING peos_class_id
         `,
         [peosSchoolId, peosClassId],
       );
+
+      if ((classResult.rowCount ?? 0) !== 1) {
+        throw new Error(
+          `PEOS class ${peosClassId} is already bound to a different school workspace`,
+        );
+      }
     }
 
     await client.query("COMMIT");
