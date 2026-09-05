@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-
 import type { Pool } from "pg";
 
 import type { AuditEvent, AuditSink } from "./contracts";
@@ -26,7 +24,7 @@ export class PostgresAuditSink implements AuditSink {
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11)
       `,
       [
-        event.id ?? randomUUID(),
+        event.eventId,
         event.actorPersonId,
         event.action,
         event.resourceType,
