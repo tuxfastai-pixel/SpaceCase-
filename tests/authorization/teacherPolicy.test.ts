@@ -85,6 +85,84 @@ test("denies a learner outside the teacher assignment", async () => {
   assert.equal(decision.reason, "learner_not_in_teacher_assignment");
 });
 
+test("denies learner authority when PEOS cannot resolve a class assignment", async () => {
+  const policy = new TeacherAuthorizationPolicy(
+    new FakePeosGateway(
+      {
+        personId: "teacher-1",
+        schoolId: "school-1",
+        roleIds: ["teacher"],
+        classIds: ["class-4a"],
+        active: true,
+      },
+      {
+        personId: "learner-1",
+        schoolId: "school-1",
+      },
+    ),
+  );
+
+  const decision = await policy.decide({
+    actorPersonId: "teacher-1",
+    action: "learner.profile.read",
+    learnerPersonId: "learner-1",
+  });
+
+  assert.equal(decision.allowed, false);
+  assert.equal(decision.reason, "learner_assignment_unresolved");
+});
+
+test("denies a mismatched PEOS teacher identity", async () => {
+  const policy = new TeacherAuthorizationPolicy(
+    new FakePeosGateway(
+      {
+        personId: "teacher-2",
+        schoolId: "school-1",
+        roleIds: ["teacher"],
+        classIds: ["class-4a"],
+        active: true,
+      },
+      null,
+    ),
+  );
+
+  const decision = await policy.decide({
+    actorPersonId: "teacher-1",
+    action: "learner.profile.read",
+  });
+
+  assert.equal(decision.allowed, false);
+  assert.equal(decision.reason, "teacher_identity_mismatch");
+});
+
+test("denies mismatched learner context returned by PEOS", async () => {
+  const policy = new TeacherAuthorizationPolicy(
+    new FakePeosGateway(
+      {
+        personId: "teacher-1",
+        schoolId: "school-1",
+        roleIds: ["teacher"],
+        classIds: ["class-4a"],
+        active: true,
+      },
+      {
+        personId: "learner-other",
+        schoolId: "school-1",
+        classId: "class-4a",
+      },
+    ),
+  );
+
+  const decision = await policy.decide({
+    actorPersonId: "teacher-1",
+    action: "learner.profile.read",
+    learnerPersonId: "learner-1",
+  });
+
+  assert.equal(decision.allowed, false);
+  assert.equal(decision.reason, "learner_context_mismatch");
+});
+
 test("denies inactive teacher context", async () => {
   const policy = new TeacherAuthorizationPolicy(
     new FakePeosGateway(
