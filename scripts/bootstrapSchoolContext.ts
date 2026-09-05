@@ -14,6 +14,7 @@ function optionalList(name: string): string[] {
 
 async function run() {
   const databaseUrl = required("DATABASE_URL");
+  const actorPersonId = required("ACTOR_PERSON_ID");
   const peosSchoolId = required("PEOS_SCHOOL_ID");
   const peosClassIds = optionalList("PEOS_CLASS_IDS");
   const timezone = process.env.SCHOOL_TIMEZONE?.trim() || null;
@@ -61,6 +62,36 @@ async function run() {
         );
       }
     }
+
+    await client.query(
+      `
+        INSERT INTO audit.product_audit_events(
+          id,
+          actor_person_id,
+          action,
+          resource_type,
+          resource_id,
+          school_id,
+          decision,
+          reason,
+          metadata,
+          occurred_at
+        )
+        VALUES (
+          gen_random_uuid(),
+          $1,
+          'school_context.bootstrap',
+          'SCHOOL_WORKSPACE',
+          $2,
+          $2,
+          'ALLOW',
+          'controlled_cli_bootstrap',
+          $3::jsonb,
+          now()
+        )
+      `,
+      [actorPersonId, peosSchoolId, JSON.stringify({ peosClassIds })],
+    );
 
     await client.query("COMMIT");
     console.log(
