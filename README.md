@@ -4,15 +4,35 @@ SpaceCase is the Pinnacle Sentle Group education operating environment. The firs
 
 ## Engineering status
 
-This repository is in Sprint 001 — Foundation.
+Sprint 001 — Foundation: **PASS**.
 
-Current goals:
+Sprint 002 — Identity Boundary: **ACTIVE**.
 
-- establish the project constitution and architecture boundaries;
-- scaffold the TypeScript/Next.js application;
-- define PEOS, PSG AI Platform, and Atlas adapter boundaries;
-- establish testing, health, environment, and CI foundations;
-- avoid implementing learner features until identity and authorization interfaces exist.
+Current identity-boundary goals:
+
+- resolve authenticated teacher sessions through PEOS;
+- derive canonical person, school, role, and class authority from PEOS;
+- keep authorization server-side and fail closed on missing or mismatched identity context;
+- support PEOS-backed browser sessions without creating a competing SpaceCase identity store;
+- establish the validated path from authenticated teacher to STOS workspace before learner-domain implementation expands.
+
+Current authority chain:
+
+```text
+Authenticated teacher
+        ↓
+PEOS canonical Person
+        ↓
+active school staff membership
+        ↓
+current role assignment
+        ↓
+current class assignment
+        ↓
+SpaceCase authorization policy
+        ↓
+STOS teacher workspace
+```
 
 ## Product boundaries
 
@@ -31,4 +51,4 @@ Dashboard, classes, learners, teaching, lesson planning, assessments, homework, 
 
 Read `PROJECT_CONSTITUTION.md` before making changes.
 
-Sprint 001 acceptance requires the application to boot and pass typecheck, lint, tests, production build, migration validation, environment validation, health checks, and interface checks for authorization, PEOS, AI, and Atlas integrations.
+Every production change must pass PostgreSQL migration validation, typecheck, lint, automated tests, and production build before release actions are considered.
