@@ -10,6 +10,21 @@ test("environment parser accepts the empty Sprint 001 optional integration basel
   assert.equal(env.DATABASE_URL, undefined);
 });
 
+test("environment parser normalizes blank optional integration values", () => {
+  const env = readServerEnvironment({
+    NODE_ENV: "test",
+    DATABASE_URL: " ",
+    PEOS_BASE_URL: "",
+    PSG_AI_BASE_URL: "   ",
+    ATLAS_BASE_URL: "",
+  });
+
+  assert.equal(env.DATABASE_URL, undefined);
+  assert.equal(env.PEOS_BASE_URL, undefined);
+  assert.equal(env.PSG_AI_BASE_URL, undefined);
+  assert.equal(env.ATLAS_BASE_URL, undefined);
+});
+
 test("environment parser rejects invalid integration URLs", () => {
   assert.throws(() =>
     readServerEnvironment({
