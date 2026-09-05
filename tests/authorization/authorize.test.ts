@@ -12,7 +12,8 @@ import type {
 class FixedPolicy implements AuthorizationPolicy {
   constructor(private readonly decision: AuthorizationDecision) {}
 
-  async decide(_request: AuthorizationRequest): Promise<AuthorizationDecision> {
+  async decide(request: AuthorizationRequest): Promise<AuthorizationDecision> {
+    void request;
     return this.decision;
   }
 }
