@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE SCHEMA IF NOT EXISTS learning;
 CREATE SCHEMA IF NOT EXISTS communication;
 CREATE SCHEMA IF NOT EXISTS integration;
@@ -26,5 +24,3 @@ CREATE INDEX IF NOT EXISTS idx_product_audit_events_actor_time
 CREATE INDEX IF NOT EXISTS idx_product_audit_events_learner_time
   ON audit.product_audit_events (learner_person_id, occurred_at DESC)
   WHERE learner_person_id IS NOT NULL;
-
-COMMIT;
