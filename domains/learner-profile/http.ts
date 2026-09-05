@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import type { AuditSink } from "../../platform/audit/contracts";
 import { authorize } from "../../platform/authorization/authorize";
 import { TeacherAuthorizationPolicy } from "../../platform/authorization/teacherPolicy";
@@ -19,12 +21,37 @@ export async function handleLearnerProfileRequest(
     return Response.json({ error: "UNAUTHENTICATED" }, { status: 401 });
   }
 
+  const result = await resolveLearnerProfile(
+    session,
+    learnerPersonId,
+    peos,
+    repository,
+  );
+
+  if (!result.ok) {
+    await audit.record({
+      eventId: randomUUID(),
+      actorPersonId: session.personId,
+      action: "learner.profile.read",
+      resourceType: "learner",
+      resourceId: learnerPersonId,
+      learnerPersonId,
+      decision: "DENY",
+      reason: result.code,
+      occurredAt: new Date().toISOString(),
+      metadata: { policyVersion: "stos-learner-profile-boundary-v1" },
+    });
+    return Response.json({ error: result.code }, { status: 403 });
+  }
+
   const decision = await authorize(
     new TeacherAuthorizationPolicy(peos),
     audit,
     {
       actorPersonId: session.personId,
       action: "learner.profile.read",
+      schoolId: result.profile.schoolId,
+      classId: result.profile.classId,
       learnerPersonId,
       resourceId: learnerPersonId,
     },
@@ -35,18 +62,6 @@ export async function handleLearnerProfileRequest(
       { error: "FORBIDDEN", reason: decision.reason },
       { status: 403 },
     );
-  }
-
-  const result = await resolveLearnerProfile(
-    session,
-    learnerPersonId,
-    peos,
-    repository,
-  );
-
-  if (!result.ok) {
-    const status = result.code === "UNAUTHENTICATED" ? 401 : 403;
-    return Response.json({ error: result.code }, { status });
   }
 
   return Response.json({ learner: result.profile });
