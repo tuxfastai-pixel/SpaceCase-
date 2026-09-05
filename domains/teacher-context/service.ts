@@ -14,7 +14,7 @@ export async function resolveTeacherContext(
   }
 
   const context = await peos.getTeacherContext(session.personId);
-  if (!context?.active) {
+  if (!context?.active || context.personId !== session.personId) {
     return { ok: false, code: "TEACHER_CONTEXT_UNAVAILABLE" };
   }
 
