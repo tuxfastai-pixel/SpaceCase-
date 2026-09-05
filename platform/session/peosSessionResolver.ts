@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import type { AuthenticatedSession, SessionResolver } from "./contracts";
+import { resolvePeosAuthorization } from "./peosAuthorization";
 
 const sessionResponseSchema = z.object({
   session: z.object({
@@ -18,10 +19,8 @@ export class PeosSessionResolver implements SessionResolver {
   ) {}
 
   async resolve(request: Request): Promise<AuthenticatedSession | null> {
-    const authorization = request.headers.get("authorization");
-    if (!authorization?.startsWith("Bearer ")) {
-      return null;
-    }
+    const authorization = resolvePeosAuthorization(request);
+    if (!authorization) return null;
 
     const response = await this.fetchImpl(
       new URL("/v1/sessions/introspect", this.baseUrl),
