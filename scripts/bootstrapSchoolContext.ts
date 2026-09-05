@@ -1,0 +1,77 @@
+import { Client } from "pg";
+
+function required(name: string): string {
+  const value = process.env[name]?.trim();
+  if (!value) throw new Error(`${name} is required`);
+  return value;
+}
+
+function optionalList(name: string): string[] {
+  const value = process.env[name]?.trim();
+  if (!value) return [];
+  return [...new Set(value.split(",").map((item) => item.trim()).filter(Boolean))];
+}
+
+async function run() {
+  const databaseUrl = required("DATABASE_URL");
+  const peosSchoolId = required("PEOS_SCHOOL_ID");
+  const peosClassIds = optionalList("PEOS_CLASS_IDS");
+  const timezone = process.env.SCHOOL_TIMEZONE?.trim() || null;
+  const academicYearLabel = process.env.ACADEMIC_YEAR_LABEL?.trim() || null;
+
+  const client = new Client({ connectionString: databaseUrl });
+  await client.connect();
+
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      `
+        INSERT INTO school_ops.school_workspaces(
+          peos_school_id,
+          timezone,
+          academic_year_label
+        )
+        VALUES ($1, $2, $3)
+        ON CONFLICT (peos_school_id) DO UPDATE
+        SET timezone = EXCLUDED.timezone,
+            academic_year_label = EXCLUDED.academic_year_label,
+            status = 'ACTIVE',
+            updated_at = now()
+      `,
+      [peosSchoolId, timezone, academicYearLabel],
+    );
+
+    for (const peosClassId of peosClassIds) {
+      await client.query(
+        `
+          INSERT INTO school_ops.class_workspaces(peos_school_id, peos_class_id)
+          VALUES ($1, $2)
+          ON CONFLICT (peos_class_id) DO UPDATE
+          SET peos_school_id = EXCLUDED.peos_school_id,
+              status = 'ACTIVE',
+              updated_at = now()
+        `,
+        [peosSchoolId, peosClassId],
+      );
+    }
+
+    await client.query("COMMIT");
+    console.log(
+      JSON.stringify({
+        peosSchoolId,
+        peosClassIds,
+        workspaceConfigured: true,
+      }),
+    );
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    await client.end();
+  }
+}
+
+run().catch((error: unknown) => {
+  console.error(error);
+  process.exitCode = 1;
+});
