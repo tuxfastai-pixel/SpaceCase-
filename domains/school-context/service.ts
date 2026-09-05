@@ -48,13 +48,25 @@ export async function resolveSchoolContext(
     return { ok: false, code: "TEACHER_IDENTITY_MISMATCH" };
   }
 
-  const [schoolWorkspace, classWorkspaces] = await Promise.all([
+  const [candidateSchoolWorkspace, candidateClassWorkspaces] = await Promise.all([
     repository.getSchoolWorkspace(teacher.schoolId),
     repository.getClassWorkspaces(teacher.schoolId, teacher.classIds),
   ]);
 
+  const schoolWorkspace =
+    candidateSchoolWorkspace?.peosSchoolId === teacher.schoolId
+      ? candidateSchoolWorkspace
+      : null;
+
+  const assignedClassIds = new Set(teacher.classIds);
   const classWorkspaceByPeosId = new Map(
-    classWorkspaces.map((workspace) => [workspace.peosClassId, workspace]),
+    candidateClassWorkspaces
+      .filter(
+        (workspace) =>
+          workspace.peosSchoolId === teacher.schoolId &&
+          assignedClassIds.has(workspace.peosClassId),
+      )
+      .map((workspace) => [workspace.peosClassId, workspace]),
   );
 
   return {
