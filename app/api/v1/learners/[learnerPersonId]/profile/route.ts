@@ -1,11 +1,11 @@
-import { handleLearnerProfileRequest } from "../../../../../../../domains/learner-profile/http";
-import { PostgresLearnerProfileRepository } from "../../../../../../../domains/learner-profile/postgresRepository";
-import { PostgresAuditSink } from "../../../../../../../platform/audit/postgresAuditSink";
-import { readServerEnvironment } from "../../../../../../../platform/config/env";
-import { getDatabasePool } from "../../../../../../../platform/db/pool";
-import { HttpPeosGateway } from "../../../../../../../platform/peos/httpGateway";
-import { resolvePeosAuthorization } from "../../../../../../../platform/session/peosAuthorization";
-import { PeosSessionResolver } from "../../../../../../../platform/session/peosSessionResolver";
+import { handleLearnerProfileRequest } from "../../../../../../domains/learner-profile/http";
+import { PostgresLearnerProfileRepository } from "../../../../../../domains/learner-profile/postgresRepository";
+import { PostgresAuditSink } from "../../../../../../platform/audit/postgresAuditSink";
+import { readServerEnvironment } from "../../../../../../platform/config/env";
+import { getDatabasePool } from "../../../../../../platform/db/pool";
+import { HttpPeosGateway } from "../../../../../../platform/peos/httpGateway";
+import { resolvePeosAuthorization } from "../../../../../../platform/session/peosAuthorization";
+import { PeosSessionResolver } from "../../../../../../platform/session/peosSessionResolver";
 
 export const dynamic = "force-dynamic";
 
