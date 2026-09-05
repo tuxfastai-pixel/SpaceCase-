@@ -15,6 +15,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: spacecase
+          POSTGRES_PASSWORD: spacecase
+          POSTGRES_DB: spacecase_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U spacecase -d spacecase_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DATABASE_URL: postgresql://spacecase:spacecase@127.0.0.1:5432/spacecase_test
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,6 +44,19 @@ jobs:
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+
+      - name: Run database migrations
+        run: npm run db:migrate
+
+      - name: Verify migration state
+        run: |
+          PGPASSWORD=spacecase psql \
+            --host=127.0.0.1 \
+            --username=spacecase \
+            --dbname=spacecase_test \
+            --set=ON_ERROR_STOP=1 \
+            --command="SELECT migration_name FROM audit.schema_migrations ORDER BY migration_name;" \
+            --command="SELECT to_regclass('audit.product_audit_events') AS product_audit_events;"
 
       - name: Typecheck
         run: npm run typecheck
