@@ -48,6 +48,21 @@ test("rejects inactive PEOS teacher context", async () => {
   assert.deepEqual(result, { ok: false, code: "TEACHER_CONTEXT_UNAVAILABLE" });
 });
 
+test("rejects PEOS context for a different person", async () => {
+  const result = await resolveTeacherContext(
+    session,
+    new StubPeosGateway({
+      personId: "teacher-2",
+      schoolId: "school-1",
+      roleIds: ["teacher"],
+      classIds: ["class-1"],
+      active: true,
+    }),
+  );
+
+  assert.deepEqual(result, { ok: false, code: "TEACHER_CONTEXT_UNAVAILABLE" });
+});
+
 test("returns active teacher context without creating local identity truth", async () => {
   const context: PeosTeacherContext = {
     personId: "teacher-1",
