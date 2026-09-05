@@ -17,6 +17,10 @@ export class TeacherAuthorizationPolicy implements AuthorizationPolicy {
       return deny("inactive_or_unknown_teacher");
     }
 
+    if (teacher.personId !== request.actorPersonId) {
+      return deny("teacher_identity_mismatch");
+    }
+
     if (request.schoolId && teacher.schoolId !== request.schoolId) {
       return deny("school_scope_mismatch");
     }
@@ -35,7 +39,15 @@ export class TeacherAuthorizationPolicy implements AuthorizationPolicy {
         return deny("learner_not_in_school_scope");
       }
 
-      if (learner.classId && !teacher.classIds.includes(learner.classId)) {
+      if (learner.personId !== request.learnerPersonId || learner.schoolId !== teacher.schoolId) {
+        return deny("learner_context_mismatch");
+      }
+
+      if (!learner.classId) {
+        return deny("learner_assignment_unresolved");
+      }
+
+      if (!teacher.classIds.includes(learner.classId)) {
         return deny("learner_not_in_teacher_assignment");
       }
     }
