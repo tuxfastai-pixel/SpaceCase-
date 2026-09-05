@@ -10,7 +10,8 @@ export interface SessionResolver {
 }
 
 export class UnavailableSessionResolver implements SessionResolver {
-  async resolve(): Promise<AuthenticatedSession | null> {
+  async resolve(_request: Request): Promise<AuthenticatedSession | null> {
+    void _request;
     return null;
   }
 }
