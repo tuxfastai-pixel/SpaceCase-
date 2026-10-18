@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { authConfiguration, createAuthClient } from "../../../platform/auth/supabase";
 import { POST as exchangeSession } from "../../api/v1/auth/session/route";
 import { completeSignIn } from "../../../platform/auth/completeSignIn";
+import { cookies } from "next/headers";
+import { INVITATION_COOKIE } from "../../../platform/admin/peosProxy";
 
 export async function GET(request: Request) {
   const { origin } = authConfiguration();
@@ -17,7 +19,8 @@ export async function GET(request: Request) {
         method: "POST", headers: { authorization: `Bearer ${token}` },
       })));
     if ("cookie" in result) {
-      const response = NextResponse.redirect(`${origin}/dashboard`, 303);
+      const destination = (await cookies()).has(INVITATION_COOKIE) ? "/join" : "/dashboard";
+      const response = NextResponse.redirect(`${origin}${destination}`, 303);
       response.headers.append("set-cookie", result.cookie);
       response.headers.set("cache-control", "no-store");
       response.headers.set("referrer-policy", "no-referrer");
