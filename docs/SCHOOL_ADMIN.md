@@ -17,3 +17,7 @@ Replace link is available for pending invitations. It invalidates the previous t
 See adr/0002-manual-invitation-delivery.md for ownership, acceptance and the future activation gate. No new database migration or environment configuration is required for manual delivery.
 
 Open email draft is available while a newly created or replaced link is displayed. It uses a mailto link to request the user's configured email composer with a validated single recipient, encoded subject and plain-text message. The administrator must review and send the email themselves. The UI says sending is not confirmed and provides copy fallbacks when no email handler is configured. SpaceCase cannot observe draft creation, sending or delivery; the system delivery column remains Not sent. No draft is persisted, no Gmail permission is requested and no email is sent by the application.
+
+## Accepted teachers awaiting classes
+
+After PEOS confirms current school authority and the matching person, a teacher with zero assigned classes receives setupStatus=CLASS_ASSIGNMENT_REQUIRED. The dashboard acknowledges the account connection and explains that an administrator must assign classes. It does not open operational storage or return learner data. schoolWorkspace.configured=null means configuration has not been inspected. This is not a database health fallback: assigned teachers still require working product storage, and operational failures remain 503. An unconfirmed or mismatched identity never reaches this state.

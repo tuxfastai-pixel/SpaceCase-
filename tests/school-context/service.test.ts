@@ -56,6 +56,29 @@ const session: AuthenticatedSession = {
   expiresAt: "2026-09-05T18:00:00.000Z",
 };
 
+test("a school-connected teacher without classes receives onboarding without opening product storage", async () => {
+  const repository: SchoolContextRepository = {
+    async getSchoolWorkspace() { throw new Error("Operational database is not ready"); },
+    async getClassWorkspaces() { throw new Error("Must not load classroom records"); },
+  };
+  const peos = new FakePeosGateway({ personId: session.personId, schoolId: "school-1", roleIds: ["teacher"], classIds: [], active: true });
+  const result = await resolveSchoolContext(session, peos, repository);
+  assert.deepEqual(result, { ok: true, context: { teacherPersonId: session.personId, schoolId: "school-1", roleIds: ["teacher"],
+    setupStatus: "CLASS_ASSIGNMENT_REQUIRED", schoolWorkspace: { configured: null, settings: {} }, classes: [] } });
+  assert.deepEqual(await resolveSchoolContext(null, peos, repository), { ok: false, code: "UNAUTHENTICATED" });
+  const mismatch = new FakePeosGateway({ personId: "other-person", schoolId: "school-1", roleIds: ["teacher"], classIds: [], active: true });
+  assert.deepEqual(await resolveSchoolContext(session, mismatch, repository), { ok: false, code: "TEACHER_IDENTITY_MISMATCH" });
+});
+
+test("assigned teachers still fail closed when operational storage is unavailable", async () => {
+  const repository: SchoolContextRepository = {
+    async getSchoolWorkspace() { throw new Error("Operational database is not ready"); },
+    async getClassWorkspaces() { return []; },
+  };
+  await assert.rejects(resolveSchoolContext(session, new FakePeosGateway({ personId: session.personId,
+    schoolId: "school-1", roleIds: ["teacher"], classIds: ["class-1"], active: true }), repository), /Operational database is not ready/);
+});
+
 test("school context keeps PEOS authority separate from SpaceCase operational projections", async () => {
   const result = await resolveSchoolContext(
     session,
