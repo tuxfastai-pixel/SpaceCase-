@@ -36,6 +36,6 @@ test("environment parser rejects invalid integration URLs", () => {
 });
 
 test("class setup mode must be configured explicitly and cannot activate from a typo",()=>{
-  assert.equal(readServerEnvironment({SPACECASE_WORKSPACE_MODE:"authority_only"}).SPACECASE_WORKSPACE_MODE,"authority_only");
-  assert.throws(()=>readServerEnvironment({SPACECASE_WORKSPACE_MODE:"fallback"}));
+  assert.equal(readServerEnvironment({NODE_ENV:"test",SPACECASE_WORKSPACE_MODE:"authority_only"}).SPACECASE_WORKSPACE_MODE,"authority_only");
+  assert.throws(()=>readServerEnvironment({NODE_ENV:"test",SPACECASE_WORKSPACE_MODE:"fallback"}));
 });
