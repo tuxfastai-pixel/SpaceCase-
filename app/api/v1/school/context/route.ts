@@ -30,7 +30,10 @@ export async function GET(request: Request): Promise<Response> {
 
   try {
     return await handleSchoolContextRequest(request, sessionResolver, peos, repository);
-  } catch {
+  } catch (error) {
+    // Never log connection strings, upstream response bodies or session tokens.
+    const code = error && typeof error === "object" && "code" in error && typeof error.code === "string" && /^[A-Z0-9_]{2,40}$/.test(error.code) ? error.code : "UNKNOWN";
+    console.error("SpaceCase school workspace load failed", { code });
     return Response.json({ error: "SCHOOL_CONTEXT_UNAVAILABLE" }, { status: 503 });
   }
 }

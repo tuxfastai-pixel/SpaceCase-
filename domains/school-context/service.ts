@@ -9,8 +9,9 @@ export type SchoolContextResult =
         teacherPersonId: string;
         schoolId: string;
         roleIds: string[];
+        setupStatus?: "CLASS_ASSIGNMENT_REQUIRED";
         schoolWorkspace: {
-          configured: boolean;
+          configured: boolean | null;
           timezone?: string;
           academicYearLabel?: string;
           settings: Record<string, unknown>;
@@ -46,6 +47,16 @@ export async function resolveSchoolContext(
 
   if (teacher.personId !== session.personId) {
     return { ok: false, code: "TEACHER_IDENTITY_MISMATCH" };
+  }
+
+  // School membership and role are confirmed, but classroom onboarding is not
+  // complete. Do not require operational storage just to acknowledge that fact.
+  // null means the product workspace has not been inspected, not "configured".
+  if (teacher.classIds.length === 0) {
+    return { ok: true, context: {
+      teacherPersonId: teacher.personId, schoolId: teacher.schoolId, roleIds: teacher.roleIds,
+      setupStatus: "CLASS_ASSIGNMENT_REQUIRED", schoolWorkspace: { configured: null, settings: {} }, classes: [],
+    } };
   }
 
   const [candidateSchoolWorkspace, candidateClassWorkspaces] = await Promise.all([

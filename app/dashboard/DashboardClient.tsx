@@ -8,8 +8,9 @@ type SchoolContext = {
   teacherPersonId: string;
   schoolId: string;
   roleIds: string[];
+  setupStatus?: "CLASS_ASSIGNMENT_REQUIRED";
   schoolWorkspace: {
-    configured: boolean;
+    configured: boolean | null;
     timezone?: string;
     academicYearLabel?: string;
     settings: Record<string, unknown>;
@@ -119,14 +120,17 @@ export default function DashboardClient() {
     return (
       <DashboardShell>
         <StatusPanel
-          title="Teacher context unavailable"
-          body="SpaceCase could not confirm a current PEOS teacher context. No school or learner data has been shown."
+          title="Workspace temporarily unavailable"
+          body="We couldn’t load your school workspace. Please refresh and try again. No learner records have been shown."
         />
       </DashboardShell>
     );
   }
 
   const { context } = state;
+  if (context.setupStatus === "CLASS_ASSIGNMENT_REQUIRED") {
+    return <DashboardShell><StatusPanel title="You’ve joined your school" body="Your teacher account is connected. Your school administrator needs to assign your classes before your teaching workspace is ready. You don’t need to accept the invitation again." /><p><button type="button" onClick={() => window.location.reload()}>Refresh workspace</button></p></DashboardShell>;
+  }
   return (
     <DashboardShell>
       <section className={styles.hero} aria-labelledby="dashboard-heading">
