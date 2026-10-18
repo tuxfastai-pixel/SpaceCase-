@@ -10,3 +10,5 @@
 @media(max-width:720px) { .grid { grid-template-columns:1fr; gap:0; }.card { padding:22px; }.copyRow { flex-direction:column; }.topbar { padding:18px 20px; }.content { padding-top:30px; } }
 
 .actions { display:flex; flex-wrap:wrap; gap:8px; }.field textarea { resize:vertical; line-height:1.5; }.copyRow + .field { margin-top:24px; }
+
+.draftActions { margin:24px 0; }.draftActions a { display:inline-block; text-decoration:none; }.draftActions a:focus-visible { outline:3px solid #4e8b66; outline-offset:3px; }
