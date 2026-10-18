@@ -1,4 +1,15 @@
+import { z } from "zod";
+
 export type InvitationMessage = { subject: string; text: string; html: string; link: string };
+
+/** Opens the user's configured email composer; it never sends or confirms delivery. */
+export function invitationEmailDraft(recipient: string, message: Pick<InvitationMessage, "subject" | "text">): string {
+  const email = z.string().trim().email().max(254).parse(recipient).toLowerCase();
+  if (/[\r\n\u0000-\u001f\u007f]/.test(message.subject)) throw new Error("Invalid email subject");
+  const address = encodeURIComponent(email).replace(/%40/g, "@");
+  const body = message.text.replace(/\r\n|\r|\n/g, "\r\n");
+  return `mailto:${address}?subject=${encodeURIComponent(message.subject)}&body=${encodeURIComponent(body)}`;
+}
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
 /** Product-owned copy, shared by manual messages and a future server email adapter. */

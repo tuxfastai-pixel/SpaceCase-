@@ -21,3 +21,7 @@ An environment flag or API key alone cannot activate this implementation. Existi
 ## Verification
 
 Unit tests cover disabled transport behavior, safe template escaping, opaque fragment URLs and malformed input. PostgreSQL CI covers scoped replacement, old-token invalidation, unchanged expiry, wrong recipients, terminal invitation states and audit privacy. Existing sign-in, acceptance and revocation tests continue to run.
+
+## Email composer handoff
+
+During the pilot, Open email draft uses mailto to hand the one-time invitation to the administrator's configured email client. It encodes the recipient, subject and body independently so the invitation's fragment survives inside the message and input cannot inject extra recipients/headers. This is manual sharing, not a delivery transport. Opening a draft is neither observable nor acknowledged by SpaceCase, and never changes delivery metadata. The screen retains copy fallbacks and asks the administrator to review and press Send. Links and draft contents remain only in the current page's memory. Test decoding, special characters, exact recipient binding and header-injection rejection before release.
