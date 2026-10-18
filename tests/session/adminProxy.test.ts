@@ -28,6 +28,11 @@ test("admin proxy rejects cross-origin writes and forwards only the current PEOS
     assert.equal(denied.status, 403);
     assert.deepEqual(await denied.json(), { error: "SCHOOL_ADMIN_REQUIRED" });
     assert.equal(calls, 1);
+    const replacement = await peosProxy(new Request("https://spacecase.example.test/api", {
+      method: "POST", headers: { origin: "https://spacecase.example.test", cookie: "peos_session=current-session" },
+    }), "/v1/admin/schools/school/invitations/invitation");
+    assert.equal(replacement.status, 403);
+    assert.equal(calls, 2);
   } finally {
     globalThis.fetch = oldFetch;
     if (oldUrl === undefined) delete process.env.PEOS_BASE_URL; else process.env.PEOS_BASE_URL = oldUrl;
