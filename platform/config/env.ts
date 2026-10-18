@@ -12,6 +12,9 @@ const serverEnvSchema = z.object({
   PEOS_BASE_URL: optionalNonBlank(z.string().url()),
   PSG_AI_BASE_URL: optionalNonBlank(z.string().url()),
   ATLAS_BASE_URL: optionalNonBlank(z.string().url()),
+  SUPABASE_URL: optionalNonBlank(z.string().url()),
+  SUPABASE_PUBLISHABLE_KEY: optionalNonBlank(z.string().min(1)),
+  SPACECASE_PUBLIC_URL: optionalNonBlank(z.string().url()),
 });
 
 export type ServerEnvironment = z.infer<typeof serverEnvSchema>;

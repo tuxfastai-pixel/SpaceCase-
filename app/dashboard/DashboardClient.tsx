@@ -25,6 +25,7 @@ type DashboardState =
   | { status: "loading" }
   | { status: "ready"; context: SchoolContext }
   | { status: "unauthenticated" }
+  | { status: "onboarding" }
   | { status: "unavailable" };
 
 const capabilityGroups = [
@@ -67,6 +68,10 @@ export default function DashboardClient() {
         }
 
         if (!response.ok) {
+          if (response.status === 403) {
+            setState({ status: "onboarding" });
+            return;
+          }
           setState({ status: "unavailable" });
           return;
         }
@@ -97,10 +102,17 @@ export default function DashboardClient() {
       <DashboardShell>
         <StatusPanel
           title="Sign in required"
-          body="STOS only opens a teacher workspace after PEOS has authenticated the person and confirmed current school authority."
+          body="Your session has ended. Sign in again to continue."
         />
+        <a href="/login">Continue to sign in</a>
       </DashboardShell>
     );
+  }
+
+  if (state.status === "onboarding") {
+    return <DashboardShell>
+      <StatusPanel title="Welcome to SpaceCase" body="You’re signed in. Your school workspace will appear here once your school connects your account. Ask your school administrator to arrange access—there’s no need to create another account." />
+    </DashboardShell>;
   }
 
   if (state.status === "unavailable") {
@@ -197,7 +209,7 @@ function DashboardShell({ children }: Readonly<{ children: React.ReactNode }>) {
             <span>Teacher OS</span>
           </div>
         </div>
-        <div className={styles.environment}>STOS</div>
+        <form action="/auth/logout" method="post"><button type="submit">Sign out</button></form>
       </header>
       <div className={styles.content}>{children}</div>
     </main>
