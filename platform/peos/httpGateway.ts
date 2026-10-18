@@ -12,6 +12,7 @@ const teacherContextSchema = z.object({
   schoolId: z.string().min(1),
   roleIds: z.array(z.string()),
   classIds: z.array(z.string()),
+  classes: z.array(z.object({id:z.string().min(1),name:z.string(),academicYear:z.number().nullable()})).optional(),
   active: z.boolean(),
 });
 

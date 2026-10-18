@@ -8,7 +8,7 @@ type SchoolContext = {
   teacherPersonId: string;
   schoolId: string;
   roleIds: string[];
-  setupStatus?: "CLASS_ASSIGNMENT_REQUIRED";
+  setupStatus?: "CLASS_ASSIGNMENT_REQUIRED" | "CLASSROOM_SETUP_REQUIRED";
   schoolWorkspace: {
     configured: boolean | null;
     timezone?: string;
@@ -17,6 +17,8 @@ type SchoolContext = {
   };
   classes: Array<{
     classId: string;
+    name?:string;
+    academicYear?:number|null;
     workspaceConfigured: boolean;
     localSettings: Record<string, unknown>;
   }>;
@@ -131,6 +133,9 @@ export default function DashboardClient() {
   if (context.setupStatus === "CLASS_ASSIGNMENT_REQUIRED") {
     return <DashboardShell><StatusPanel title="You’ve joined your school" body="Your teacher account is connected. Your school administrator needs to assign your classes before your teaching workspace is ready. You don’t need to accept the invitation again." /><p><button type="button" onClick={() => window.location.reload()}>Refresh workspace</button></p></DashboardShell>;
   }
+  if(context.setupStatus === "CLASSROOM_SETUP_REQUIRED") {
+    return <DashboardShell><StatusPanel title="Your classes are assigned" body="Your class access is confirmed. Classroom tools and learner records are still being set up by your school."/><section className={styles.section}><h2>My classes</h2><div className={styles.classList}>{context.classes.map(c=><article className={styles.classRow} key={c.classId}><strong>{c.name??"Assigned class"}</strong><span>{c.academicYear??"Year not set"}</span></article>)}</div><p><button type="button" onClick={()=>window.location.reload()}>Refresh workspace</button></p></section></DashboardShell>;
+  }
   return (
     <DashboardShell>
       <section className={styles.hero} aria-labelledby="dashboard-heading">
@@ -189,7 +194,7 @@ export default function DashboardClient() {
             {context.classes.map((item, index) => (
               <article className={styles.classRow} key={item.classId}>
                 <div>
-                  <strong>Assigned class {index + 1}</strong>
+                  <strong>{item.name??`Assigned class ${index + 1}`}</strong>
                   <span>{item.workspaceConfigured ? "SpaceCase workspace configured" : "Workspace not configured"}</span>
                 </div>
                 <span className={styles.scopeLabel}>PEOS authorized</span>

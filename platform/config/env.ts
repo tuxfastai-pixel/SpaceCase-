@@ -15,6 +15,7 @@ const serverEnvSchema = z.object({
   SUPABASE_URL: optionalNonBlank(z.string().url()),
   SUPABASE_PUBLISHABLE_KEY: optionalNonBlank(z.string().min(1)),
   SPACECASE_PUBLIC_URL: optionalNonBlank(z.string().url()),
+  SPACECASE_WORKSPACE_MODE: z.enum(["operational","authority_only"]).default("operational"),
 });
 
 export type ServerEnvironment = z.infer<typeof serverEnvSchema>;

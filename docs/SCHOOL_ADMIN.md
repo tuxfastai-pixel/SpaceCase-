@@ -20,4 +20,10 @@ Open email draft is available while a newly created or replaced link is displaye
 
 ## Accepted teachers awaiting classes
 
-After PEOS confirms current school authority and the matching person, a teacher with zero assigned classes receives setupStatus=CLASS_ASSIGNMENT_REQUIRED. The dashboard acknowledges the account connection and explains that an administrator must assign classes. It does not open operational storage or return learner data. schoolWorkspace.configured=null means configuration has not been inspected. This is not a database health fallback: assigned teachers still require working product storage, and operational failures remain 503. An unconfirmed or mismatched identity never reaches this state.
+After PEOS confirms current school authority and the matching person, a teacher with zero assigned classes receives setupStatus=CLASS_ASSIGNMENT_REQUIRED. The dashboard acknowledges the account connection and explains that an administrator must assign classes. It does not open operational storage or return learner data. schoolWorkspace.configured=null means configuration has not been inspected. In the default operational mode, assigned teachers still require working product storage, and failures remain 503; setup-only mode must be configured explicitly. An unconfirmed or mismatched identity never reaches this state.
+
+## Classes and teachers
+
+The admin workspace now creates real named classes with an academic year and lets an administrator assign/remove current school teachers. Only eligible teachers appear in the dropdown; pending invitations grant no eligibility. Refresh the teacher's workspace after an assignment change. Class names come from PEOS, not local projections or placeholders.
+
+The class-setup pilot explicitly uses SPACECASE_WORKSPACE_MODE=authority_only. Assigned teachers see their actual classes and a clear notice that classroom tools and learner records are still being set up. No operational or learner storage is read in this mode. The default operational mode retains storage-backed behaviour and its failure checks. See adr/0003-class-administration.md for rollout and acceptance criteria.

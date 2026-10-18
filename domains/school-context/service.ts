@@ -9,7 +9,7 @@ export type SchoolContextResult =
         teacherPersonId: string;
         schoolId: string;
         roleIds: string[];
-        setupStatus?: "CLASS_ASSIGNMENT_REQUIRED";
+        setupStatus?: "CLASS_ASSIGNMENT_REQUIRED" | "CLASSROOM_SETUP_REQUIRED";
         schoolWorkspace: {
           configured: boolean | null;
           timezone?: string;
@@ -18,6 +18,8 @@ export type SchoolContextResult =
         };
         classes: Array<{
           classId: string;
+          name?:string;
+          academicYear?:number|null;
           workspaceConfigured: boolean;
           localSettings: Record<string, unknown>;
         }>;
@@ -35,6 +37,7 @@ export async function resolveSchoolContext(
   session: AuthenticatedSession | null,
   peos: PeosGateway,
   repository: SchoolContextRepository,
+  mode: "operational" | "authority_only" = "operational",
 ): Promise<SchoolContextResult> {
   if (!session) {
     return { ok: false, code: "UNAUTHENTICATED" };
@@ -57,6 +60,13 @@ export async function resolveSchoolContext(
       teacherPersonId: teacher.personId, schoolId: teacher.schoolId, roleIds: teacher.roleIds,
       setupStatus: "CLASS_ASSIGNMENT_REQUIRED", schoolWorkspace: { configured: null, settings: {} }, classes: [],
     } };
+  }
+
+  const classDetails=new Map((teacher.classes??[]).filter(c=>teacher.classIds.includes(c.id)).map(c=>[c.id,c]));
+  if(mode === "authority_only") {
+    return {ok:true,context:{teacherPersonId:teacher.personId,schoolId:teacher.schoolId,roleIds:teacher.roleIds,
+      setupStatus:"CLASSROOM_SETUP_REQUIRED",schoolWorkspace:{configured:null,settings:{}},
+      classes:teacher.classIds.map(classId=>({classId,...(classDetails.has(classId)?{name:classDetails.get(classId)!.name,academicYear:classDetails.get(classId)!.academicYear}:{}),workspaceConfigured:false,localSettings:{}}))}};
   }
 
   const [candidateSchoolWorkspace, candidateClassWorkspaces] = await Promise.all([
@@ -98,6 +108,7 @@ export async function resolveSchoolContext(
         const workspace = classWorkspaceByPeosId.get(classId);
         return {
           classId,
+          ...(classDetails.has(classId)?{name:classDetails.get(classId)!.name,academicYear:classDetails.get(classId)!.academicYear}:{}),
           workspaceConfigured: Boolean(workspace),
           localSettings: workspace?.localSettings ?? {},
         };
