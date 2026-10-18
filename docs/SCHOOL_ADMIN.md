@@ -7,3 +7,11 @@ The /join screen preserves the invitation through Google OAuth and asks the reci
 All administrative APIs proxy to versioned PEOS endpoints using the caller's PEOS session. Writes require the canonical same-origin request. PEOS checks school scope and current role on each action, independent of interface visibility. School administrators are redirected from /dashboard to /admin after authentication.
 
 This slice sets up canonical school administration and staff membership. Teacher class assignment and the product database-backed teaching tools are separate setup steps. No learner data, synthetic users, class assignments, subscriptions or Atlas consent is created.
+
+## Manual delivery module
+
+The admin screen explicitly labels email delivery as disabled and each invitation as Email not sent. Creation exposes a one-time copyable link and a ready-to-share invitation message with school, role, Google sign-in instructions and the exact expiry. Plain-text and escaped HTML templates live in platform/invitations/message.ts; copying a message sends nothing.
+
+Replace link is available for pending invitations. It invalidates the previous token without extending the expiry. The administrator confirms that consequence before rotating and must copy the new link. Revoked/expired invitations need a new invitation; accepted invitations cannot be replaced. No resend-email action is advertised until delivery exists.
+
+See adr/0002-manual-invitation-delivery.md for ownership, acceptance and the future activation gate. No new database migration or environment configuration is required for manual delivery.
