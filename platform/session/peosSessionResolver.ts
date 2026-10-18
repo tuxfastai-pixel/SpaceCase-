@@ -26,6 +26,8 @@ export class PeosSessionResolver implements SessionResolver {
       new URL("/v1/sessions/introspect", this.baseUrl),
       {
         method: "POST",
+        cache: "no-store",
+        signal: AbortSignal.timeout(10_000),
         headers: {
           authorization,
           accept: "application/json",

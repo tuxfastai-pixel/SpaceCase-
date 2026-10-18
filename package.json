@@ -17,6 +17,8 @@
     "validate": "npm run typecheck && npm run lint && npm test && npm run build"
   },
   "dependencies": {
+    "@supabase/ssr": "0.7.0",
+    "@supabase/supabase-js": "2.57.4",
     "next": "^15.0.0",
     "pg": "^8.13.0",
     "react": "^19.0.0",

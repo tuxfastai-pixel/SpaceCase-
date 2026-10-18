@@ -21,7 +21,12 @@ export async function GET(request: Request): Promise<Response> {
 
   const sessionResolver = new PeosSessionResolver(environment.PEOS_BASE_URL);
   const peos = new HttpPeosGateway(environment.PEOS_BASE_URL, authorization);
-  const repository = new PostgresSchoolContextRepository(getDatabasePool());
+  // Resolve PEOS authority before opening a product database connection. New
+  // accounts can reach the welcome state even before a school workspace exists.
+  const repository = {
+    getSchoolWorkspace: (schoolId: string) => new PostgresSchoolContextRepository(getDatabasePool()).getSchoolWorkspace(schoolId),
+    getClassWorkspaces: (schoolId: string, classIds: string[]) => new PostgresSchoolContextRepository(getDatabasePool()).getClassWorkspaces(schoolId, classIds),
+  };
 
   try {
     return await handleSchoolContextRequest(request, sessionResolver, peos, repository);
