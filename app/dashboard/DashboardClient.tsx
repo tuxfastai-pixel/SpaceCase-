@@ -134,7 +134,7 @@ export default function DashboardClient() {
     return <DashboardShell><StatusPanel title="You’ve joined your school" body="Your teacher account is connected. Your school administrator needs to assign your classes before your teaching workspace is ready. You don’t need to accept the invitation again." /><p><button type="button" onClick={() => window.location.reload()}>Refresh workspace</button></p></DashboardShell>;
   }
   if(context.setupStatus === "CLASSROOM_SETUP_REQUIRED") {
-    return <DashboardShell><StatusPanel title="Your classes are assigned" body="Your class access is confirmed. Classroom tools and learner records are still being set up by your school."/><section className={styles.section}><h2>My classes</h2><div className={styles.classList}>{context.classes.map(c=><article className={styles.classRow} key={c.classId}><strong>{c.name??"Assigned class"}</strong><span>{c.academicYear??"Year not set"}</span></article>)}</div><p><button type="button" onClick={()=>window.location.reload()}>Refresh workspace</button></p></section></DashboardShell>;
+    return <DashboardShell><StatusPanel title="Your classes are assigned" body="Your class access is confirmed. Classroom tools and learner records are still being set up by your school."/><section className={styles.section}><h2>My classes</h2><div className={styles.classList}>{context.classes.map(c=><article className={styles.classRow} key={c.classId}><strong>{c.name??"Assigned class"}</strong><span>{c.academicYear??"Year not set"}</span><a href={`/classes/${context.schoolId}/${c.classId}`}>View class roster</a></article>)}</div><p><button type="button" onClick={()=>window.location.reload()}>Refresh workspace</button></p></section></DashboardShell>;
   }
   return (
     <DashboardShell>
@@ -197,7 +197,7 @@ export default function DashboardClient() {
                   <strong>{item.name??`Assigned class ${index + 1}`}</strong>
                   <span>{item.workspaceConfigured ? "SpaceCase workspace configured" : "Workspace not configured"}</span>
                 </div>
-                <span className={styles.scopeLabel}>PEOS authorized</span>
+                <a href={`/classes/${context.schoolId}/${item.classId}`}>View class roster</a>
               </article>
             ))}
           </div>

@@ -20,7 +20,7 @@ export function reviewRecipients(rows:ReviewRow[]){
 }
 
 /** Small, strict RFC-style CSV reader. Never evaluates spreadsheet content. */
-function csvRecords(source:string):string[][]{
+export function csvRecords(source:string):string[][]{
   const records:string[][]=[];let record:string[]=[];let field="";let quoted=false;let closed=false;
   function endField(){record.push(field);field="";closed=false;}
   function endRecord(){endField();if(record.some(value=>value.trim()))records.push(record);record=[];
