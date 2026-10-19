@@ -7,7 +7,7 @@ test("attendance validates actual calendar dates, status, bounded input and corr
  assert.equal(attendanceDate.safeParse("2024-02-29").success,true);
  for(const date of ["2026-02-29","2026-13-01","19-10-2026","2026-10-19T00:00:00Z"]){assert.equal(attendanceDate.safeParse(date).success,false);}
  assert.equal(attendanceInput.safeParse(input).success,true);
- for(const bad of [{...input,revision:-1},{...input,entries:[]},{...input,entries:[...input.entries,...input.entries]},{...input,entries:[{personId:learner,status:"SICK",notes:"private"}]},{...input,revision:1},{...input,schoolId:learner}])assert.equal(attendanceInput.safeParse(bad).success,false);
+ for(const bad of [{...input,reason:"CORRECTION"},{...input,reason:"LATE_UPDATE"},{...input,reason:"ROSTER_UPDATE"},{...input,revision:-1},{...input,entries:[]},{...input,entries:[...input.entries,...input.entries]},{...input,entries:[{personId:learner,status:"SICK",notes:"private"}]},{...input,revision:1},{...input,schoolId:learner}])assert.equal(attendanceInput.safeParse(bad).success,false);
  assert.equal(attendanceInput.safeParse({...input,revision:1,reason:"LATE_UPDATE"}).success,true);
 });
 test("the entire submitted roster must match current authorized learners",()=>{

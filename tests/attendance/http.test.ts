@@ -26,3 +26,13 @@ test("attendance rechecks teacher roster on every read and save and exposes only
   const invalid=await handler(req("PUT",{...body,entries:[{personId,status:"PRESENT",notes:"unnecessary"}]}),{schoolId,classId});assert.equal(invalid.status,400);assert.equal(rosterCalls,3);
  }finally{if(old===undefined)delete process.env.SPACECASE_PUBLIC_URL;else process.env.SPACECASE_PUBLIC_URL=old;}
 });
+test("malformed upstream session and roster payloads return dependency failure rather than invalid input",async()=>{
+ const {z}=await import("zod");
+ const schemaFailure=():never=>{z.string().parse(null);throw new Error("Expected a schema error");};
+ for(const stage of ["session","roster"]){
+  for(const failure of [()=>{throw new SyntaxError("upstream JSON");},schemaFailure]){
+   const handler=attendanceHandler({session:async()=>stage==="session"?failure():{personId:"teacher"},roster:async()=>failure(),read:async()=>{throw new Error("must not read");},save:async()=>{throw new Error("must not write");}});
+   const response=await handler(req(),{schoolId,classId});assert.equal(response.status,503);assert.deepEqual(await response.json(),{error:"PEOS_UNAVAILABLE"});
+  }
+ }
+});

@@ -8,6 +8,7 @@ export const attendanceInput=z.object({
  entries:z.array(z.object({personId:z.string().uuid().transform(v=>v.toLowerCase()),status:attendanceStatus}).strict()).min(1).max(1000),
 }).strict().superRefine((value,ctx)=>{
  if(new Set(value.entries.map(r=>r.personId)).size!==value.entries.length)ctx.addIssue({code:z.ZodIssueCode.custom,path:["entries"],message:"Duplicate learner"});
+ if(value.revision===0&&value.reason!=="INITIAL_REGISTER")ctx.addIssue({code:z.ZodIssueCode.custom,path:["reason"],message:"Use initial register for a first save"});
  if(value.revision>0&&value.reason==="INITIAL_REGISTER")ctx.addIssue({code:z.ZodIssueCode.custom,path:["reason"],message:"Choose a correction reason"});
 });
 export type AttendanceInput=z.infer<typeof attendanceInput>;

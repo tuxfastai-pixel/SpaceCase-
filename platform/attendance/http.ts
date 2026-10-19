@@ -20,7 +20,7 @@ export function attendanceHandler(deps:Dependencies){return async(request:Reques
   if(request.method!=="GET"&&request.method!=="PUT")return reply({error:"METHOD_NOT_ALLOWED"},405);
   if(request.method!=="GET"&&!sameOrigin(request))return reply({error:"FORBIDDEN"},403);
   const authorization=resolvePeosAuthorization(request);if(!authorization)return reply({error:"UNAUTHENTICATED"},401);
-  const session=await deps.session(request);if(!session)return reply({error:"UNAUTHENTICATED"},401);
+  const session=await deps.session(request).catch(()=>{throw new AttendanceError("PEOS_UNAVAILABLE",503);});if(!session)return reply({error:"UNAUTHENTICATED"},401);
   const {schoolId,classId}=paramsSchema.parse(params);
   const query=z.object({date:attendanceDate.optional()}).strict().parse(Object.fromEntries(new URL(request.url).searchParams));
   let input:AttendanceInput|undefined;
@@ -28,7 +28,7 @@ export function attendanceHandler(deps:Dependencies){return async(request:Reques
    const body=await request.text();if(new TextEncoder().encode(body).length>150000)return reply({error:"INVALID_INPUT"},400);
    input=attendanceInput.parse(JSON.parse(body));
   }
-  const roster=await deps.roster(authorization,schoolId,classId);
+  const roster=await deps.roster(authorization,schoolId,classId).catch(error=>{if(error instanceof AttendanceError)throw error;throw new AttendanceError("PEOS_UNAVAILABLE",503);});
   return reply(input?await deps.save(session.personId,schoolId,classId,roster,input):await deps.read(session.personId,schoolId,classId,roster,query.date));
  }catch(error){
   if(error instanceof AttendanceError)return reply({error:error.code},error.status);
