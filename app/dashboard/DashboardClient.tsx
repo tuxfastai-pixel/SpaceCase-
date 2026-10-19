@@ -198,6 +198,7 @@ export default function DashboardClient() {
                   <span>{item.workspaceConfigured ? "SpaceCase workspace configured" : "Workspace not configured"}</span>
                 </div>
                 <a href={`/classes/${context.schoolId}/${item.classId}`}>View class roster</a>
+                {item.workspaceConfigured&&context.schoolWorkspace.configured?<a href={`/classes/${context.schoolId}/${item.classId}/attendance`}>Take attendance</a>:null}
               </article>
             ))}
           </div>
