@@ -1,0 +1,15 @@
+# ADR 0004: Review bulk staff invitations in administration
+
+Status: accepted.
+
+School administrators need to invite a team without repeating the single-person form. Add a reusable BulkInvitations component to /admin first. A future onboarding wizard can use the same component; this release does not create that wizard or additional staff roles.
+
+Accept pasted email lists (comma, semicolon or whitespace separated) and a local CSV with email and optional role columns. Limit input to 64 KB and 50 rows. CSV supports BOM, quoted fields and CRLF. Missing roles default to TEACHER; only TEACHER and SCHOOL_ADMINISTRATOR are supported. Unsupported roles require correction. Review permits corrections, exclusions and role changes; invalid and duplicate normalized emails cannot be submitted. Selecting administrator access requires an explicit acknowledgement. Files are parsed locally and only selected recipients are posted to PEOS.
+
+The same-origin server proxy forwards the existing PEOS session to POST /v1/admin/schools/[schoolId]/invitations/bulk. PEOS validates the complete payload, rechecks current school authority per recipient and returns ordered per-recipient results. It skips pending invitations and current staff identifiable through an accepted invitation at that email; it never promotes those staff in bulk. This is not a canonical email directory: staff bootstrapped without an accepted invitation cannot be identified by email and may still receive an invitation. No authority is granted based on an email lookup.
+
+Each recipient has a separate transaction, with at most four workers. A successful row returns its one-time raw link token; only a hash is persisted. Requests do not send email. Results show CREATED, SKIPPED or FAILED, separate from NOT_SENT delivery. Service failures or a lost response may have an unknown commit outcome. Refresh Invitations before retrying and use Replace link for newly pending invitations whose tokens were not returned. Pending duplicate protection makes retries nonduplicating, but cannot return lost tokens. The proxy allows 50 seconds within 60-second route budgets. There is no automatic retry.
+
+Links stay in component memory until navigation or an explicitly labelled reset. Downloaded CSVs pair each email with its own link, role, expiry and NOT_SENT status. Cells are quoted and spreadsheet formula prefixes are escaped. These files are private bearer-link material; downloads are optional. Individual copy/message/email-draft actions remain available. A mailto draft requires the administrator to press Send; SpaceCase cannot confirm sending or delivery. No localStorage, new provider, queue, migration or production test recipients are introduced.
+
+Acceptance: strict parser/CSV/limit/injection tests; PEOS schema tests; isolated PostgreSQL scope, skip, retry, concurrent-creation, hash-only storage, audit and no-elevation tests; typecheck, lint, full test suites and production builds. Real recipient acceptance still requires their Google sign-in.
