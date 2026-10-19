@@ -15,6 +15,9 @@ export function getDatabasePool(): Pool {
   pool = new Pool({
     connectionString: environment.DATABASE_URL,
     max: 10,
+    connectionTimeoutMillis: 5_000,
+    query_timeout: 15_000,
+    idleTimeoutMillis: 10_000,
   });
 
   return pool;

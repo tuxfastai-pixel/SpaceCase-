@@ -13,3 +13,5 @@
 
 .draftActions { margin:24px 0; }.draftActions a { display:inline-block; text-decoration:none; }.draftActions a:focus-visible { outline:3px solid #4e8b66; outline-offset:3px; }
 .confirmation { display:flex; align-items:flex-start; gap:10px; margin:20px 0; line-height:1.5; }.actions a { display:inline-block; text-decoration:none; }.actions a:focus-visible { outline:3px solid #4e8b66; outline-offset:3px; }.tableWrap input[type=email],.tableWrap select { box-sizing:border-box; max-width:100%; min-height:40px; border:1px solid #bccdbd; border-radius:6px; padding:8px; font:inherit; }.tableWrap input[type=email] { min-width:220px; }
+
+.tableWrap input:not([type=checkbox]) { box-sizing:border-box; min-height:40px; max-width:100%; border:1px solid #bccdbd; border-radius:6px; padding:8px; font:inherit; }

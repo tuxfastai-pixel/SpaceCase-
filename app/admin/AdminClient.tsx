@@ -4,6 +4,7 @@ import styles from "./admin.module.css";
 import { invitationEmailDraft, prepareInvitationMessage, type InvitationMessage } from "../../platform/invitations/message";
 import ClassManager from "./ClassManager";
 import BulkInvitations from "./BulkInvitations";
+import WorkspaceSetup from "./WorkspaceSetup";
 
 type School = { id: string; displayName: string };
 type Invite = { id: string; email: string; roleCode: string; expiresAt: string; acceptedAt: string | null; revokedAt: string | null };
@@ -100,6 +101,7 @@ export default function AdminClient() {
             </form><p className={styles.note}>Links expire in seven days and require the invited email address. Teacher class access is assigned separately.</p>
           </section>
         </div>
+        <WorkspaceSetup key={`workspace-${schoolId}`} schoolId={schoolId}/>
         <ClassManager key={schoolId} schoolId={schoolId}/>
         <BulkInvitations key={`bulk-${schoolId}`} schoolId={schoolId} schoolName={schools.find(s=>s.id===schoolId)?.displayName??"Your school"} disabled={busy} onBusyChange={setBusy} onComplete={refreshInvites}/>
         {link ? <section className={styles.card}><h2>Your new invitation link</h2><p>Email not sent. Copy this link now; it cannot be retrieved later. You can create a replacement below if needed.</p><div className={styles.copyRow}><input aria-label="Invitation link" readOnly value={link} onFocus={e => e.target.select()} /><button className={styles.secondary} onClick={() => { void action(async () => { await navigator.clipboard.writeText(link); setMessage("Invitation link copied. Share it with the invited person."); }); }}>Copy link</button></div>{shareMessage ? <><div className={styles.draftActions}><a className={styles.primary} href={shareMessage.draftUrl} onClick={() => setMessage("Email draft requested—sending not confirmed. Review it in your email app and press Send. SpaceCase cannot confirm whether it opened or was sent.")}>Open email draft</a><p className={styles.note}>Opens your configured email app with the recipient and message filled in. Review the draft and press Send yourself. If nothing opens, use Copy invitation message below. SpaceCase cannot confirm sending or delivery.</p></div><label className={styles.field}>Ready-to-share invitation<textarea readOnly rows={8} value={shareMessage.text} /></label><button className={styles.secondary} onClick={() => { void action(async () => { await navigator.clipboard.writeText(shareMessage.text); setMessage("Invitation message copied. Email not sent."); }); }}>Copy invitation message</button></> : null}</section> : null}
