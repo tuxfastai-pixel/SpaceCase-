@@ -9,10 +9,13 @@ export async function storageReady(pool:Pool){
   const result=await pool.query(`SELECT to_regclass('identity.persons') IS NULL AND to_regclass('organisation.organisations') IS NULL
     AND to_regclass('school_ops.school_workspaces') IS NOT NULL
     AND to_regclass('school_ops.class_workspaces') IS NOT NULL AND to_regclass('audit.product_audit_events') IS NOT NULL
-    AND to_regclass('learning.learner_profiles') IS NOT NULL AS ready`);
+    AND to_regclass('learning.learner_profiles') IS NOT NULL
+    AND to_regclass('learning.attendance_registers') IS NOT NULL AND to_regclass('learning.attendance_entries') IS NOT NULL AS ready`);
   if(!result.rows[0]?.ready)throw new Error("STORAGE_SCHEMA_REQUIRED");
   // Prove runtime-role access rather than accepting a connection or table name alone.
   await pool.query("SELECT peos_school_id FROM school_ops.school_workspaces LIMIT 0");
+  await pool.query("SELECT id FROM learning.attendance_registers LIMIT 0");
+  await pool.query("SELECT register_id FROM learning.attendance_entries LIMIT 0");
   await pool.query("SELECT peos_class_id FROM school_ops.class_workspaces LIMIT 0");
   await pool.query("SELECT id FROM audit.product_audit_events LIMIT 0");
 }

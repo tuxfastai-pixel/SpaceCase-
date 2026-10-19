@@ -1,7 +1,7 @@
 # Workspace storage activation and recovery
 
 1. Connect a dedicated SpaceCase PostgreSQL database through the deployment's sensitive DATABASE_URL setting. Do not paste credentials into issues, commits or chat. Do not reuse the PEOS database. No paid database is provisioned by this milestone.
-2. Run the repository checksum-controlled migrations using the dedicated database's authorized migration connection: npm run db:migrate. Check all six existing migration names/checksums and the expected schemas/tables. Never run this against PEOS.
+2. Run the repository checksum-controlled migrations using the dedicated database's authorized migration connection: npm run db:migrate. Check all seven migration names/checksums and the expected schemas/tables. Never run this against PEOS.
 3. Require /api/ready to return 200, then use School administration → School learning workspace to save the school timezone/year and synchronize current classes. This UI requires current school authority and real database writes; it cannot simulate success.
 4. Verify save/reload and configure a provider backup schedule, retention, operational owner and alerting. Restore to a separate isolated database; compare schema, representative authorized school/class settings and audit records. Record recovery time and permissible data loss. Restore credentials and backup files remain private. Production backup/restore is not verified merely by passing CI rollback tests.
 5. Only then change production SPACECASE_WORKSPACE_MODE to operational and redeploy. Verify assigned teacher context and operational reads. Enrolment/rosters can be tested independently through PEOS while storage setup is blocked.
@@ -18,3 +18,7 @@ For a new learner without a school reference, the administrator can select “Ge
 ### Automatic class connection
 
 After PEOS successfully creates a class, SpaceCase connects the returned class ID to its already configured school workspace and audits the connection. A request or submitted class ID alone never authorizes this operation. If storage is not ready or the workspace is not yet configured, class creation remains successful and the UI asks the administrator to save workspace settings to connect pending classes. A connection failure does not claim success or encourage creating the same class again. Class IDs already attached to another school cannot be rebound.
+
+### Daily attendance
+
+Teachers open Take attendance beside an assigned class or from its roster. Attendance requires both school and class learning workspaces. New marks start Unmarked. Select the school-local date, mark learners and save. Later updates require a correction reason. If a register or class list changed, reload before applying corrections. The date selector warns before discarding unsaved edits; no names or marks are stored in browser storage. Earlier dates display the current class list, not reconstructed historical enrolment. There is no automatic parent messaging, holiday calendar or administrator editing in this milestone. A user who loses current teacher assignment cannot reopen even an old register through this API. Saved former-learner entries are retained for a separately governed historical reporting workflow.
