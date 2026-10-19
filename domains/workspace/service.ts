@@ -2,6 +2,7 @@ import type {Pool} from "pg";
 import {z} from "zod";
 export const workspaceSchema=z.object({
   timezone:z.string().min(1).max(80).refine(v=>{try{new Intl.DateTimeFormat("en",{timeZone:v});return true;}catch{return false;}},"Choose a supported timezone"),
+  autoGenerateLearnerReferences:z.boolean().optional(),
   academicYearLabel:z.string().trim().min(1).max(40).regex(/^[^\u0000-\u001f\u007f]+$/),
 }).strict();
 export async function storageReady(pool:Pool){
@@ -17,7 +18,8 @@ export async function storageReady(pool:Pool){
 }
 export async function readWorkspace(pool:Pool,schoolId:string){
   await storageReady(pool);
-  const result=await pool.query(`SELECT timezone,academic_year_label AS "academicYearLabel" FROM school_ops.school_workspaces
+  const result=await pool.query(`SELECT timezone,academic_year_label AS "academicYearLabel",
+    COALESCE(settings->'autoGenerateLearnerReferences'='true'::jsonb,false) AS "autoGenerateLearnerReferences" FROM school_ops.school_workspaces
     WHERE peos_school_id=$1 AND status='ACTIVE'`,[schoolId]);
   return {storageReady:true,workspace:result.rows[0]??null};
 }
@@ -25,8 +27,8 @@ export async function configureWorkspace(pool:Pool,actor:string,schoolId:string,
   await storageReady(pool);const client=await pool.connect();
   try{
     await client.query("BEGIN");
-    await client.query(`INSERT INTO school_ops.school_workspaces(peos_school_id,timezone,academic_year_label) VALUES ($1,$2,$3)
-      ON CONFLICT(peos_school_id) DO UPDATE SET timezone=excluded.timezone,academic_year_label=excluded.academic_year_label,status='ACTIVE',updated_at=now()`,[schoolId,input.timezone,input.academicYearLabel]);
+    await client.query(`INSERT INTO school_ops.school_workspaces(peos_school_id,timezone,academic_year_label,settings) VALUES ($1,$2,$3,CASE WHEN $4::boolean IS NULL THEN '{}'::jsonb ELSE jsonb_build_object('autoGenerateLearnerReferences',$4::boolean) END)
+      ON CONFLICT(peos_school_id) DO UPDATE SET timezone=excluded.timezone,academic_year_label=excluded.academic_year_label,status='ACTIVE',settings=school_ops.school_workspaces.settings || excluded.settings,updated_at=now()`,[schoolId,input.timezone,input.academicYearLabel,input.autoGenerateLearnerReferences??null]);
     for(const classId of classIds){
       const saved=await client.query(`INSERT INTO school_ops.class_workspaces(peos_school_id,peos_class_id) VALUES ($1,$2)
         ON CONFLICT(peos_class_id) DO UPDATE SET status='ACTIVE',updated_at=now()
@@ -34,7 +36,24 @@ export async function configureWorkspace(pool:Pool,actor:string,schoolId:string,
       if(!saved.rowCount)throw new Error("CLASS_WORKSPACE_SCOPE_CONFLICT");
     }
     await client.query(`INSERT INTO audit.product_audit_events(id,actor_person_id,action,resource_type,resource_id,school_id,decision,reason,metadata,occurred_at)
-      VALUES (gen_random_uuid(),$1,'school.workspace.configure','SCHOOL_WORKSPACE',$2,$2,'ALLOW','current_peos_school_administrator',$3::jsonb,now())`,[actor,schoolId,JSON.stringify({classCount:classIds.length})]);
+      VALUES (gen_random_uuid(),$1,'school.workspace.configure','SCHOOL_WORKSPACE',$2,$2,'ALLOW','current_peos_school_administrator',$3::jsonb,now())`,[actor,schoolId,JSON.stringify({classCount:classIds.length,...(input.autoGenerateLearnerReferences===undefined?{}:{autoGenerateLearnerReferences:input.autoGenerateLearnerReferences})})]);
     await client.query("COMMIT");return {configured:true,classCount:classIds.length};
+  }catch(error){await client.query("ROLLBACK");throw error;}finally{client.release();}
+}
+
+// Called only after PEOS has authorized and successfully created the real class.
+export async function connectCreatedClass(pool:Pool,actor:string,schoolId:string,classId:string){
+  await storageReady(pool);const client=await pool.connect();
+  try{
+    await client.query("BEGIN");
+    const school=await client.query("SELECT id FROM school_ops.school_workspaces WHERE peos_school_id=$1 AND status='ACTIVE' FOR SHARE",[schoolId]);
+    if(!school.rows.length){await client.query("ROLLBACK");return false;}
+    const saved=await client.query(`INSERT INTO school_ops.class_workspaces(peos_school_id,peos_class_id) VALUES ($1,$2)
+      ON CONFLICT(peos_class_id) DO UPDATE SET status='ACTIVE',updated_at=now()
+      WHERE school_ops.class_workspaces.peos_school_id=excluded.peos_school_id RETURNING id`,[schoolId,classId]);
+    if(!saved.rowCount)throw new Error("CLASS_WORKSPACE_SCOPE_CONFLICT");
+    await client.query(`INSERT INTO audit.product_audit_events(id,actor_person_id,action,resource_type,resource_id,school_id,decision,reason,metadata,occurred_at)
+      VALUES (gen_random_uuid(),$1,'school.class.workspace.connect','CLASS_WORKSPACE',$2,$3,'ALLOW','peos_class_created','{}'::jsonb,now())`,[actor,classId,schoolId]);
+    await client.query("COMMIT");return true;
   }catch(error){await client.query("ROLLBACK");throw error;}finally{client.release();}
 }

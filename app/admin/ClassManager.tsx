@@ -29,7 +29,7 @@ export default function ClassManager({schoolId}:{schoolId:string}){
     {error?<p className={styles.error} role="alert">{error}</p>:null}{notice?<p className={styles.notice} role="status">{notice}</p>:null}
     {data===null?<p>Loading classes…</p>:<>
       <div className={styles.grid}>
-        <form onSubmit={e=>{e.preventDefault();void action(async()=>{const result=await request<{class:Classroom}>(base,"POST",{name,academicYear:year});setClassId(result.class.id);setName("");setNotice("Class created. You can now assign a teacher.");});}}>
+        <form onSubmit={e=>{e.preventDefault();void action(async()=>{const result=await request<{class:Classroom;workspaceConnected:boolean}>(base,"POST",{name,academicYear:year});setClassId(result.class.id);setName("");setNotice(result.workspaceConnected?"Class created and connected to the learning workspace. You can now assign a teacher.":"Class created. Save the school workspace settings to connect it to learning tools, then assign a teacher.");});}}>
           <label className={styles.field}>Class name<input required maxLength={80} value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Grade 2C" disabled={busy}/></label>
           <label className={styles.field}>Academic year<input required type="number" min={1900} max={2200} value={year} onChange={e=>setYear(Number(e.target.value))} disabled={busy}/></label>
           <button className={styles.primary} disabled={busy}>Create class</button>

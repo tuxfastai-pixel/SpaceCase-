@@ -4,6 +4,7 @@ import type {Pool} from "pg";
 import {storageReady,workspaceSchema} from "../../domains/workspace/service";
 test("workspace settings accept a real timezone without accepting submitted school or class scope",()=>{
  assert.equal(workspaceSchema.safeParse({timezone:"Africa/Johannesburg",academicYearLabel:"2026"}).success,true);
+ assert.equal(workspaceSchema.safeParse({timezone:"UTC",academicYearLabel:"2026",autoGenerateLearnerReferences:"yes"}).success,false);
  assert.equal(workspaceSchema.safeParse({timezone:"Not/AZone",academicYearLabel:"2026"}).success,false);
  assert.equal(workspaceSchema.safeParse({timezone:"UTC",academicYearLabel:"2026",classIds:["guessed"]}).success,false);
 });

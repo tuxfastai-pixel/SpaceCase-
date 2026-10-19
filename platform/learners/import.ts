@@ -23,7 +23,7 @@ export function reviewLearners(rows:LearnerReview[]){
     return {...row,...(parsed.success?parsed.data:{}),issue};
   });
 }
-export function parseLearnerCsv(source:string):LearnerReview[]{
+export function parseLearnerCsv(source:string,autoGenerate=false):LearnerReview[]{
   if(new TextEncoder().encode(source).length>MAX_IMPORT_SIZE)throw new Error("Use a CSV smaller than 64 KB.");
   const records=csvRecords(source.replace(/^\uFEFF/,""));const header=records.shift()?.map(s=>s.trim().toLowerCase())??[];
   const keys=["admission_number","given_name","family_name"];
@@ -31,7 +31,8 @@ export function parseLearnerCsv(source:string):LearnerReview[]{
   if(!records.length||records.length>50)throw new Error("Import between 1 and 50 learners.");
   const rows=records.map(row=>{
     if(row.length!==3)throw new Error("Each CSV row must have three columns.");
-    return {admissionNumber:row[header.indexOf("admission_number")],givenName:row[header.indexOf("given_name")],familyName:row[header.indexOf("family_name")],selected:true};
+    const supplied=row[header.indexOf("admission_number")];
+    return {admissionNumber:autoGenerate&&!supplied.trim()?generateLearnerReference():supplied,givenName:row[header.indexOf("given_name")],familyName:row[header.indexOf("family_name")],selected:true};
   });
   return reviewLearners(rows).map(({issue,...row})=>({...row,selected:!issue}));
 }
