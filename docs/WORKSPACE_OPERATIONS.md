@@ -8,3 +8,9 @@
 6. On rollout failure, roll back application code or explicitly return to authority_only to expose class setup/rosters only. Do not silently fall back and do not drop or reset learner/learning records. For data recovery, isolate the incident, restore into a separate database, verify integrity and switch the production connection only after the recovery review.
 
 Current release adds storage readiness and configuration UI but does not assert a working production database, completed migrations, provider backups, or tested production restoration. These need evidence from the connected database, not source-level assumptions.
+
+### Learner references and names
+
+The enrolment form labels the surname as “Family name / surname” and explains given names separately. References are school admission numbers, 1–40 characters, starting with a letter or digit and containing only letters, digits, full stops, underscores, slashes or hyphens. Inline guidance and validation explain that spaces are not accepted.
+
+For a new learner without a school reference, the administrator can select “I don’t have a school reference”. The browser generates a cryptographically random `SC-` UUID reference for review before submission. It remains stable through failed submissions, uses the existing PEOS validation and school uniqueness checks, and appears in results and the roster after saving. Reuse the existing reference for an existing learner; generation does not deduplicate identities by name. CSV imports still require references; use the single-learner form for missing references.

@@ -16,3 +16,13 @@ test("learner CSV rejects extra personal fields, malformed rows, and oversize im
  assert.throws(()=>parseLearnerCsv('admission_number,given_name,family_name\n'+Array.from({length:51},(_,i)=>`A${i},Lea,Example`).join('\n')),/50/);
  assert.throws(()=>parseLearnerCsv('é'.repeat(33000)),/64 KB/);
 });
+test("reference validation explains spaces and generated references pass the enrolment contract",async()=>{
+ const {generateLearnerReference,learnerValidationMessage}=await import("../../platform/learners/import");
+ const names={givenName:"Kabelo",familyName:"Senyane"};
+ assert.match(learnerValidationMessage({...names,admissionNumber:"SCP student 1234"})!,/Spaces are not allowed/);
+ const refs=Array.from({length:100},generateLearnerReference);
+ assert.equal(new Set(refs).size,100);
+ for(const admissionNumber of refs){assert.ok(admissionNumber.length<=40);assert.equal(learnerSchema.safeParse({...names,admissionNumber}).success,true);}
+ assert.match(learnerValidationMessage({...names,admissionNumber:"SCP-1234",familyName:""})!,/family name \/ surname/);
+ assert.equal(learnerValidationMessage({...names,admissionNumber:"SCP-1234"}),null);
+});
