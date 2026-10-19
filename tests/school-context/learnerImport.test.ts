@@ -26,3 +26,11 @@ test("reference validation explains spaces and generated references pass the enr
  assert.match(learnerValidationMessage({...names,admissionNumber:"SCP-1234",familyName:""})!,/family name \/ surname/);
  assert.equal(learnerValidationMessage({...names,admissionNumber:"SCP-1234"}),null);
 });
+test("school reference default fills only missing CSV references and preserves supplied or invalid references",()=>{
+ const csv='admission_number,given_name,family_name\n,Lea,Example\n  ,Sam,Example\n0001,Kabelo,Senyane\nBad ref,Tumi,Example';
+ const manual=parseLearnerCsv(csv);assert.deepEqual(manual.map(r=>r.selected),[false,false,true,false]);
+ const automatic=parseLearnerCsv(csv,true);assert.deepEqual(automatic.map(r=>r.selected),[true,true,true,false]);
+ assert.match(automatic[0].admissionNumber,/^SC-/);assert.notEqual(automatic[0].admissionNumber,automatic[1].admissionNumber);
+ assert.equal(automatic[2].admissionNumber,"0001");assert.equal(automatic[3].admissionNumber,"Bad ref");
+ assert.deepEqual(reviewLearners(automatic).map(row=>row.admissionNumber),automatic.map(row=>row.admissionNumber));
+});
