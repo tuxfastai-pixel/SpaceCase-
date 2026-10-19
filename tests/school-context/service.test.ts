@@ -79,6 +79,18 @@ test("assigned teachers still fail closed when operational storage is unavailabl
     schoolId: "school-1", roleIds: ["teacher"], classIds: ["class-1"], active: true }), repository), /Operational database is not ready/);
 });
 
+test("explicit school setup mode displays only PEOS-assigned classes and does not open learning storage",async()=>{
+  const repository:SchoolContextRepository={async getSchoolWorkspace(){throw new Error("Must not open storage");},async getClassWorkspaces(){throw new Error("Must not open storage");}};
+  const teacher:PeosTeacherContext={personId:session.personId,schoolId:"school-1",roleIds:["teacher"],classIds:["class-1"],active:true,
+    classes:[{id:"class-1",name:"Grade 2C",academicYear:2026},{id:"unassigned",name:"Private class",academicYear:2026}]};
+  const result=await resolveSchoolContext(session,new FakePeosGateway(teacher),repository,"authority_only");
+  assert.equal(result.ok,true);if(!result.ok)return;
+  assert.equal(result.context.setupStatus,"CLASSROOM_SETUP_REQUIRED");
+  assert.equal(result.context.schoolWorkspace.configured,null);
+  assert.deepEqual(result.context.classes,[{classId:"class-1",name:"Grade 2C",academicYear:2026,workspaceConfigured:false,localSettings:{}}]);
+  assert.deepEqual(await resolveSchoolContext(null,new FakePeosGateway(teacher),repository,"authority_only"),{ok:false,code:"UNAUTHENTICATED"});
+});
+
 test("school context keeps PEOS authority separate from SpaceCase operational projections", async () => {
   const result = await resolveSchoolContext(
     session,

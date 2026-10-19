@@ -8,9 +8,10 @@ export async function handleSchoolContextRequest(
   sessionResolver: SessionResolver,
   peos: PeosGateway,
   repository: SchoolContextRepository,
+  mode: "operational" | "authority_only" = "operational",
 ): Promise<Response> {
   const session = await sessionResolver.resolve(request);
-  const result = await resolveSchoolContext(session, peos, repository);
+  const result = await resolveSchoolContext(session, peos, repository, mode);
 
   if (!result.ok) {
     const status = result.code === "UNAUTHENTICATED" ? 401 : 403;

@@ -29,7 +29,7 @@ export async function GET(request: Request): Promise<Response> {
   };
 
   try {
-    return await handleSchoolContextRequest(request, sessionResolver, peos, repository);
+    return await handleSchoolContextRequest(request, sessionResolver, peos, repository, environment.SPACECASE_WORKSPACE_MODE);
   } catch (error) {
     // Never log connection strings, upstream response bodies or session tokens.
     const code = error && typeof error === "object" && "code" in error && typeof error.code === "string" && /^[A-Z0-9_]{2,40}$/.test(error.code) ? error.code : "UNKNOWN";

@@ -3,6 +3,7 @@ export type PeosTeacherContext = {
   schoolId: string;
   roleIds: string[];
   classIds: string[];
+  classes?: Array<{id:string;name:string;academicYear:number|null}>;
   active: boolean;
 };
 
