@@ -42,8 +42,11 @@ export async function mutateBilling(pool:Pool,c:SupportContext,input:BillingActi
  await audit(db,c,input.schoolId,input.id,input.action,input.reason);
  }
  }else{
- const locked=await db.query("SELECT "+projection+" FROM billing.invoices i WHERE id=$1 FOR UPDATE",[input.invoiceId]);
+ const locked=await db.query('SELECT id,school_id AS "schoolId",amount_cents AS "amountCents",voided,disputed FROM billing.invoices WHERE id=$1 FOR UPDATE',[input.invoiceId]);
  const invoice=locked.rows[0];if(!invoice)throw new SupportError("INVOICE_UNAVAILABLE",404);
+ // Read the balance in a fresh statement after acquiring the lock: a waiting transaction must see receipts committed by the previous lock holder.
+ const balance=await db.query("SELECT COALESCE(sum(amount_cents),0)::int AS paid FROM billing.receipts WHERE invoice_id=$1 AND NOT reversed",[input.invoiceId]);
+ invoice.paidCents=balance.rows[0].paid;
  if(input.action==="RECORD_RECEIPT"){
  const exists=await db.query("SELECT invoice_id,reference,amount_cents,paid_on::text AS paid_on FROM billing.receipts WHERE id=$1",[input.id]);
  if(exists.rows[0]){

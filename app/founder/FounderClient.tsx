@@ -19,6 +19,7 @@ function SchoolRow({school,health,open}:{school:School;health?:Health;open:()=>v
 }
 export default function FounderClient({initialSchool=""}:{initialSchool?:string}){
  const [view,setView]=useState<"inbox"|"directory"|"school"|"ticket"|"insights">(initialSchool?"school":"inbox");const [schoolId,setSchoolId]=useState(initialSchool);const [ticketId,setTicketId]=useState("");
+ const [insightVersion,setInsightVersion]=useState(0);
  const [scope,setScope]=useState("");const [status,setStatus]=useState("");const [offset,setOffset]=useState(0);const [search,setSearch]=useState("");const [q,setQ]=useState("");
  const [tab,setTab]=useState<"overview"|"setup"|"support"|"audit"|"billing">("overview");const [data,setData]=useState<Data|null>(null);const [error,setError]=useState("");const [loading,setLoading]=useState(true);
  const load=useCallback(async(signal?:AbortSignal)=>{
@@ -36,9 +37,9 @@ export default function FounderClient({initialSchool=""}:{initialSchool?:string}
  const school=data?.school;const connected=new Set(data?.connectedClassIds??[]);const workspaceReady=data?.workspace?.status==="ACTIVE";
  return <main className={s.shell}><header className={s.head}><a href="/founder">SpaceCase<small>Founder control centre</small></a><div className={s.actions}><a href="/support">My support requests</a><a href="/admin">School administration</a><form action="/auth/logout" method="post"><button className={s.secondary}>Sign out</button></form></div></header><div className={s.content}>
  <h1>Schools, signals and decisions</h1><p>Operational oversight across SpaceCase schools. Learner records and family information are not available through this dashboard.</p>
- <nav className={s.tabs} aria-label="Founder sections"><button className={view==="insights"?s.button:s.secondary} onClick={()=>navigate("insights")}>Metrics & patterns</button><button className={view==="inbox"?s.button:s.secondary} onClick={()=>navigate("inbox")}>Support & decisions</button><button className={view==="directory"?s.button:s.secondary} onClick={()=>navigate("directory")}>School directory</button><button className={s.secondary} disabled={loading} onClick={()=>{setError("");void load().catch(e=>setError(e.message));}}>Refresh view</button></nav>
+ <nav className={s.tabs} aria-label="Founder sections"><button className={view==="insights"?s.button:s.secondary} onClick={()=>navigate("insights")}>Metrics & patterns</button><button className={view==="inbox"?s.button:s.secondary} onClick={()=>navigate("inbox")}>Support & decisions</button><button className={view==="directory"?s.button:s.secondary} onClick={()=>navigate("directory")}>School directory</button><button className={s.secondary} disabled={loading} onClick={()=>{setError("");if(view==="insights"){setInsightVersion(v=>v+1);return;}void load().catch(e=>setError(e.message));}}>Refresh view</button></nav>
  {error?<p className={s.error} role="alert">{error}</p>:null}{loading?<p role="status">Checking founder authority and loading operational data…</p>:null}
- {view==="insights"?<InsightsPanel/>:null}
+ {view==="insights"?<InsightsPanel key={insightVersion}/>:null}
  {view==="directory"?<section className={s.card}><h2>School directory</h2><p className={s.muted}>Alphabetical order. Search is by school name. Hover, focus or tap Quick school summary for a preview.</p>
  <form className={s.actions} onSubmit={e=>{e.preventDefault();setOffset(0);setQ(search);}}><label className={s.field}>Find a school<input maxLength={100} value={search} onChange={e=>setSearch(e.target.value)}/></label><button className={s.secondary}>Search</button></form>
  {data?.schools?.length?data.schools.map(item=><SchoolRow key={item.id} school={item} health={data.health?.find(h=>h.schoolId===item.id)} open={()=>openSchool(item.id)}/>):!loading?<p>No schools match this page.</p>:null}

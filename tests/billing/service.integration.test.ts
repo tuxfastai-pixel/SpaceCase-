@@ -16,6 +16,7 @@ test("billing is private, idempotent and preserves payment corrections without s
  await Promise.all([mutateBilling(pool,founder,receipt),mutateBilling(pool,founder,receipt)]);
  await assert.rejects(mutateBilling(pool,founder,{...receipt,id:randomUUID(),reference:"CI-"+randomUUID(),amountCents:6000}),/PAYMENT_EXCEEDS_BALANCE/);
  await assert.rejects(mutateBilling(pool,founder,{action:"VOID_INVOICE",invoiceId:invoice.id,reason:"Invalid invoice correction"}),/REVERSE_PAYMENTS_FIRST/);
+ const future={...receipt,id:randomUUID(),reference:"CI-FUT-"+randomUUID(),paidOn:"2999-01-01",amountCents:1};await assert.rejects(mutateBilling(pool,founder,future),/FUTURE_PAYMENT/);
  const before=await readBilling(pool,founder,schoolId);assert.equal(before.summary.outstandingCents,"4000");assert.equal(before.enforcementEnabled,false);
  await mutateBilling(pool,founder,{action:"SET_DISPUTE",invoiceId:invoice.id,disputed:true,reason:"School disputes the recorded invoice"});
  assert.equal((await readBilling(pool,founder,schoolId)).invoices[0].status,"DISPUTED");
@@ -23,6 +24,10 @@ test("billing is private, idempotent and preserves payment corrections without s
  assert.equal((await readBilling(pool,founder,schoolId)).summary.outstandingCents,"10000");
  await mutateBilling(pool,founder,{action:"VOID_INVOICE",invoiceId:invoice.id,reason:"Invoice entered incorrectly"});
  const after=await readBilling(pool,founder,schoolId);assert.equal(after.summary.outstandingCents,"0");assert.equal(after.invoices[0].status,"VOID");assert.equal(after.receipts[0].reversed,true);
+ const concurrentInvoice={...invoice,id:randomUUID(),reference:"CI-CON-"+randomUUID()};await mutateBilling(pool,founder,concurrentInvoice);
+ const concurrent=await Promise.allSettled([1,2].map(n=>mutateBilling(pool,founder,{...receipt,id:randomUUID(),invoiceId:concurrentInvoice.id,reference:"CI-CON-PAY-"+n+"-"+randomUUID(),amountCents:6000})));
+ assert.equal(concurrent.filter(r=>r.status==="fulfilled").length,1);assert.equal(concurrent.filter(r=>r.status==="rejected").length,1);
+ const concurrentBalance=await pool.query("SELECT sum(amount_cents)::int AS paid FROM billing.receipts WHERE invoice_id=$1 AND NOT reversed",[concurrentInvoice.id]);assert.equal(concurrentBalance.rows[0].paid,6000);
  assert.equal((await readBilling(pool,founder,randomUUID())).summary.invoiceCount,0);
  await assert.rejects(founderInsights(pool,{...founder,founder:false}),/FOUNDER_REQUIRED/);
  const insights=await founderInsights(pool,founder);assert.ok(insights.patternMinimumSchools>=5);assert.equal(insights.automatedRecommendations,false);assert.equal(JSON.stringify(insights).includes(receipt.reference),false);
