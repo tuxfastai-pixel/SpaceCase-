@@ -24,7 +24,10 @@ REVOKE ALL ON billing.invoices,billing.receipts FROM PUBLIC;
 CREATE INDEX IF NOT EXISTS support_created_area_idx ON support.tickets(created_at,area,category);
 CREATE INDEX IF NOT EXISTS support_first_technical_idx ON support.events(ticket_id,created_at) WHERE kind='TECHNICAL_UPDATE';
 CREATE INDEX IF NOT EXISTS attendance_updated_school_idx ON learning.attendance_registers(updated_at,peos_school_id);
- GRANT USAGE ON SCHEMA billing TO spacecase_runtime;
- GRANT SELECT,INSERT ON billing.invoices,billing.receipts TO spacecase_runtime;
- GRANT UPDATE(voided,disputed) ON billing.invoices TO spacecase_runtime;
- GRANT UPDATE(reversed) ON billing.receipts TO spacecase_runtime;
+-- Unicode escapes keep this conditional block compatible with statement-splitting migration tools.
+DO U&'BEGIN IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname=''spacecase_runtime'') THEN
+ GRANT USAGE ON SCHEMA billing TO spacecase_runtime\003B
+ GRANT SELECT,INSERT ON billing.invoices,billing.receipts TO spacecase_runtime\003B
+ GRANT UPDATE(voided,disputed) ON billing.invoices TO spacecase_runtime\003B
+ GRANT UPDATE(reversed) ON billing.receipts TO spacecase_runtime\003B
+ END IF\003B END\003B';
