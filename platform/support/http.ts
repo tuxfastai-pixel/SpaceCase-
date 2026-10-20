@@ -19,7 +19,7 @@ export function supportHandler(deps:Deps=defaults){return (request:Request,ticke
  const c=await deps.context(request);const target=ticketId?id.parse(ticketId):null;
  if(request.method==="GET"){
   if(target)return getTicket(deps.pool(),c,target);
-  const query=listQuery.parse(Object.fromEntries(new URL(request.url).searchParams));
+  const query=listQuery.parse(Object.fromEntries(new URL(request.url).searchParams));if(query.schoolId)assertMember(c,query.schoolId);
   return {context:c,...(c.schools.length?await listTickets(deps.pool(),c,query):{tickets:[],nextOffset:null,pending:[]})};
  }
  if(request.method==="POST"){

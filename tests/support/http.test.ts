@@ -14,6 +14,7 @@ test("support and founder endpoints reject cross-site, unsigned and wrong-role r
  assert.equal((await support(req("POST",{},"https://other.example"))).status,403);assert.equal(calls,0);
  assert.equal((await support(req("GET",undefined,undefined,false))).status,401);assert.equal(calls,0);
  assert.equal((await founder(req())).status,403);
+ assert.equal((await support(new Request("https://school.example/api/support?schoolId="+randomUUID(),{headers:{authorization:"Bearer scoped"}}))).status,403);
  const input={requestId:randomUUID(),schoolId:randomUUID(),category:"BUG",impact:"BLOCKED",area:"OTHER",title:"CI issue",description:"A bounded reproduction description."};
  assert.equal((await support(req("POST",input))).status,403);
  const empty=supportHandler({...deps,context:async()=>({...c,schools:[]})});

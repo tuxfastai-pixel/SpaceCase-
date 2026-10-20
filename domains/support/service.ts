@@ -34,7 +34,7 @@ export async function createTicket(pool:Pool,c:SupportContext,input:z.infer<type
  });
 }
 export async function listTickets(pool:Pool,c:SupportContext,query:z.infer<typeof listQuery>,founder=false){
- if(founder)assertFounder(c);
+ if(founder)assertFounder(c);else if(query.schoolId)assertMember(c,query.schoolId);
  return tx(pool,async db=>{
  const r=await db.query("SELECT "+projection+` FROM support.tickets WHERE ($1::boolean OR (requester_person_id=$2 AND school_id=ANY($3::text[])))
  AND ($4::text IS NULL OR status=$4) AND ($5::text IS NULL OR school_id=$5)

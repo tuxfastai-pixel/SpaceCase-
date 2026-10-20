@@ -15,6 +15,7 @@ test("support is private, idempotent, revocable and approval records never execu
  await assert.rejects(getTicket(pool,other,id),/TICKET_UNAVAILABLE/);await assert.rejects(getTicket(pool,{...owner,schools:[]},id),/TICKET_UNAVAILABLE/);
  await assert.rejects(getTicket(pool,owner,id,true),/FOUNDER_REQUIRED/);
  assert.equal((await listTickets(pool,other,{offset:0})).tickets.length,0);
+ await assert.rejects(listTickets(pool,owner,{offset:0,schoolId:randomUUID()}),/SCHOOL_ACCESS_REQUIRED/);
  assert.equal((await directoryHealth(pool,founder,[schoolId]))[0].openTickets,1);
  await assert.rejects(updateTicket(pool,owner,{ticketId:id,revision:0,status:"RESOLVED",priority:"NORMAL",message:"Not authorized"}),/FOUNDER_REQUIRED/);
  await updateTicket(pool,founder,{ticketId:id,revision:0,status:"RESOLVED",priority:"HIGH",message:"A fix was checked; please confirm the result."});
