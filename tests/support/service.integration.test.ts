@@ -4,7 +4,7 @@ import test from "node:test";
 import {Pool} from "pg";
 import {ticketInput,type SupportContext} from "../../domains/support/contracts";
 import {createTicket,getTicket,listTickets,replyTicket,updateTicket,prepareRecommendation,decideRecommendation} from "../../domains/support/service";
-import {directoryHealth} from "../../domains/support/operations";
+import {directoryHealth,schoolOperations} from "../../domains/support/operations";
 test("support is private, idempotent, revocable and approval records never execute changes",{skip:!process.env.CI||!process.env.DATABASE_URL},async()=>{
  const pool=new Pool({connectionString:process.env.DATABASE_URL});const schoolId=randomUUID();const owner:SupportContext={personId:randomUUID(),founder:false,schools:[{id:schoolId,displayName:"CI school"}]};const founder={...owner,personId:randomUUID(),founder:true};const other={...owner,personId:randomUUID()};
  const payload=ticketInput.parse({requestId:randomUUID(),schoolId,category:"BUG",impact:"BLOCKED",area:"ATTENDANCE",title:"CI private issue title",description:"The save operation stopped before confirmation."});
@@ -17,6 +17,7 @@ test("support is private, idempotent, revocable and approval records never execu
  assert.equal((await listTickets(pool,other,{offset:0})).tickets.length,0);
  await assert.rejects(listTickets(pool,owner,{offset:0,schoolId:randomUUID()}),/SCHOOL_ACCESS_REQUIRED/);
  assert.equal((await directoryHealth(pool,founder,[schoolId]))[0].openTickets,1);
+ const preview=await schoolOperations(pool,founder,schoolId,[]);assert.ok(preview.audit.length);assert.equal("metadata" in preview.audit[0],false);assert.equal("learnerPersonId" in preview.audit[0],false);
  await assert.rejects(updateTicket(pool,owner,{ticketId:id,revision:0,status:"RESOLVED",priority:"NORMAL",message:"Not authorized"}),/FOUNDER_REQUIRED/);
  await updateTicket(pool,founder,{ticketId:id,revision:0,status:"RESOLVED",priority:"HIGH",message:"A fix was checked; please confirm the result."});
  await assert.rejects(replyTicket(pool,owner,id,{revision:0,message:"Old version",reopen:true}),/TICKET_CHANGED/);

@@ -40,6 +40,7 @@ REVOKE ALL ON support.tickets,support.events,support.proposals FROM PUBLIC;
 DO $$ BEGIN
  IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='spacecase_runtime') THEN
  GRANT USAGE ON SCHEMA support TO spacecase_runtime;
+ GRANT SELECT(action,resource_type,school_id,occurred_at) ON audit.product_audit_events TO spacecase_runtime;
  GRANT SELECT,INSERT,UPDATE ON support.tickets TO spacecase_runtime;
  GRANT SELECT,INSERT ON support.events TO spacecase_runtime;
  GRANT SELECT,INSERT ON support.proposals TO spacecase_runtime;
