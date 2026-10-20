@@ -67,6 +67,9 @@ jobs:
           test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT count(*) FROM audit.schema_migrations WHERE migration_name = '0007_class_attendance.sql'")" = "1"
           test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT to_regclass('learning.attendance_registers') IS NOT NULL AND to_regclass('learning.attendance_entries') IS NOT NULL")" = "t"
 
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT count(*) FROM audit.schema_migrations WHERE migration_name = '0008_support_control_centre.sql'")" = "1"
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT to_regclass('support.tickets') IS NOT NULL AND to_regclass('support.events') IS NOT NULL AND to_regclass('support.proposals') IS NOT NULL")" = "t"
+
       - name: Typecheck
         run: npm run typecheck
 
