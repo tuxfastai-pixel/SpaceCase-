@@ -7,6 +7,7 @@ import {supportAuthority,peosRead,directorySchema,schoolSchema} from "./authorit
 import {assertFounder,assertMember,SupportError,id,ticketInput,replyInput,updateInput,recommendationInput,decisionInput,listQuery,type SupportContext} from "../../domains/support/contracts";
 import {createTicket,listTickets,getTicket,replyTicket,updateTicket,prepareRecommendation,decideRecommendation} from "../../domains/support/service";
 import {directoryHealth,schoolOperations} from "../../domains/support/operations";
+import {founderInsights} from "../../domains/support/insights";
 type Deps={context:(request:Request)=>Promise<SupportContext>;pool:()=>Pool;peos:typeof peosRead};
 const defaults:Deps={context:supportAuthority,pool:getDatabasePool,peos:peosRead};
 const reply=(body:unknown,status=200)=>Response.json(body,{status,headers:{"cache-control":"no-store"}});
@@ -28,7 +29,7 @@ export function supportHandler(deps:Deps=defaults){return (request:Request,ticke
  }
  throw new SupportError("METHOD_NOT_ALLOWED",405);
 });}
-const founderQuery=z.object({view:z.enum(["directory","school","tickets","ticket"]).default("tickets"),q:z.string().trim().max(100).default(""),offset:z.coerce.number().int().min(0).max(1000000).default(0),schoolId:id.optional(),ticketId:id.optional(),status:z.enum(["SUBMITTED","UNDER_REVIEW","NEEDS_INFORMATION","PLANNED","RESOLVED","CLOSED"]).optional()}).strict();
+const founderQuery=z.object({view:z.enum(["directory","school","tickets","ticket","insights"]).default("tickets"),q:z.string().trim().max(100).default(""),offset:z.coerce.number().int().min(0).max(1000000).default(0),schoolId:id.optional(),ticketId:id.optional(),status:z.enum(["SUBMITTED","UNDER_REVIEW","NEEDS_INFORMATION","PLANNED","RESOLVED","CLOSED"]).optional()}).strict();
 const actionSchema=z.discriminatedUnion("action",[
  updateInput.extend({action:z.literal("UPDATE_TICKET")}),
  recommendationInput.extend({action:z.literal("RECOMMENDATION")}),
@@ -38,6 +39,7 @@ export function founderHandler(deps:Deps=defaults){return (request:Request)=>han
  const c=await deps.context(request);assertFounder(c);
  if(request.method==="GET"){
  const q=founderQuery.parse(Object.fromEntries(new URL(request.url).searchParams));
+ if(q.view==="insights")return founderInsights(deps.pool(),c);
  if(q.view==="directory"){
   const params=new URLSearchParams({q:q.q,offset:String(q.offset)});const canonical=await deps.peos(request,"/v1/spacecase/founder/schools?"+params,directorySchema);
   return {...canonical,health:await directoryHealth(deps.pool(),c,canonical.schools.map(s=>s.id))};

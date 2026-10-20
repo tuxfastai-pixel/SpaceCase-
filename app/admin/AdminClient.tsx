@@ -4,6 +4,7 @@ import styles from "./admin.module.css";
 import { invitationEmailDraft, prepareInvitationMessage, type InvitationMessage } from "../../platform/invitations/message";
 import ClassManager from "./ClassManager";
 import BulkInvitations from "./BulkInvitations";
+import BillingPanel from "../billing/BillingPanel";
 import WorkspaceSetup from "./WorkspaceSetup";
 
 type School = { id: string; displayName: string };
@@ -101,6 +102,8 @@ export default function AdminClient() {
             </form><p className={styles.note}>Links expire in seven days and require the invited email address. Teacher class access is assigned separately.</p>
           </section>
         </div>
+        <p><a href="/billing-policy">Read how school billing and service terms will work</a></p>
+        <BillingPanel key={`billing-${schoolId}`} schoolId={schoolId}/>
         <WorkspaceSetup key={`workspace-${schoolId}`} schoolId={schoolId}/>
         <ClassManager key={schoolId} schoolId={schoolId}/>
         <BulkInvitations key={`bulk-${schoolId}`} schoolId={schoolId} schoolName={schools.find(s=>s.id===schoolId)?.displayName??"Your school"} disabled={busy} onBusyChange={setBusy} onComplete={refreshInvites}/>
