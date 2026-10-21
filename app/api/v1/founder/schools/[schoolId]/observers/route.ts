@@ -1,5 +1,0 @@
-import {z} from "zod";
-import {peosProxy,sameOrigin} from "@/platform/admin/peosProxy";
-const id=z.string().uuid();
-export async function GET(request:Request,context:{params:Promise<{schoolId:string}>}){const parsed=id.safeParse((await context.params).schoolId);if(!parsed.success)return Response.json({error:"INVALID_INPUT"},{status:400});return peosProxy(request,"/v1/spacecase/founder/schools/"+parsed.data+"/observers");}
-export async function POST(request:Request,context:{params:Promise<{schoolId:string}>}){if(!sameOrigin(request))return Response.json({error:"FORBIDDEN"},{status:403});const parsed=id.safeParse((await context.params).schoolId);if(!parsed.success)return Response.json({error:"INVALID_INPUT"},{status:400});const text=await request.text();if(new TextEncoder().encode(text).length>2000)return Response.json({error:"INVALID_INPUT"},{status:400});try{return peosProxy(request,"/v1/spacecase/founder/schools/"+parsed.data+"/observers",JSON.parse(text));}catch{return Response.json({error:"INVALID_INPUT"},{status:400});}}

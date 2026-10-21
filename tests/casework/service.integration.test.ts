@@ -18,6 +18,7 @@ test("casework has exclusive claims, scoped owner-only narratives, idempotent re
  const claims=await Promise.allSettled([claim(a),claim(b)]);assert.equal(claims.filter(r=>r.status==="fulfilled").length,1);
  const owner=claims[0].status==="fulfilled"?a:b,other=owner===a?b:a;
  assert.equal((await readWork(pool,owner,ticketId)).ticket.revision,1);await assert.rejects(readWork(pool,other,ticketId),/CASE_UNAVAILABLE/);
+ const agentOnlyQueue=await observerQueue(pool,{...owner,observerSchools:[]});assert.equal(agentOnlyQueue.tickets[0].canHandle,true);assert.equal(agentOnlyQueue.tickets[0].id,ticketId);
  const queue=await observerQueue(pool,observer);assert.equal(queue.tickets[0].id,undefined);assert.equal(JSON.stringify(queue).includes("Private reproduction"),false);
  const reply={action:"REPLY" as const,ticketId,requestId:randomUUID(),revision:1,status:"NEEDS_INFORMATION" as const,message:"Please confirm which step stopped working."};
  await Promise.all([mutateWork(pool,owner,reply),mutateWork(pool,owner,reply)]);

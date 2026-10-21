@@ -28,7 +28,7 @@ export function caseworkHandler(founder=false,deps:Deps=defaults){return async(r
  if(founder){const input=founderWorkAction.parse(JSON.parse(text));let eligibleOwnerIds:string[]=[];
  if(input.action==="ASSIGN"&&input.ownerPersonId){const current=await readWork(deps.pool(),c,input.ticketId,true);const eligible=await deps.peos(request,"/v1/spacecase/founder/schools/"+current.ticket.schoolId+"/observers",agentsSchema);eligibleOwnerIds=eligible.agents.map(a=>a.personId);if(!eligibleOwnerIds.includes(input.ownerPersonId))throw new SupportError("ELIGIBLE_AGENT_REQUIRED",400);}
  return reply(await mutateWork(deps.pool(),c,input,true,eligibleOwnerIds));}
- return reply(await mutateWork(deps.pool(),c,agentAction.parse(JSON.parse(text))));
+ const input=agentAction.parse(JSON.parse(text));return reply(await mutateWork(deps.pool(),c,input));
  }
  return reply({error:"METHOD_NOT_ALLOWED"},405);
  }catch(e){if(e instanceof SupportError)return reply({error:e.code},e.status);if(e instanceof ZodError||e instanceof SyntaxError)return reply({error:"INVALID_INPUT"},400);return reply({error:"CASEWORK_UNAVAILABLE"},503);}

@@ -1,7 +1,8 @@
 import type {Pool} from "pg";
 import {SupportError,type SupportContext} from "../support/contracts";
+export function operationsSchools(c:SupportContext){const schools=[...new Map([...(c.observerSchools??[]),...(c.agentSchools??[])].map(s=>[s.id,s])).values()];if(schools.length>200)throw new SupportError("OBSERVER_SCOPE_LIMIT");return schools;}
 export async function observerQueue(pool:Pool,c:SupportContext,schoolId?:string,offset=0){
- const schools=c.observerSchools??[];
+ const schools=operationsSchools(c);
  if(!schools.length)throw new SupportError("OBSERVER_REQUIRED");
  if(schoolId&&!schools.some(s=>s.id===schoolId))throw new SupportError("OBSERVER_SCHOOL_REQUIRED");
  const db=await pool.connect();try{
