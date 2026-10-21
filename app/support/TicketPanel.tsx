@@ -1,5 +1,6 @@
 "use client";
 import {useEffect,useState} from "react";
+import CaseworkPanel from "../operations/CaseworkPanel";
 import {supportApi,statusLabels,showDate,type TicketData} from "./shared";
 import s from "./support.module.css";
 export default function TicketPanel({data,founder=false,reload}:{data:TicketData;founder?:boolean;reload:()=>Promise<void>}){
@@ -10,6 +11,7 @@ export default function TicketPanel({data,founder=false,reload}:{data:TicketData
  async function run(action:()=>Promise<unknown>,done:string){if(busy)return;setBusy(true);setError("");setNotice("");try{await action();setMessage("");setReopen(false);setReason("");setNotice(done);await reload();}catch(e){setError(e instanceof Error?e.message:"Refresh before retrying.");}finally{setBusy(false);}}
  return <section className={s.card}><p className={s.muted}>{ticket.reference} · {showDate(ticket.createdAt)} · {ticket.area.replaceAll("_"," ")}</p><h2>{ticket.title}</h2><p><span className={s.badge}>{statusLabels[ticket.status]}</span> · {ticket.category} · Impact: {ticket.impact} · Priority: {ticket.priority}</p><p className={s.text}>{ticket.description}</p>
  {error?<p role="alert" className={s.error}>{error}</p>:null}{notice?<p role="status" className={s.notice}>{notice}</p>:null}
+ {founder?<CaseworkPanel ticketId={ticket.id} founder onChanged={reload}/>:null}
  <button className={s.secondary} disabled={busy} onClick={()=>{setBusy(true);setError("");void reload().catch(e=>setError(e.message)).finally(()=>setBusy(false));}}>Reload ticket</button><h3>Updates</h3>{data.eventsTruncated?<p className={s.muted}>Showing the latest 200 updates.</p>:null}
  {data.events.map(e=><article className={s.event} key={e.id}><small>{showDate(e.createdAt)} · {e.kind==="USER_REPLY"?"Reporter":e.kind==="SUBMISSION"?"Acknowledgement":"Technical update"} · {statusLabels[e.status]}</small><p className={s.text}>{e.message}</p></article>)}
  <form onSubmit={e=>{e.preventDefault();void run(()=>founder?supportApi("/api/v1/founder","POST",{action:"UPDATE_TICKET",ticketId:ticket.id,revision:ticket.revision,status,priority,message}):supportApi("/api/v1/support/"+ticket.id,"POST",{revision:ticket.revision,message,reopen}),"Update saved.");}}>

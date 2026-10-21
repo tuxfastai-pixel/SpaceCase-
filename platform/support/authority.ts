@@ -3,7 +3,7 @@ import {SupportError,type SupportContext} from "../../domains/support/contracts"
 import {resolvePeosAuthorization} from "../session/peosAuthorization";
 import {readServerEnvironment} from "../config/env";
 const id=z.string().uuid().transform(v=>v.toLowerCase());
-export const contextSchema=z.object({personId:id,founder:z.boolean(),observerSchools:z.array(z.object({id,displayName:z.string()})).max(200).default([]),schools:z.array(z.object({id,displayName:z.string()}))});
+export const contextSchema=z.object({personId:id,founder:z.boolean(),agentSchools:z.array(z.object({id,displayName:z.string()})).max(200).default([]),observerSchools:z.array(z.object({id,displayName:z.string()})).max(200).default([]),schools:z.array(z.object({id,displayName:z.string()}))});
 export const schoolSummary=z.object({id,displayName:z.string(),status:z.enum(["ACTIVE","INACTIVE"]),createdAt:z.string(),classCount:z.number().int().nonnegative(),staffCount:z.number().int().nonnegative(),learnerCount:z.number().int().nonnegative(),pendingInvitations:z.number().int().nonnegative()});
 export const directorySchema=z.object({schools:z.array(schoolSummary).max(50),nextOffset:z.number().int().nullable(),asOf:z.string()});
 export const schoolSchema=z.object({school:schoolSummary,classes:z.array(z.object({id,name:z.string(),academicYear:z.number().int().nullable(),assignedTeachers:z.number().int().nonnegative()})).max(200),classesTruncated:z.boolean(),asOf:z.string()});
