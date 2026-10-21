@@ -1,0 +1,93 @@
+name: Validate
+
+on:
+  push:
+    branches:
+      - main
+      - feature/**
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: spacecase
+          POSTGRES_PASSWORD: spacecase
+          POSTGRES_DB: spacecase_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U spacecase -d spacecase_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DATABASE_URL: postgresql://spacecase:spacecase@127.0.0.1:5432/spacecase_test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Create restricted runtime test role
+        run: PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -v ON_ERROR_STOP=1 -c "CREATE ROLE spacecase_runtime NOLOGIN NOSUPERUSER NOBYPASSRLS"
+      - name: Run database migrations
+        run: npm run db:migrate
+
+      - name: Verify migration state
+        run: |
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT count(*) FROM audit.schema_migrations WHERE migration_name = '0001_spacecase_foundation.sql'")" = "1"
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT count(*) FROM audit.schema_migrations WHERE migration_name = '0002_stos_school_context.sql'")" = "1"
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT count(*) FROM audit.schema_migrations WHERE migration_name = '0003_stos_learner_profile.sql'")" = "1"
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT count(*) FROM audit.schema_migrations WHERE migration_name = '0004_stos_interventions.sql'")" = "1"
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT count(*) FROM audit.schema_migrations WHERE migration_name = '0005_stos_communication.sql'")" = "1"
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT count(*) FROM audit.schema_migrations WHERE migration_name = '0006_stos_sta_foundation.sql'")" = "1"
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT to_regclass('audit.product_audit_events') IS NOT NULL")" = "t"
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT to_regclass('school_ops.school_workspaces') IS NOT NULL")" = "t"
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT to_regclass('school_ops.class_workspaces') IS NOT NULL")" = "t"
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT to_regclass('learning.learner_profiles') IS NOT NULL")" = "t"
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT to_regclass('learning.interventions') IS NOT NULL")" = "t"
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT to_regclass('communication.parent_messages') IS NOT NULL")" = "t"
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT to_regclass('assistant.teacher_requests') IS NOT NULL")" = "t"
+
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT count(*) FROM audit.schema_migrations WHERE migration_name = '0007_class_attendance.sql'")" = "1"
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT to_regclass('learning.attendance_registers') IS NOT NULL AND to_regclass('learning.attendance_entries') IS NOT NULL")" = "t"
+
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT count(*) FROM audit.schema_migrations WHERE migration_name = '0008_support_control_centre.sql'")" = "1"
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT to_regclass('support.tickets') IS NOT NULL AND to_regclass('support.events') IS NOT NULL AND to_regclass('support.proposals') IS NOT NULL")" = "t"
+
+      - name: Verify billing migration state
+        run: |
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT count(*) FROM audit.schema_migrations WHERE migration_name='0009_founder_insights_billing.sql'")" = "1"
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT has_table_privilege('spacecase_runtime','billing.invoices','SELECT') AND NOT has_column_privilege('spacecase_runtime','billing.invoices','amount_cents','UPDATE') AND NOT has_table_privilege('spacecase_runtime','billing.receipts','DELETE')")" = "t"
+      - name: Verify casework migration state
+        run: |
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT count(*) FROM audit.schema_migrations WHERE migration_name='0010_support_casework.sql'")" = "1"
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT has_table_privilege('spacecase_runtime','support.ticket_work','UPDATE') AND NOT has_table_privilege('spacecase_runtime','support.work_events','UPDATE') AND NOT has_table_privilege('spacecase_runtime','support.work_requests','DELETE')")" = "t"
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Production build
+        run: npm run build

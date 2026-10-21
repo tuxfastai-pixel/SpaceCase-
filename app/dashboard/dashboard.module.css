@@ -1,0 +1,305 @@
+.page {
+  min-height: 100vh;
+  background: #f6f7f4;
+  color: #17211b;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.topbar {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 0 40px;
+  border-bottom: 1px solid #dfe4dd;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brandMark {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: #183e2b;
+  color: #fff;
+  font-weight: 800;
+}
+
+.brand div {
+  display: grid;
+  gap: 1px;
+}
+
+.brand div span {
+  color: #637067;
+  font-size: 0.78rem;
+}
+
+.environment,
+.scopeLabel,
+.cardStatus {
+  border-radius: 999px;
+  border: 1px solid #cad4cc;
+  background: #fff;
+  padding: 7px 11px;
+  color: #405047;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.content {
+  width: min(1180px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 56px 0 80px;
+}
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 32px;
+  padding-bottom: 36px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: #50705d;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.hero h1,
+.statusPanel h1 {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  line-height: 1.02;
+  letter-spacing: -0.045em;
+}
+
+.lead,
+.statusPanel p {
+  max-width: 700px;
+  margin: 18px 0 0;
+  color: #5c6961;
+  font-size: 1.02rem;
+  line-height: 1.65;
+}
+
+.authorityBadge {
+  min-width: 210px;
+  display: grid;
+  gap: 6px;
+  padding: 18px 20px;
+  border: 1px solid #cdd8d0;
+  border-radius: 18px;
+  background: #edf5ef;
+}
+
+.authorityBadge span {
+  color: #54705f;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.authorityBadge strong {
+  font-size: 1.15rem;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.summaryCard,
+.capabilityCard,
+.classRow,
+.statusPanel {
+  border: 1px solid #dde3de;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(31, 48, 38, 0.04);
+}
+
+.summaryCard {
+  min-height: 112px;
+  border-radius: 18px;
+  padding: 20px;
+  display: grid;
+  align-content: space-between;
+  gap: 18px;
+}
+
+.summaryCard span {
+  color: #68756d;
+  font-size: 0.82rem;
+}
+
+.summaryCard strong {
+  font-size: 1.35rem;
+}
+
+.section {
+  margin-top: 56px;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+  margin-bottom: 20px;
+}
+
+.sectionHeader h2 {
+  margin: 0;
+  font-size: 1.7rem;
+  letter-spacing: -0.025em;
+}
+
+.sectionHeader > p {
+  max-width: 480px;
+  margin: 0;
+  color: #68756d;
+  line-height: 1.55;
+  text-align: right;
+}
+
+.capabilityGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.capabilityCard {
+  min-height: 210px;
+  border-radius: 20px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.cardMark {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  background: #edf1ec;
+  color: #274533;
+  font-weight: 800;
+}
+
+.capabilityCard h3 {
+  margin: 22px 0 8px;
+  font-size: 1.08rem;
+}
+
+.capabilityCard p {
+  margin: 0 0 20px;
+  color: #68756d;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.cardStatus {
+  margin-top: auto;
+  border: 0;
+  background: #f2f5f1;
+}
+
+.classList {
+  display: grid;
+  gap: 10px;
+}
+
+.classRow {
+  border-radius: 16px;
+  padding: 17px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.classRow div {
+  display: grid;
+  gap: 4px;
+}
+
+.classRow div span {
+  color: #6c776f;
+  font-size: 0.85rem;
+}
+
+.emptyState {
+  padding: 30px;
+  border: 1px dashed #cad4cc;
+  border-radius: 16px;
+  color: #647168;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.statusPanel {
+  max-width: 720px;
+  margin: 9vh auto 0;
+  border-radius: 24px;
+  padding: clamp(28px, 5vw, 52px);
+}
+
+@media (max-width: 900px) {
+  .summaryGrid,
+  .capabilityGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hero,
+  .sectionHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .sectionHeader > p {
+    text-align: left;
+  }
+}
+
+@media (max-width: 600px) {
+  .topbar {
+    padding: 0 20px;
+  }
+
+  .content {
+    width: min(100% - 28px, 1180px);
+    padding-top: 36px;
+  }
+
+  .summaryGrid,
+  .capabilityGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .authorityBadge {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .classRow {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

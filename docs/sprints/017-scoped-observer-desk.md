@@ -1,0 +1,8 @@
+# Sprint 017: scoped observer desk
+Goal: establish a genuine read-only operations job without handing workers founder access.
+Scope: canonical PEOS observer role/membership with expiry and revocation; founder school observer management; assigned-school queue at /operations; account reference for provisioning; no new database schema.
+Out of scope: real worker onboarding/invitations, narrative access, ticket editing, billing, learner data, automatic escalation and infrastructure monitoring.
+Failure analysis: observer must not inherit school educator/admin access; a global observer role must not imply all-school authority; missing/old PEOS context defaults to no observer authority; revocation removes access on the next request; queue projection must not include user-entered titles/narratives containing possible personal data.
+Acceptance: founder can grant/revoke 1–30-day observer assignments to eligible registered accounts; all reads use fresh PEOS authority, no cached permission; only assigned schools appear; reads are audited and no-store; unauthorised scope is rejected before product storage access. UI links and empty states explain the limited role.
+Validation: PEOS integration tests for founder-only grants, expiry, learner denial and membership termination; SpaceCase role denial and narrative exclusion tests; typecheck, lint, CI database integration and production builds. Signed-in browser verification remains pending without an authenticated session.
+Scale: portfolios limited to 200 schools, queue pages to 50 records. No 15,000-school concurrency claim. Staffing levels and broader triage permissions are a subsequent stage.
