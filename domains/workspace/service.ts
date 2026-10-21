@@ -11,6 +11,7 @@ export async function storageReady(pool:Pool){
     AND to_regclass('school_ops.class_workspaces') IS NOT NULL AND to_regclass('audit.product_audit_events') IS NOT NULL
     AND to_regclass('learning.learner_profiles') IS NOT NULL
     AND to_regclass('learning.attendance_registers') IS NOT NULL AND to_regclass('learning.attendance_entries') IS NOT NULL
+    AND to_regclass('support.ticket_work') IS NOT NULL AND to_regclass('support.work_events') IS NOT NULL AND to_regclass('support.work_requests') IS NOT NULL
     AND to_regclass('billing.invoices') IS NOT NULL AND to_regclass('billing.receipts') IS NOT NULL
     AND to_regclass('support.tickets') IS NOT NULL AND to_regclass('support.events') IS NOT NULL AND to_regclass('support.proposals') IS NOT NULL AS ready`);
   if(!result.rows[0]?.ready)throw new Error("STORAGE_SCHEMA_REQUIRED");
@@ -18,6 +19,9 @@ export async function storageReady(pool:Pool){
   await pool.query("SELECT peos_school_id FROM school_ops.school_workspaces LIMIT 0");
   await pool.query("SELECT id FROM learning.attendance_registers LIMIT 0");
   await pool.query("SELECT register_id FROM learning.attendance_entries LIMIT 0");
+  await pool.query("SELECT ticket_id FROM support.ticket_work LIMIT 0");
+  await pool.query("SELECT id FROM support.work_events LIMIT 0");
+  await pool.query("SELECT request_id FROM support.work_requests LIMIT 0");
   await pool.query("SELECT id FROM billing.invoices LIMIT 0");
   await pool.query("SELECT id FROM billing.receipts LIMIT 0");
   await pool.query("SELECT id FROM support.tickets LIMIT 0");

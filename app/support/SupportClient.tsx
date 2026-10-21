@@ -19,7 +19,7 @@ export default function SupportClient({initialArea="OTHER"}:{initialArea?:string
  catch(e){setError(e instanceof Error?e.message:"Check My requests before retrying.");}finally{setBusy(false);}
  }
  return <main className={s.shell}><header className={s.head}><a href="/dashboard">SpaceCase<small>Help & feedback</small></a><form action="/auth/logout" method="post"><button className={s.secondary}>Sign out</button></form></header><div className={s.content}>
- <h1>Help us improve your workspace</h1><p>Report a fault, describe a difficult experience or suggest an improvement. Your requests and updates stay in your account.</p>
+ <h1>Help us improve your workspace</h1><p>Report a fault, describe a difficult experience or suggest an improvement. Your requests are available to you, the founder and authorised support agents assigned to handle them. Read-only observers see queue metadata, not your report text.</p>
  {home?.context.founder?<p><a className={s.button} href="/founder">Open founder control centre</a></p>:null}
  {home?.context.observerSchools?.length?<p><a className={s.button} href="/operations">Open operations desk</a></p>:null}
  {error?<p role="alert" className={s.error}>{error}</p>:null}{notice?<p role="status" className={s.notice}>{notice}</p>:null}
