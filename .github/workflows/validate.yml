@@ -45,6 +45,8 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
+      - name: Create restricted runtime test role
+        run: PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -v ON_ERROR_STOP=1 -c "CREATE ROLE spacecase_runtime NOLOGIN NOSUPERUSER NOBYPASSRLS"
       - name: Run database migrations
         run: npm run db:migrate
 
@@ -70,6 +72,10 @@ jobs:
           test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT count(*) FROM audit.schema_migrations WHERE migration_name = '0008_support_control_centre.sql'")" = "1"
           test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT to_regclass('support.tickets') IS NOT NULL AND to_regclass('support.events') IS NOT NULL AND to_regclass('support.proposals') IS NOT NULL")" = "t"
 
+      - name: Verify billing migration state
+        run: |
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT count(*) FROM audit.schema_migrations WHERE migration_name='0009_founder_insights_billing.sql'")" = "1"
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT has_table_privilege('spacecase_runtime','billing.invoices','SELECT') AND NOT has_column_privilege('spacecase_runtime','billing.invoices','amount_cents','UPDATE') AND NOT has_table_privilege('spacecase_runtime','billing.receipts','DELETE')")" = "t"
       - name: Typecheck
         run: npm run typecheck
 
