@@ -143,11 +143,11 @@ export default function DashboardClient() {
           <p className={styles.eyebrow}>Teacher workspace</p>
           <h1 id="dashboard-heading">SpaceCase Teacher OS</h1>
           <p className={styles.lead}>
-            Your workspace is scoped to the school and classes currently authorized by PEOS.
+            Your classes and daily teaching tools, together in one place.
           </p>
         </div>
         <div className={styles.authorityBadge}>
-          <span>Authority confirmed</span>
+          <span>Your assigned classes</span>
           <strong>{context.classes.length} class{context.classes.length === 1 ? "" : "es"}</strong>
         </div>
       </section>
@@ -165,7 +165,7 @@ export default function DashboardClient() {
             <p className={styles.eyebrow}>Your work</p>
             <h2 id="work-heading">Teacher tools</h2>
           </div>
-          <p>Only capabilities backed by current authority should expose learner records.</p>
+          <p>Start with your assigned classes below. More teaching tools will follow.</p>
         </div>
         <div className={styles.capabilityGrid}>
           {capabilityGroups.map((item) => (
@@ -173,7 +173,7 @@ export default function DashboardClient() {
               <div className={styles.cardMark} aria-hidden="true">{item.title.slice(0, 1)}</div>
               <h3>{item.title}</h3>
               <p>{item.description}</p>
-              <span className={styles.cardStatus}>Planned capability</span>
+              <span className={styles.cardStatus}>{item.title === "Teaching" ? "Roster, attendance and weekly planning" : "More tools coming"}</span>
             </article>
           ))}
         </div>
@@ -185,7 +185,7 @@ export default function DashboardClient() {
             <p className={styles.eyebrow}>Current authority</p>
             <h2 id="classes-heading">My classes</h2>
           </div>
-          <p>Class membership comes from PEOS; SpaceCase stores only local operational configuration.</p>
+          <p>Open a class to view learners, take attendance or plan lessons.</p>
         </div>
         {context.classes.length === 0 ? (
           <div className={styles.emptyState}>No current class assignments were returned by PEOS.</div>
