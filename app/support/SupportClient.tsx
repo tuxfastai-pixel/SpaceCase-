@@ -21,6 +21,7 @@ export default function SupportClient({initialArea="OTHER"}:{initialArea?:string
  return <main className={s.shell}><header className={s.head}><a href="/dashboard">SpaceCase<small>Help & feedback</small></a><form action="/auth/logout" method="post"><button className={s.secondary}>Sign out</button></form></header><div className={s.content}>
  <h1>Help us improve your workspace</h1><p>Report a fault, describe a difficult experience or suggest an improvement. Your requests and updates stay in your account.</p>
  {home?.context.founder?<p><a className={s.button} href="/founder">Open founder control centre</a></p>:null}
+ {home?.context.observerSchools?.length?<p><a className={s.button} href="/operations">Open operations desk</a></p>:null}
  {error?<p role="alert" className={s.error}>{error}</p>:null}{notice?<p role="status" className={s.notice}>{notice}</p>:null}
  {loading?<p role="status">Checking your school access…</p>:null}
  {home&&home.context.schools.length===0?<section className={s.card}><h2>School access required</h2><p>Your account needs a current teacher or administrator assignment to submit school support requests.</p></section>:home?<section className={s.card}><h2>Report an issue or share feedback</h2><p className={s.muted}>Only include information needed to explain the issue. Do not include learner names, assessment results, passwords or private family information. Screenshot uploads are not enabled in this first release.</p>

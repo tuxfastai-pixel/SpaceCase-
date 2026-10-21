@@ -1,0 +1,16 @@
+"use client";
+import {useCallback,useEffect,useState} from "react";
+import {supportApi,showDate} from "../support/shared";
+import s from "../support/support.module.css";
+type Data={observers:Array<{id:string;personId:string;endsAt:string}>;truncated:boolean};
+export default function ObserverManager({schoolId}:{schoolId:string}){
+ const [data,setData]=useState<Data|null>(null),[personId,setPersonId]=useState(""),[days,setDays]=useState(7),[reason,setReason]=useState(""),[error,setError]=useState(""),[busy,setBusy]=useState(false),[notice,setNotice]=useState("");
+ const url="/api/v1/founder/schools/"+schoolId+"/observers";
+ const load=useCallback(async(signal?:AbortSignal)=>{const d=await supportApi<Data>(url,"GET",undefined,signal);if(!signal?.aborted)setData(d);},[url]);
+ useEffect(()=>{const c=new AbortController();void load(c.signal).catch(e=>{if(!c.signal.aborted)setError(e.message);});return ()=>c.abort();},[load]);
+ async function save(input:unknown){if(busy)return;setBusy(true);setError("");setNotice("");try{const d=await supportApi<Data>(url,"POST",input);setData(d);setNotice("Observer assignments updated. No invitation or email was sent.");}catch(e){setError(e instanceof Error?e.message:"Refresh assignments before retrying.");}finally{setBusy(false);}}
+ return <section className={s.card}><h2>School operations observers</h2><p>Assign an existing signed-in account to monitor this school’s ticket references, categories, status and urgency. This does not grant access to narratives, learner data, invoices or founder decisions. Verify the person and support purpose before granting access.</p><p className={s.muted}>The person signs in and opens /operations to obtain their account reference. New observer grants expire after 1–30 days. Renewals replace the previous grant and are audited.</p>{error?<p className={s.error} role="alert">{error}</p>:null}{notice?<p className={s.notice} role="status">{notice}</p>:null}
+ <form onSubmit={e=>{e.preventDefault();if(window.confirm("Grant this account read-only support monitoring for this school for "+days+" days?"))void save({action:"GRANT",personId,days,reason});}}><label className={s.field}>Observer account reference<input required pattern="[0-9a-fA-F-]{36}" value={personId} onChange={e=>setPersonId(e.target.value)}/></label><label className={s.field}>Access duration in days<input required type="number" min={1} max={30} value={days} onChange={e=>setDays(Number(e.target.value))}/></label><label className={s.field}>Authorisation reason<input required minLength={10} maxLength={500} value={reason} onChange={e=>setReason(e.target.value)}/></label><button className={s.button} disabled={busy}>Grant scoped observer access</button></form>
+ {data?.observers.map(o=><article className={s.row} key={o.id}><p>{o.personId} · Expires {showDate(o.endsAt)}</p><button className={s.secondary} disabled={busy} onClick={()=>{const reason=window.prompt("Reason for revoking access (10–500 characters)");if(reason)void save({action:"REVOKE",assignmentId:o.id,reason});}}>Revoke observer access</button></article>)}{data&&!data.observers.length?<p>No current observers assigned to this school.</p>:null}{data?.truncated?<p>Showing the first 200 current assignments.</p>:null}
+ </section>;
+}
