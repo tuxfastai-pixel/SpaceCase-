@@ -1,4 +1,4 @@
-# ADR 0010 — Shared engineering handoff, before autonomous execution
+# ADR 0014 — Shared engineering handoff, before autonomous execution
 
 Decision: extend the existing support workflow with a founder-reviewed, versioned engineering contract, beginning with SpaceCase. Do not copy Paperclip or introduce a new identity system. Reuse PEOS authority, SpaceCase ticket revision/ownership and existing founder recommendations. The shared package under packages/engineering-control is the initial portable boundary; it may later be extracted for the PSG AI Platform and other repositories. PEOS and VA-Beta are registry entries only, explicitly disconnected, not usable integrations.
 
