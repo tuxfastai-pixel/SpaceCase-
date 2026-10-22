@@ -27,3 +27,11 @@ Check current API docs and model metadata before choosing a pilot model:
 - https://ai-gateway.vercel.sh/v1/models
 
 Tests use synthetic payloads and mocked network calls, not live inference. Before real learner work, obtain an approved model, plan/retention scope and explicit inference budget; evaluate synthetic examples across handwriting, language, diagrams, rotations and unreadable/blank pages. Record transcription errors, abstention, evidence accuracy and mark deviations rather than claiming a generic accuracy percentage.
+
+## Engineering ledger (internal foundation, disconnected)
+
+`lib/engineering/ledger.ts` implements durable blocked tasks and cancellation. It has no HTTP route or UI connection and grants no execution. Store only founder-reviewed synthetic briefs when an authenticated adapter is added; never pass original tickets or school records. The Stage 1 founder preview is still ephemeral.
+
+Use a dedicated engineering PostgreSQL database, separate from SpaceCase/PEOS, with a non-owner `psg_engineering_runtime` role (NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE). The migration owner runs `npm run db:migrate --workspace=psg-ai` with the direct connection `PSG_ENGINEERING_DATABASE_URL_UNPOOLED`; the runner rejects pooler hosts, known product schemas and unsafe runtime roles. It maintains its own checksummed migration history. No production connection is configured by this change. A future adapter should use a separate pooled runtime credential and must never expose migration credentials to workers.
+
+Integration tests use only `PSG_ENGINEERING_TEST_DATABASE_URL`, pointing to a disposable dedicated database; they apply the migration and exercise a restricted runtime role. Do not set this test variable to production. CI provisions this database independently from the product test database. Before activating storage, define reviewed-brief retention and owner-operated purging (runtime has no DELETE privilege), and authenticate/revalidate source authority on every task action. Worker claims and execution remain unimplemented.

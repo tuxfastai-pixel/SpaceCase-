@@ -109,7 +109,13 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Create isolated PSG engineering test database
+        run: |
+          PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -v ON_ERROR_STOP=1 -c "CREATE ROLE psg_engineering_runtime NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE"
+          PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -v ON_ERROR_STOP=1 -c "CREATE DATABASE psg_engineering_test"
       - name: PSG AI service checks
+        env:
+          PSG_ENGINEERING_TEST_DATABASE_URL: postgresql://spacecase:spacecase@127.0.0.1:5432/psg_engineering_test
         run: npm run typecheck --workspace=psg-ai && npm run test --workspace=psg-ai
       - name: Production build
         run: npm run build
