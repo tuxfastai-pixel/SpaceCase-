@@ -8,12 +8,13 @@ export const reviewEvidenceSchema=z.object({
  validation:z.object({runId:z.number().int().positive(),workflow:z.literal('Validate'),headCommit:sha,conclusion:z.enum(['SUCCESS','FAILURE','CANCELLED','SKIPPED','PENDING'])}).strict(),
 }).strict();
 export type ReviewEvidence=z.infer<typeof reviewEvidenceSchema>;
-export type ReviewContext={founder:boolean;personId:string;taskId:string;handoffDigest:string;sourceRevision:number;sourceOpen:boolean;briefAvailable:boolean;currentHeadCommit:string;baseCommit:string};
+export type ReviewContext={founder:boolean;personId:string;taskId:string;handoffDigest:string;sourceRevision:number;sourceOpen:boolean;briefAvailable:boolean;taskState:'BLOCKED'|'CANCELLED';currentHeadCommit:string;baseCommit:string};
 // Pure readiness policy: its caller must obtain identities, PR head, reviews and checks
 // from authenticated authoritative adapters. This function is not proof of provenance.
 export function evaluateReviewReadiness(input:ReviewEvidence,c:ReviewContext){
  if(!c.founder)throw Error('FOUNDER_REQUIRED');const e=reviewEvidenceSchema.parse(input),blockers:string[]=[];
  if(e.taskId!==c.taskId||e.handoffDigest!==c.handoffDigest||e.sourceRevision!==c.sourceRevision||e.baseCommit!==c.baseCommit)blockers.push('SOURCE_BINDING_CHANGED');
+ if(c.taskState!=='BLOCKED')blockers.push('TASK_NOT_REVIEWABLE');
  if(!c.sourceOpen)blockers.push('CASE_CLOSED');if(!c.briefAvailable)blockers.push('BRIEF_EXPIRED');
  if(e.headCommit!==c.currentHeadCommit||e.validation.headCommit!==e.headCommit)blockers.push('COMMIT_CHANGED');
  if(e.authorId===e.reviewerId)blockers.push('INDEPENDENT_REVIEW_REQUIRED');

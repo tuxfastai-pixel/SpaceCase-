@@ -1,6 +1,6 @@
 # ADR 0018 — Exact-commit review readiness policy
 
-Decision: define a portable, strict readiness policy before connecting an autonomous runner or release path. Bind review evidence to task, handoff digest, source revision, base/head commits, project/repository and exact-commit validation. Require reproduced behavior, independent author/reviewer identities, approval without unresolved findings, successful Validate workflow and reviewed rollback. Expired briefs, changed/closed source and changed PR heads block approval.
+Decision: define a portable, strict readiness policy before connecting an autonomous runner or release path. Bind review evidence to task, handoff digest, source revision, base/head commits, project/repository and exact-commit validation. Require reproduced behavior, independent author/reviewer identities, approval without unresolved findings, successful Validate workflow and reviewed rollback. Cancelled tasks, expired briefs, changed/closed source and changed PR heads block approval.
 
 Evidence is not self-authenticating. The pure policy has no HTTP endpoint or side effect; future trusted adapters must obtain current PEOS authority and authoritative GitHub head/review/workflow records, including successful required checks on the exact proposed head. Never pass client-authored evidence to the policy and describe the result as verified provenance. A run ID or UUID alone proves no identity or test result.
 
