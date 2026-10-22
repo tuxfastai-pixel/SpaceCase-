@@ -200,6 +200,7 @@ export default function DashboardClient() {
                 <a href={`/classes/${context.schoolId}/${item.classId}`}>View class roster</a>
                 {item.workspaceConfigured&&context.schoolWorkspace.configured?<a href={`/classes/${context.schoolId}/${item.classId}/attendance`}>Take attendance</a>:null}
                 {item.workspaceConfigured&&context.schoolWorkspace.configured?<a href={`/classes/${context.schoolId}/${item.classId}/planner`}>Plan lessons</a>:null}
+                {item.workspaceConfigured&&context.schoolWorkspace.configured?<a href={`/classes/${context.schoolId}/${item.classId}/homework`}>Manage homework</a>:null}
                 {item.workspaceConfigured&&context.schoolWorkspace.configured?<a href={`/classes/${context.schoolId}/${item.classId}/assessments`}>Assessments & marking</a>:null}
               </article>
             ))}
