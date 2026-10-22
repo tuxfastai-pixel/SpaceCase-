@@ -9,7 +9,7 @@ test("assessment rubrics reject duplicate questions, unknown fields and excessiv
 });
 test("only explicit complete teacher review can be approved; marks remain bounded",()=>{
  const scores=[{questionId:q.id,marks:1,feedback:"Check your sum",reviewed:true as const}];assert.equal(validateScores([q],scores),1);
- assert.throws(()=>validateScores([q],[{...scores[0],marks:3}]),/INVALID_SCORES/);assert.throws(()=>validateScores([q],[]),/INVALID_SCORES/);
+ assert.throws(()=>validateScores([q],[{...scores[0],marks:3}]),/INVALID_SCORES/);assert.throws(()=>validateScores([q],[]),/INVALID_SCORES/);assert.throws(()=>validateScores([q],[{...scores[0],marks:-1}]),/INVALID_SCORES/);
  assert.equal(actionSchema.safeParse({action:"SAVE_REVIEW",submissionId:randomUUID(),revision:1,scores:[{...scores[0],reviewed:false}]}).success,false);
  assert.equal(actionSchema.safeParse({action:"APPROVE",submissionId:randomUUID(),revision:1,acknowledged:false}).success,false);
  assert.equal(actionSchema.safeParse({action:"APPROVE",submissionId:randomUUID(),revision:1,acknowledged:true,scores}).success,false);

@@ -32,6 +32,7 @@ export const proposalSchema=z.object({executionId:text(160,1),modelRef:text(160,
 }).strict();
 export type Proposal=z.infer<typeof proposalSchema>;
 export function validateScores(rubric:Rubric,scores:ReviewScores){
+ if(!reviewScores.safeParse(scores).success)throw new AssessmentError("INVALID_SCORES",400);
  const byId=new Map(rubric.map(q=>[q.id,q]));
  if(scores.length!==rubric.length||new Set(scores.map(s=>s.questionId)).size!==rubric.length||scores.some(s=>!byId.has(s.questionId)||s.marks>byId.get(s.questionId)!.maxMarks))throw new AssessmentError("INVALID_SCORES",400);
  return Math.round(scores.reduce((n,s)=>n+s.marks,0)*10)/10;
