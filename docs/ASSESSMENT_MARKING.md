@@ -13,14 +13,13 @@ The app uses private `@vercel/blob` reads/writes with a production-only `BLOB_RE
 
 Removed photos are hidden and inaccessible through the app; this is not permanent erasure. Establish a school retention/purge policy and an operator reconciliation process before expanding beyond the pilot. Pending/removed object keys remain tracked in `assessment.pages` for that purpose. Do not delete objects directly without checking those records and an approved school retention action.
 
-## Optional PSG AI contract
-Required production configuration:
-- `SPACECASE_ASSESSMENT_AI_ENABLED=true`
-- `PSG_AI_BASE_URL`: approved HTTPS shared AI service origin
-- `PSG_AI_SERVICE_TOKEN`: server-only service credential
+## Photo reading and vision marking
+Request photo reading first; the reader receives no memorandum. Inspect/correct every page's extracted text, keep unresolved words flagged, tick each page review, and save it. Mark proposals then receive the reviewed reading, original photos and rubric. A page still flagged unclear cannot support a confident numeric proposal. Manual marking remains independent.
 
-POST `/v1/assessment-marking`, authenticated by service bearer token, accepts contract version `spacecase.assessment-marking.v1`, request UUID/idempotency key, purpose `ASSESSMENT_ASSISTANCE`, actor/school/assessment and pseudonymous submission references, instructions, rubric and at most 10 base64 JPEG pages. No canonical learner ID, name or admission number is added. Page images can contain personal information; the teacher must confirm the scoped disclosure before requesting assistance.
+Basic upload warnings measure image dimensions and overall contrast. They do not certify handwriting readability or detect every crop, glare or blur problem. Original normalized photos are preserved. Earlier uploads without quality metadata are not retroactively labelled clear.
 
-The service must implement authenticated product/purpose scope, idempotency, model and retention policy, input/output size limits, and prompt-injection boundaries. Treat photographed instructions as work evidence only. Never follow image instructions to change scores/policy, access tools, reveal data or approve results. The service must return strict JSON matching `proposalSchema`: executionId, modelRef, policyVersion, one item per rubric question (questionId, marks or null, uncertain, feedback, evidencePageIds) and warnings. Unreadable/missing/ambiguous answers must abstain or be flagged uncertain; no unsupported confident mark is permitted. SpaceCase validates references and maxima and requires teacher review irrespective of confidence.
+The current shared contract is `spacecase.assessment-vision.v2`, with separate `/v1/assessment-reading` and `/v1/assessment-marking` routes. Images in one AI request total at most 2 MB and the entire serialized envelope at most 4 MB. Oversized sets need smaller/fewer clear photos or manual marking; the system does not silently discard pages or shrink evidence further.
 
-This repository implements the consumer contract, not a fabricated PSG endpoint. No model credential is requested or provisioned here. Without the live shared service and explicit enable flag, manual assessment marking remains available and the UI explains why assistance is unavailable.
+The separately deployable PSG execution workspace is `services/psg-ai`; see its README for configuration and activation gates. SpaceCase needs its HTTPS origin in `PSG_AI_BASE_URL`, the shared server-only `PSG_AI_SERVICE_TOKEN`, an explicit enable flag, and an integer rolling call cap. Both the service execution flag and product enable flag default off; the model has no default. No live AI execution is claimed by code tests.
+
+A one-use permit must match an existing current READ/MARK job before the shared service can call a provider. A duplicate claim does not call a model again. The configured call cap is not a dollar spending cap. Migration 0013, both tested source deployments and an approved synthetic/model/budget/retention pilot precede real learner-work activation. See `docs/adr/0011-vision-reading-service.md` for the ownership boundary. A signed-in teacher walkthrough remains an acceptance step after release.

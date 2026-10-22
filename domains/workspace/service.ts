@@ -21,6 +21,9 @@ export async function storageReady(pool:Pool){
   if(!result.rows[0]?.ready)throw new Error("STORAGE_SCHEMA_REQUIRED");
   // Prove runtime-role access rather than accepting a connection or table name alone.
   await pool.query("SELECT peos_school_id FROM school_ops.school_workspaces LIMIT 0");
+  await pool.query("SELECT quality FROM assessment.pages LIMIT 0");
+  await pool.query("SELECT reading,reading_review FROM assessment.submissions LIMIT 0");
+  await pool.query("SELECT purpose,execution_claimed_at FROM assessment.ai_runs LIMIT 0");
   for(const table of ["assessments","submissions","pages","results","result_events","ai_runs"])await pool.query(`SELECT id FROM assessment.${table} LIMIT 0`);
   await pool.query("SELECT teacher_person_id FROM learning.weekly_lesson_plans LIMIT 0");
   await pool.query("SELECT id FROM learning.attendance_registers LIMIT 0");

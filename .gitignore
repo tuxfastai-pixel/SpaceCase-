@@ -9,3 +9,6 @@ playwright-report/
 .env.*.local
 *.log
 .DS_Store
+
+services/psg-ai/.next/
+services/psg-ai/tsconfig.tsbuildinfo

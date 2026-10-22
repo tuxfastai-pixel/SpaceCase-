@@ -1,4 +1,5 @@
 import {z} from "zod";
+import {readingReviewSchema} from "../../contracts/assessmentVision";
 export const uuid=z.string().uuid().transform(v=>v.toLowerCase());
 const text=(max:number,min=0)=>z.string().trim().min(min).max(max).refine(v=>!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v),"Remove unsupported characters");
 const score=z.number().finite().min(0).max(1000).refine(v=>Number.isInteger(v*10),"Use marks in steps of 0.1");
@@ -23,6 +24,8 @@ export const actionSchema=z.discriminatedUnion("action",[
  z.object({action:z.literal("SAVE_REVIEW"),submissionId:uuid,revision:z.number().int().min(1),scores:reviewScores}).strict(),
  z.object({action:z.literal("APPROVE"),submissionId:uuid,revision:z.number().int().min(1),acknowledged:z.literal(true)}).strict(),
  z.object({action:z.literal("REOPEN"),submissionId:uuid,revision:z.number().int().min(1),reason:text(1000,10)}).strict(),
+ z.object({action:z.literal("READ_WORK"),submissionId:uuid,revision:z.number().int().min(1),requestId:uuid,acknowledged:z.literal(true)}).strict(),
+ z.object({action:z.literal("SAVE_READING"),submissionId:uuid,revision:z.number().int().min(1),pages:readingReviewSchema}).strict(),
  z.object({action:z.literal("ASSIST"),submissionId:uuid,revision:z.number().int().min(1),requestId:uuid,acknowledged:z.literal(true)}).strict(),
 ]);
 export type AssessmentAction=z.infer<typeof actionSchema>;
@@ -39,6 +42,6 @@ export function validateScores(rubric:Rubric,scores:ReviewScores){
 }
 export function validateProposal(rubric:Rubric,pageIds:string[],proposal:Proposal){
  const byId=new Map(rubric.map(q=>[q.id,q]));const pages=new Set(pageIds);
- if(proposal.items.length!==rubric.length||new Set(proposal.items.map(i=>i.questionId)).size!==rubric.length||proposal.items.some(i=>!byId.has(i.questionId)||(i.marks!==null&&i.marks>byId.get(i.questionId)!.maxMarks)||i.evidencePageIds.some(p=>!pages.has(p))||(!i.uncertain&&(i.marks===null||i.evidencePageIds.length===0))))throw new AssessmentError("INVALID_AI_RESPONSE",502);
+ if(proposal.items.length!==rubric.length||new Set(proposal.items.map(i=>i.questionId)).size!==rubric.length||proposal.items.some(i=>!byId.has(i.questionId)||(i.marks!==null&&i.marks>byId.get(i.questionId)!.maxMarks)||i.evidencePageIds.some(p=>!pages.has(p))||(i.uncertain&&i.marks!==null)||(!i.uncertain&&(i.marks===null||i.evidencePageIds.length===0))))throw new AssessmentError("INVALID_AI_RESPONSE",502);
  return proposal;
 }

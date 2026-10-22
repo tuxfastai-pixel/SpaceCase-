@@ -2,7 +2,15 @@ import {put,get} from "@vercel/blob";
 import sharp from "sharp";
 import {createHash} from "node:crypto";
 import {AssessmentError} from "../../domains/assessment/contracts";
-export type NormalizedPhoto={bytes:Buffer;hash:string};
+export type PhotoQuality={width:number;height:number;warnings:Array<"LOW_RESOLUTION"|"LOW_CONTRAST">;method:"pixel_heuristics_v1"};
+export type NormalizedPhoto={bytes:Buffer;hash:string;quality?:PhotoQuality};
+export async function photoQuality(bytes:Buffer):Promise<PhotoQuality>{
+ const photo=sharp(bytes,{limitInputPixels:24000000});const [meta,stats]=await Promise.all([photo.metadata(),photo.stats()]);
+ const warnings:PhotoQuality["warnings"]=[];
+ if(Math.min(meta.width??0,meta.height??0)<700)warnings.push("LOW_RESOLUTION");
+ if(Math.max(...stats.channels.slice(0,3).map(c=>c.stdev))<12)warnings.push("LOW_CONTRAST");
+ return {width:meta.width??0,height:meta.height??0,warnings,method:"pixel_heuristics_v1"};
+}
 export async function normalizePhoto(bytes:Buffer):Promise<NormalizedPhoto>{
  if(!bytes.length||bytes.length>2097152)throw new AssessmentError("PHOTO_TOO_LARGE",400);
  const jpeg=bytes[0]===255&&bytes[1]===216&&bytes[2]===255;
@@ -14,7 +22,7 @@ export async function normalizePhoto(bytes:Buffer):Promise<NormalizedPhoto>{
   if((meta.pages??1)>1||!meta.width||!meta.height||meta.width<100||meta.height<100)throw new Error("invalid dimensions");
   const cleaned=await image.rotate().resize({width:1800,height:2400,fit:"inside",withoutEnlargement:true}).flatten({background:"white"}).jpeg({quality:85}).toBuffer();
   if(cleaned.length>2097152)throw new AssessmentError("PHOTO_TOO_LARGE",400);
-  return {bytes:cleaned,hash:createHash("sha256").update(cleaned).digest("hex")};
+  return {bytes:cleaned,hash:createHash("sha256").update(cleaned).digest("hex"),quality:await photoQuality(cleaned)};
  }catch(e){if(e instanceof AssessmentError)throw e;throw new AssessmentError("INVALID_PHOTO",400);}
 }
 export interface PhotoStore{put(key:string,bytes:Buffer):Promise<void>;get(key:string):Promise<Buffer>;}
