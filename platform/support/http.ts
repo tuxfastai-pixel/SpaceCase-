@@ -9,6 +9,7 @@ import {createTicket,listTickets,getTicket,replyTicket,updateTicket,prepareRecom
 import {directoryHealth,schoolOperations} from "../../domains/support/operations";
 import {handoffInput} from "../../packages/engineering-control/contracts";
 import {prepareEngineeringHandoff} from "../../domains/support/engineering";
+import {taskControlInput,controlEngineeringTask} from "./engineeringControl";
 import {engineeringSaveInput,saveEngineeringTask,engineeringStorageStatus} from "./engineeringAdapter";
 import {founderInsights} from "../../domains/support/insights";
 type Deps={context:(request:Request)=>Promise<SupportContext>;pool:()=>Pool;peos:typeof peosRead};
@@ -33,7 +34,12 @@ export function supportHandler(deps:Deps=defaults){return (request:Request,ticke
  throw new SupportError("METHOD_NOT_ALLOWED",405);
 });}
 const founderQuery=z.object({view:z.enum(["directory","school","tickets","ticket","insights"]).default("tickets"),q:z.string().trim().max(100).default(""),offset:z.coerce.number().int().min(0).max(1000000).default(0),schoolId:id.optional(),ticketId:id.optional(),status:z.enum(["SUBMITTED","UNDER_REVIEW","NEEDS_INFORMATION","PLANNED","RESOLVED","CLOSED"]).optional()}).strict();
+const controlActions=[
+ z.object({action:z.literal("LIST_ENGINEERING_TASKS"),ticketId:id,offset:z.number().int().min(0).max(10000).default(0)}).strict(),
+ z.object({action:z.literal("CANCEL_ENGINEERING_TASK"),ticketId:id,taskId:id,revision:z.number().int().nonnegative()}).strict(),
+] as const;
 const actionSchema=z.discriminatedUnion("action",[
+ ...controlActions,
  handoffInput.extend({action:z.literal("ENGINEERING_HANDOFF")}),
  engineeringSaveInput.extend({action:z.literal("SAVE_ENGINEERING_TASK")}),
  updateInput.extend({action:z.literal("UPDATE_TICKET")}),
@@ -60,6 +66,8 @@ export function founderHandler(deps:Deps=defaults){return (request:Request)=>han
  }
  if(request.method==="POST"){
  const input=actionSchema.parse(await body(request));
+ if(input.action==="LIST_ENGINEERING_TASKS")return controlEngineeringTask(deps.pool(),c,taskControlInput.parse({operation:'LIST',ticketId:input.ticketId,offset:input.offset}));
+ if(input.action==="CANCEL_ENGINEERING_TASK")return controlEngineeringTask(deps.pool(),c,taskControlInput.parse({operation:'CANCEL',ticketId:input.ticketId,taskId:input.taskId,revision:input.revision}));
  if(input.action==="SAVE_ENGINEERING_TASK")return saveEngineeringTask(deps.pool(),c,engineeringSaveInput.parse(Object.fromEntries(Object.entries(input).filter(([k])=>k!=="action"))));
  if(input.action==="ENGINEERING_HANDOFF"){return {...await prepareEngineeringHandoff(deps.pool(),c,handoffInput.parse(Object.fromEntries(Object.entries(input).filter(([k])=>k!=="action")))),storage:engineeringStorageStatus()};}
  if(input.action==="UPDATE_TICKET")return updateTicket(deps.pool(),c,updateInput.parse(Object.fromEntries(Object.entries(input).filter(([k])=>k!=="action"))));
