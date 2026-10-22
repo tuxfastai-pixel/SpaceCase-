@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     const { data, error } = await client.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${config.origin}/auth/callback`, skipBrowserRedirect: true,
-        ...(new URL(request.url).searchParams.get("choose_account") === "1" ? { queryParams: { prompt: "select_account" } } : {}),
+        queryParams: { prompt: "select_account" },
       },
     });
     if (!error && data.url) {
