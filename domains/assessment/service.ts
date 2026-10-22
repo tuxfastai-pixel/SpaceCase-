@@ -2,6 +2,7 @@ import {createHash} from "node:crypto";
 import type {Pool,PoolClient} from "pg";
 import {AssessmentError,validateScores,validateProposal,type AssessmentInput,type AssessmentAction,type Rubric,type ReviewScores} from "./contracts";
 import type {PhotoStore,NormalizedPhoto} from "../../platform/assessment/storage";
+import {exactPages,readingResultSchema,type ReadingReview} from "../../contracts/assessmentVision";
 import type {AssessmentAi} from "../../platform/assessment/ai";
 export type AssessmentScope={actor:string;school:string;classId:string;learnerIds:string[]};
 function canonical(v:unknown):unknown{if(Array.isArray(v))return v.map(canonical);if(v&&typeof v==="object")return Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b)).map(([k,value])=>[k,canonical(value)]));return v;}
@@ -26,7 +27,7 @@ async function submission(db:PoolClient,s:AssessmentScope,assessmentId:string,id
 }
 function revision(sub:{revision:number},value:number){if(sub.revision!==value)throw new AssessmentError("WORK_CHANGED",409);}
 function editable(sub:{current_result_id:string|null}){if(sub.current_result_id)throw new AssessmentError("RESULT_APPROVED",409);}
-async function invalidate(db:PoolClient,id:string){await db.query("UPDATE assessment.submissions SET revision=revision+1,matching_confirmed=false,proposal=NULL,review_scores=NULL,updated_at=now() WHERE id=$1",[id]);}
+async function invalidate(db:PoolClient,id:string){await db.query("UPDATE assessment.submissions SET revision=revision+1,matching_confirmed=false,reading=NULL,reading_review=NULL,proposal=NULL,review_scores=NULL,updated_at=now() WHERE id=$1",[id]);}
 async function pages(db:PoolClient,id:string){const r=await db.query("SELECT id,object_key,page_number,content_hash FROM assessment.pages WHERE submission_id=$1 AND removed_at IS NULL AND upload_complete ORDER BY page_number,id",[id]);return r.rows as Array<{id:string;object_key:string;page_number:number;content_hash:string}>;}
 async function confirmedPages(db:PoolClient,sub:{id:string;matching_confirmed:boolean}){const p=await pages(db,sub.id);if(!sub.matching_confirmed||p.length===0||p.some((v,i)=>v.page_number!==i+1))throw new AssessmentError("CONFIRM_PAGES_REQUIRED",409);return p;}
 export async function createAssessment(pool:Pool,s:AssessmentScope,input:AssessmentInput){return transaction(pool,s,async db=>{
@@ -42,8 +43,8 @@ export async function listAssessments(pool:Pool,s:AssessmentScope,offset:number)
 });}
 export async function readAssessment(pool:Pool,s:AssessmentScope,id:string){return transaction(pool,s,async db=>{
  const a=await assessment(db,s,id);
- const p=await db.query(`SELECT p.id,p.submission_id AS "submissionId",p.page_number AS "pageNumber",p.byte_size AS "byteSize",p.revision FROM assessment.pages p LEFT JOIN assessment.submissions s ON s.id=p.submission_id WHERE p.assessment_id=$1 AND p.removed_at IS NULL AND p.upload_complete AND (p.submission_id IS NULL OR s.learner_person_id=ANY($2::text[])) ORDER BY p.created_at,p.id`,[id,s.learnerIds]);
- const subs=await db.query(`SELECT s.id,s.learner_person_id AS "learnerId",s.revision,s.matching_confirmed AS "matchingConfirmed",s.proposal,s.review_scores AS "reviewScores",s.current_result_id AS "currentResultId",r.total,r.maximum,r.approved_at AS "approvedAt" FROM assessment.submissions s LEFT JOIN assessment.results r ON r.id=s.current_result_id WHERE s.assessment_id=$1 AND s.learner_person_id=ANY($2::text[]) ORDER BY s.id`,[id,s.learnerIds]);
+ const p=await db.query(`SELECT p.id,p.submission_id AS "submissionId",p.page_number AS "pageNumber",p.byte_size AS "byteSize",p.revision,p.quality FROM assessment.pages p LEFT JOIN assessment.submissions s ON s.id=p.submission_id WHERE p.assessment_id=$1 AND p.removed_at IS NULL AND p.upload_complete AND (p.submission_id IS NULL OR s.learner_person_id=ANY($2::text[])) ORDER BY p.created_at,p.id`,[id,s.learnerIds]);
+ const subs=await db.query(`SELECT s.id,s.learner_person_id AS "learnerId",s.revision,s.matching_confirmed AS "matchingConfirmed",s.reading,s.reading_review AS "readingReview",s.proposal,s.review_scores AS "reviewScores",s.current_result_id AS "currentResultId",r.total,r.maximum,r.approved_at AS "approvedAt" FROM assessment.submissions s LEFT JOIN assessment.results r ON r.id=s.current_result_id WHERE s.assessment_id=$1 AND s.learner_person_id=ANY($2::text[]) ORDER BY s.id`,[id,s.learnerIds]);
  await audit(db,s,id,"assessment.read",{pages:p.rowCount,submissions:subs.rowCount});return {assessment:{id:a.id,title:a.title,subject:a.subject,instructions:a.instructions,rubric:a.rubric,status:a.status,revision:a.revision},pages:p.rows,submissions:subs.rows};
 });}
 export async function uploadPage(pool:Pool,s:AssessmentScope,id:string,pageId:string,photo:NormalizedPhoto,store:PhotoStore){
@@ -53,7 +54,7 @@ export async function uploadPage(pool:Pool,s:AssessmentScope,id:string,pageId:st
   if(old.rowCount){const found=old.rows.find(p=>p.id===pageId)??old.rows[0];if(found.removed_at||found.content_hash!==photo.hash)throw new AssessmentError("REQUEST_CONFLICT",409);return {id:found.id as string,key:found.object_key as string,complete:found.upload_complete as boolean};}
   const count=await db.query("SELECT count(*)::int AS n FROM assessment.pages WHERE assessment_id=$1 AND removed_at IS NULL",[id]);if(count.rows[0].n>=500)throw new AssessmentError("PAGE_LIMIT",409);
   const key=`assessment/${id}/${pageId}-${photo.hash}.jpg`;
-  await db.query("INSERT INTO assessment.pages(id,assessment_id,object_key,content_hash,byte_size) VALUES($1,$2,$3,$4,$5)",[pageId,id,key,photo.hash,photo.bytes.length]);
+  await db.query("INSERT INTO assessment.pages(id,assessment_id,object_key,content_hash,byte_size,quality) VALUES($1,$2,$3,$4,$5,$6::jsonb)",[pageId,id,key,photo.hash,photo.bytes.length,photo.quality?JSON.stringify(photo.quality):null]);
   return {id:pageId,key,complete:false};
  });
  if(reserved.complete)return {id:reserved.id,duplicate:true};
@@ -72,7 +73,7 @@ export async function readPhoto(pool:Pool,s:AssessmentScope,id:string,pageId:str
  const key=await transaction(pool,s,async db=>{await assessment(db,s,id);const r=await db.query(`SELECT p.object_key FROM assessment.pages p LEFT JOIN assessment.submissions s ON s.id=p.submission_id WHERE p.id=$1 AND p.assessment_id=$2 AND p.removed_at IS NULL AND p.upload_complete AND (p.submission_id IS NULL OR s.learner_person_id=ANY($3::text[]))`,[pageId,id,s.learnerIds]);if(!r.rowCount)throw new AssessmentError("PHOTO_UNAVAILABLE",404);await audit(db,s,id,"assessment.photo.read",{pageId});return r.rows[0].object_key as string;});
  return store.get(key);
 }
-export async function mutateAssessment(pool:Pool,s:AssessmentScope,id:string,input:Exclude<AssessmentAction,{action:"ASSIST"}>){return transaction(pool,s,async db=>{
+export async function mutateAssessment(pool:Pool,s:AssessmentScope,id:string,input:Exclude<AssessmentAction,{action:"ASSIST"|"READ_WORK"}>){return transaction(pool,s,async db=>{
  const a=await assessment(db,s,id);
  if(input.action==="EDIT"){
   if(a.status!=="DRAFT")throw new AssessmentError("RUBRIC_LOCKED",409);revision(a,input.revision);
@@ -110,6 +111,10 @@ export async function mutateAssessment(pool:Pool,s:AssessmentScope,id:string,inp
  if(input.action==="CONFIRM_PAGES"){
   const p=await pages(db,sub.id);if(p.length===0||p.some((v,i)=>v.page_number!==i+1))throw new AssessmentError("PAGE_SEQUENCE_REQUIRED",409);
   await db.query("UPDATE assessment.submissions SET matching_confirmed=true,revision=revision+1,updated_at=now() WHERE id=$1",[sub.id]);
+ }else if(input.action==="SAVE_READING"){
+  const p=await confirmedPages(db,sub);if(!sub.reading||!exactPages(p.map(v=>v.id),input.pages))throw new AssessmentError("READING_REVIEW_REQUIRED",409);
+  if(sub.review_scores)throw new AssessmentError("REVIEW_ALREADY_SAVED",409);
+  await db.query("UPDATE assessment.submissions SET reading_review=$2::jsonb,proposal=NULL,revision=revision+1,updated_at=now() WHERE id=$1",[sub.id,JSON.stringify(input.pages)]);
  }else if(input.action==="SAVE_REVIEW"){
   await confirmedPages(db,sub);validateScores(a.rubric,input.scores);
   await db.query("UPDATE assessment.submissions SET review_scores=$2::jsonb,revision=revision+1,updated_at=now() WHERE id=$1",[sub.id,JSON.stringify(input.scores)]);
@@ -121,18 +126,21 @@ export async function mutateAssessment(pool:Pool,s:AssessmentScope,id:string,inp
  }
  await audit(db,s,id,`assessment.${input.action.toLowerCase()}`,{submissionId:sub.id,revision:input.revision});return {saved:true};
 });}
-export async function assistAssessment(pool:Pool,s:AssessmentScope,id:string,input:Extract<AssessmentAction,{action:"ASSIST"}>,store:PhotoStore,ai:AssessmentAi,reauthorize:()=>Promise<AssessmentScope>){
+export async function assistAssessment(pool:Pool,s:AssessmentScope,id:string,input:Extract<AssessmentAction,{action:"ASSIST"|"READ_WORK"}>,store:PhotoStore,ai:AssessmentAi,reauthorize:()=>Promise<AssessmentScope>){
+ const mode=input.action==="READ_WORK"?"READ":"MARK";
  const pending=await transaction(pool,s,async db=>{
   const a=await assessment(db,s,id);const sub=await submission(db,s,id,input.submissionId);
   const old=await db.query("SELECT * FROM assessment.ai_runs WHERE id=$1",[input.requestId]);
-  if(old.rowCount){const run=old.rows[0];if(run.submission_id!==sub.id||run.actor_person_id!==s.actor||run.source_revision!==input.revision)throw new AssessmentError("REQUEST_CONFLICT",409);return {existing:run.status as string};}
+  if(old.rowCount){const run=old.rows[0];if(run.submission_id!==sub.id||run.actor_person_id!==s.actor||run.source_revision!==input.revision||run.purpose!==mode)throw new AssessmentError("REQUEST_CONFLICT",409);return {existing:run.status as string};}
   editable(sub);revision(sub,input.revision);if(sub.review_scores)throw new AssessmentError("REVIEW_ALREADY_SAVED",409);const p=await confirmedPages(db,sub);
+  if(mode==="MARK"&&(!sub.reading_review||!exactPages(p.map(v=>v.id),sub.reading_review)))throw new AssessmentError("READING_REVIEW_REQUIRED",409);
+  if(mode==="READ"&&sub.reading_review)throw new AssessmentError("READING_ALREADY_REVIEWED",409);
   await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[`assessment-ai:${s.actor}`]);
   const counts=await db.query("SELECT count(*)::int AS n FROM assessment.ai_runs WHERE actor_person_id=$1 AND created_at>now()-interval '1 hour'",[s.actor]);if(counts.rows[0].n>=20)throw new AssessmentError("AI_RATE_LIMIT",429);
   const running=await db.query("SELECT 1 FROM assessment.ai_runs WHERE submission_id=$1 AND status='RUNNING' AND created_at>now()-interval '2 minutes'",[sub.id]);if(running.rowCount)throw new AssessmentError("AI_RUNNING",409);
-  const hash=digest({rubric:a.rubric,instructions:a.instructions,pages:p.map(v=>[v.id,v.content_hash,v.page_number]),revision:sub.revision});
-  await db.query("INSERT INTO assessment.ai_runs(id,submission_id,actor_person_id,source_revision,input_hash,status) VALUES($1,$2,$3,$4,$5,'RUNNING')",[input.requestId,sub.id,s.actor,input.revision,hash]);
-  await audit(db,s,id,"assessment.assist.start",{runId:input.requestId,submissionId:sub.id,sourceRevision:sub.revision,pageCount:p.length});return {a,p};
+  const hash=digest({rubric:a.rubric,instructions:a.instructions,pages:p.map(v=>[v.id,v.content_hash,v.page_number]),revision:sub.revision,mode,reviewedReadings:mode==="MARK"?sub.reading_review:null});
+  await db.query("INSERT INTO assessment.ai_runs(id,submission_id,actor_person_id,source_revision,input_hash,status,purpose) VALUES($1,$2,$3,$4,$5,'RUNNING',$6)",[input.requestId,sub.id,s.actor,input.revision,hash,mode]);
+  await audit(db,s,id,"assessment.assist.start",{runId:input.requestId,submissionId:sub.id,sourceRevision:sub.revision,pageCount:p.length});return {a,p,hash,reviewedReadings:sub.reading_review as ReadingReview|null};
  });
  if("existing" in pending)return {status:pending.existing};
  try{
@@ -140,14 +148,18 @@ export async function assistAssessment(pool:Pool,s:AssessmentScope,id:string,inp
   // Recheck authority after loading photos and before any external disclosure.
   const current=await reauthorize();if(current.actor!==s.actor||current.school!==s.school||current.classId!==s.classId)throw new AssessmentError("CLASS_ACCESS_REQUIRED");
   const subCheck=await transaction(pool,current,db=>submission(db,current,id,input.submissionId));revision(subCheck,input.revision);editable(subCheck);
-  const proposal=validateProposal(pending.a.rubric,pending.p.map(p=>p.id),await ai.propose({requestId:input.requestId,actorPersonId:s.actor,schoolId:s.school,assessmentId:id,submissionId:input.submissionId,instructions:pending.a.instructions,rubric:pending.a.rubric,pages:images}));
+  const request={requestId:input.requestId,actorPersonId:s.actor,schoolId:s.school,assessmentId:id,submissionId:input.submissionId,sourceRevision:input.revision,inputHash:pending.hash,instructions:pending.a.instructions,rubric:pending.a.rubric,pages:images,reviewedReadings:pending.reviewedReadings??[]};
+  const result=mode==="READ"?readingResultSchema.parse(await ai.read(request)):validateProposal(pending.a.rubric,pending.p.map(p=>p.id),await ai.propose(request));
+  if(mode==="READ"&&(!("pages" in result)||!exactPages(pending.p.map(p=>p.id),result.pages)))throw new AssessmentError("INVALID_AI_RESPONSE",502);
+  if(mode==="MARK"&&"items" in result){const uncertain=new Set((pending.reviewedReadings??[]).filter(p=>p.uncertain).map(p=>p.pageId));if(result.items.some(i=>i.evidencePageIds.some(p=>uncertain.has(p))&&(!i.uncertain||i.marks!==null)))throw new AssessmentError("INVALID_AI_RESPONSE",502);}
   const refreshed=await reauthorize();if(refreshed.actor!==s.actor||refreshed.school!==s.school||refreshed.classId!==s.classId)throw new AssessmentError("CLASS_ACCESS_REQUIRED");
   return await transaction(pool,refreshed,async db=>{
    await assessment(db,refreshed,id);const sub=await submission(db,refreshed,id,input.submissionId);
    if(sub.revision!==input.revision||sub.current_result_id||!sub.matching_confirmed){await db.query("UPDATE assessment.ai_runs SET status='STALE',finished_at=now() WHERE id=$1",[input.requestId]);return {status:"STALE"};}
-   await db.query("UPDATE assessment.submissions SET proposal=$2::jsonb,review_scores=NULL,revision=revision+1,updated_at=now() WHERE id=$1",[sub.id,JSON.stringify(proposal)]);
-   await db.query("UPDATE assessment.ai_runs SET status='COMPLETED',execution_id=$2,model_ref=$3,policy_version=$4,finished_at=now() WHERE id=$1",[input.requestId,proposal.executionId,proposal.modelRef,proposal.policyVersion]);
-   await audit(db,refreshed,id,"assessment.assist.complete",{runId:input.requestId,executionId:proposal.executionId,modelRef:proposal.modelRef,policyVersion:proposal.policyVersion});return {status:"COMPLETED"};
+   if(mode==="READ")await db.query("UPDATE assessment.submissions SET reading=$2::jsonb,reading_review=NULL,proposal=NULL,revision=revision+1,updated_at=now() WHERE id=$1",[sub.id,JSON.stringify(result)]);
+   else await db.query("UPDATE assessment.submissions SET proposal=$2::jsonb,review_scores=NULL,revision=revision+1,updated_at=now() WHERE id=$1",[sub.id,JSON.stringify(result)]);
+   await db.query("UPDATE assessment.ai_runs SET status='COMPLETED',execution_id=$2,model_ref=$3,policy_version=$4,finished_at=now() WHERE id=$1",[input.requestId,result.executionId,result.modelRef,result.policyVersion]);
+   await audit(db,refreshed,id,"assessment.assist.complete",{runId:input.requestId,executionId:result.executionId,modelRef:result.modelRef,policyVersion:result.policyVersion});return {status:"COMPLETED"};
   });
  }catch(e){await pool.query("UPDATE assessment.ai_runs SET status='FAILED',finished_at=now() WHERE id=$1 AND status='RUNNING'",[input.requestId]);throw e;}
 }

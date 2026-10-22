@@ -1,4 +1,5 @@
 import {z,ZodError} from "zod";
+import {boundedText} from "../http/boundedText";
 import type {Pool} from "pg";
 import {AssessmentError,uuid,assessmentInput,actionSchema} from "../../domains/assessment/contracts";
 import {createAssessment,listAssessments,readAssessment,uploadPage,readPhoto,mutateAssessment,assistAssessment,type AssessmentScope} from "../../domains/assessment/service";
@@ -36,7 +37,7 @@ export function assessmentHandler(deps:Deps){return async(request:Request,params
   const query=z.object({offset:z.coerce.number().int().min(0).max(1000000).default(0)}).strict().parse(Object.fromEntries(new URL(request.url).searchParams));
   // Validate body before creating a pool or decoding images.
   let body:unknown;
-  if(request.method!=="GET"&&!p.pageId){const raw=await request.text();if(Buffer.byteLength(raw)>400000)throw new AssessmentError("INVALID_INPUT",400);let json;try{json=JSON.parse(raw);}catch{throw new AssessmentError("INVALID_INPUT",400);}body=p.assessmentId?actionSchema.parse(json):assessmentInput.parse(json);}
+  if(request.method!=="GET"&&!p.pageId){const raw=await boundedText(request,2000000);let json;try{json=JSON.parse(raw);}catch{throw new AssessmentError("INVALID_INPUT",400);}body=p.assessmentId?actionSchema.parse(json):assessmentInput.parse(json);}
   let bytes:Buffer|undefined;
   if(p.pageId&&request.method==="PUT"){
    if(!p.assessmentId)throw new AssessmentError("INVALID_INPUT",400);
@@ -63,7 +64,7 @@ export function assessmentHandler(deps:Deps){return async(request:Request,params
   if(request.method==="GET")return reply({...await readAssessment(deps.pool(),auth.scope,p.assessmentId),className:auth.className,learners:auth.learners,capabilities:{photoUploads:deps.storageReady(),assistedMarking:deps.aiReady()}});
   if(request.method!=="POST")return reply({error:"METHOD_NOT_ALLOWED"},405);
   const action=actionSchema.parse(body);
-  if(action.action==="ASSIST"){
+  if(action.action==="ASSIST"||action.action==="READ_WORK"){
    if(!deps.aiReady())throw new AssessmentError("AI_NOT_CONFIGURED",503);
    if(!deps.storageReady())throw new AssessmentError("STORAGE_NOT_CONFIGURED",503);
    return reply(await assistAssessment(deps.pool(),auth.scope,p.assessmentId,action,deps.store(),deps.ai(),async()=>(await deps.authority(request,p)).scope));
@@ -71,7 +72,7 @@ export function assessmentHandler(deps:Deps){return async(request:Request,params
   return reply(await mutateAssessment(deps.pool(),auth.scope,p.assessmentId,action));
  }catch(e){
   if(e instanceof AssessmentError||e instanceof AttendanceError||e instanceof PlannerError)return reply({error:e.code},e.status);
-  if(e instanceof ZodError||e instanceof SyntaxError)return reply({error:"INVALID_INPUT"},400);
+  if(e instanceof ZodError||e instanceof SyntaxError||e instanceof RangeError)return reply({error:"INVALID_INPUT"},400);
   return reply({error:"ASSESSMENT_UNAVAILABLE"},503);
  }
 };}

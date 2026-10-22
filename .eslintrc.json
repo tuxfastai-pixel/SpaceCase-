@@ -1,4 +1,12 @@
 {
-  "extends": ["next/core-web-vitals", "next/typescript"],
-  "ignorePatterns": [".next/", "node_modules/"]
+  "extends": [
+    "next/core-web-vitals",
+    "next/typescript"
+  ],
+  "ignorePatterns": [
+    ".next/",
+    "node_modules/",
+    "services/psg-ai/.next/",
+    "**/next-env.d.ts"
+  ]
 }

@@ -32,7 +32,10 @@ test("assessment workflow keeps photos private, resumes uploads, invalidates sta
   await mutateAssessment(pool,s,id,{action:"CONFIRM_PAGES",submissionId:sub.id,revision:sub.revision});sub=await current();
   let calls=0;const runId=randomUUID();const proposal:Proposal={executionId:"test-run",modelRef:"test-model",policyVersion:"test-policy",items:[{questionId,marks:1,uncertain:false,feedback:"Draft only",evidencePageIds:[page]}],warnings:[]};
   const input={action:"ASSIST" as const,submissionId:sub.id,revision:sub.revision,requestId:runId,acknowledged:true as const};
-  const ai={async propose(){calls++;return proposal;}};
+  const ai={async read(){return {executionId:"reading-test",modelRef:"test-model",policyVersion:"test-policy",pages:[{pageId:page,transcription:"1 + 1 = 2",uncertain:false,warnings:[]}]};},async propose(){calls++;return proposal;}};
+  const primeReading=async()=>{let v=await current();await assistAssessment(pool,s,id,{action:"READ_WORK",submissionId:v.id,revision:v.revision,requestId:randomUUID(),acknowledged:true},store,ai,async()=>s);v=await current();await mutateAssessment(pool,s,id,{action:"SAVE_READING",submissionId:v.id,revision:v.revision,pages:[{pageId:page,transcription:"1 + 1 = 2",uncertain:false,reviewed:true}]});return current();};
+  await assert.rejects(assistAssessment(pool,s,id,input,store,ai,async()=>s),/READING_REVIEW_REQUIRED/);
+  sub=await primeReading();input.revision=sub.revision;
   assert.equal((await assistAssessment(pool,s,id,input,store,ai,async()=>s)).status,"COMPLETED");
   assert.equal((await assistAssessment(pool,s,id,input,store,ai,async()=>s)).status,"COMPLETED");assert.equal(calls,1);
   sub=await current();assert.equal(sub.currentResultId,null);assert.equal(sub.reviewScores,null);assert.equal(sub.proposal.items[0].feedback,"Draft only");
@@ -44,11 +47,12 @@ test("assessment workflow keeps photos private, resumes uploads, invalidates sta
   await assert.rejects(readPhoto(pool,{...s,learnerIds:[s.learnerIds[1]]},id,page,store),/PHOTO_UNAVAILABLE/);
   await mutateAssessment(pool,s,id,{action:"REOPEN",submissionId:sub.id,revision:sub.revision,reason:"Correcting a reviewed calculation"});sub=await current();assert.equal(sub.matchingConfirmed,false);assert.equal(sub.currentResultId,null);
   await mutateAssessment(pool,s,id,{action:"CONFIRM_PAGES",submissionId:sub.id,revision:sub.revision});sub=await current();
+  sub=await primeReading();
   let externalCalls=0;
-  await assert.rejects(assistAssessment(pool,s,id,{...input,revision:sub.revision,requestId:randomUUID()},store,{async propose(){externalCalls++;return proposal;}},async()=>{throw new AssessmentError("CLASS_ACCESS_REQUIRED");}),/CLASS_ACCESS_REQUIRED/);assert.equal(externalCalls,0);
+  await assert.rejects(assistAssessment(pool,s,id,{...input,revision:sub.revision,requestId:randomUUID()},store,{...ai,async propose(){externalCalls++;return proposal;}},async()=>{throw new AssessmentError("CLASS_ACCESS_REQUIRED");}),/CLASS_ACCESS_REQUIRED/);assert.equal(externalCalls,0);
   let checks=0;
-  await assert.rejects(assistAssessment(pool,s,id,{...input,revision:sub.revision,requestId:randomUUID()},store,{async propose(){externalCalls++;return proposal;}},async()=>{checks++;if(checks===2)throw new AssessmentError("CLASS_ACCESS_REQUIRED");return s;}),/CLASS_ACCESS_REQUIRED/);assert.equal(externalCalls,1);assert.equal((await current()).proposal,null);
-  const stale=await assistAssessment(pool,s,id,{...input,revision:sub.revision,requestId:randomUUID()},store,{async propose(){await mutateAssessment(pool,s,id,{action:"REMOVE_PAGE",pageId:page,revision:2});return proposal;}},async()=>s);assert.equal(stale.status,"STALE");sub=await current();assert.equal(sub.proposal,null);
+  await assert.rejects(assistAssessment(pool,s,id,{...input,revision:sub.revision,requestId:randomUUID()},store,{...ai,async propose(){externalCalls++;return proposal;}},async()=>{checks++;if(checks===2)throw new AssessmentError("CLASS_ACCESS_REQUIRED");return s;}),/CLASS_ACCESS_REQUIRED/);assert.equal(externalCalls,1);assert.equal((await current()).proposal,null);
+  const stale=await assistAssessment(pool,s,id,{...input,revision:sub.revision,requestId:randomUUID()},store,{...ai,async propose(){await mutateAssessment(pool,s,id,{action:"REMOVE_PAGE",pageId:page,revision:2});return proposal;}},async()=>s);assert.equal(stale.status,"STALE");sub=await current();assert.equal(sub.proposal,null);
   const results=await pool.query("SELECT count(*)::int AS n FROM assessment.results WHERE submission_id=$1",[sub.id]);assert.equal(results.rows[0].n,1);
   const events=await pool.query("SELECT metadata FROM audit.product_audit_events WHERE school_id=$1 AND action LIKE 'assessment.%'",[s.school]);assert.equal(JSON.stringify(events.rows).includes("Draft only"),false);assert.equal(JSON.stringify(events.rows).includes("Correcting a reviewed"),false);
  }finally{

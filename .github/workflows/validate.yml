@@ -88,6 +88,10 @@ jobs:
         run: |
           test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT count(*) FROM audit.schema_migrations WHERE migration_name='0012_assessment_workflow.sql'")" = "1"
           test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT has_table_privilege('spacecase_runtime','assessment.results','INSERT') AND NOT has_table_privilege('spacecase_runtime','assessment.results','UPDATE') AND NOT has_table_privilege('spacecase_runtime','assessment.results','DELETE') AND NOT has_table_privilege('spacecase_runtime','assessment.result_events','UPDATE') AND NOT has_schema_privilege('spacecase_runtime','assessment','CREATE')")" = "t"
+      - name: Verify vision reading migration state
+        run: |
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT count(*) FROM audit.schema_migrations WHERE migration_name='0013_assessment_vision_reading.sql'")" = "1"
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT has_column_privilege('spacecase_runtime','assessment.submissions','reading_review','UPDATE') AND has_column_privilege('spacecase_runtime','assessment.ai_runs','execution_claimed_at','UPDATE') AND NOT has_table_privilege('spacecase_runtime','assessment.results','UPDATE')")" = "t"
       - name: Typecheck
         run: npm run typecheck
 
@@ -97,5 +101,9 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: PSG AI service checks
+        run: npm run typecheck --workspace=psg-ai && npm run test --workspace=psg-ai
       - name: Production build
         run: npm run build
+      - name: PSG AI service build
+        run: npm run build --workspace=psg-ai
