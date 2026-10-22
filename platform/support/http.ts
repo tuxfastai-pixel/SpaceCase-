@@ -7,6 +7,8 @@ import {supportAuthority,peosRead,directorySchema,schoolSchema} from "./authorit
 import {assertFounder,assertMember,SupportError,id,ticketInput,replyInput,updateInput,recommendationInput,decisionInput,listQuery,type SupportContext} from "../../domains/support/contracts";
 import {createTicket,listTickets,getTicket,replyTicket,updateTicket,prepareRecommendation,decideRecommendation} from "../../domains/support/service";
 import {directoryHealth,schoolOperations} from "../../domains/support/operations";
+import {handoffInput} from "../../packages/engineering-control/contracts";
+import {prepareEngineeringHandoff} from "../../domains/support/engineering";
 import {founderInsights} from "../../domains/support/insights";
 type Deps={context:(request:Request)=>Promise<SupportContext>;pool:()=>Pool;peos:typeof peosRead};
 const defaults:Deps={context:supportAuthority,pool:getDatabasePool,peos:peosRead};
@@ -31,6 +33,7 @@ export function supportHandler(deps:Deps=defaults){return (request:Request,ticke
 });}
 const founderQuery=z.object({view:z.enum(["directory","school","tickets","ticket","insights"]).default("tickets"),q:z.string().trim().max(100).default(""),offset:z.coerce.number().int().min(0).max(1000000).default(0),schoolId:id.optional(),ticketId:id.optional(),status:z.enum(["SUBMITTED","UNDER_REVIEW","NEEDS_INFORMATION","PLANNED","RESOLVED","CLOSED"]).optional()}).strict();
 const actionSchema=z.discriminatedUnion("action",[
+ handoffInput.extend({action:z.literal("ENGINEERING_HANDOFF")}),
  updateInput.extend({action:z.literal("UPDATE_TICKET")}),
  recommendationInput.extend({action:z.literal("RECOMMENDATION")}),
  decisionInput.extend({action:z.literal("DECISION")}),
@@ -55,6 +58,7 @@ export function founderHandler(deps:Deps=defaults){return (request:Request)=>han
  }
  if(request.method==="POST"){
  const input=actionSchema.parse(await body(request));
+ if(input.action==="ENGINEERING_HANDOFF"){return prepareEngineeringHandoff(deps.pool(),c,handoffInput.parse(Object.fromEntries(Object.entries(input).filter(([k])=>k!=="action"))));}
  if(input.action==="UPDATE_TICKET")return updateTicket(deps.pool(),c,updateInput.parse(Object.fromEntries(Object.entries(input).filter(([k])=>k!=="action"))));
  if(input.action==="RECOMMENDATION")return prepareRecommendation(deps.pool(),c,recommendationInput.parse(Object.fromEntries(Object.entries(input).filter(([k])=>k!=="action"))));
  return decideRecommendation(deps.pool(),c,decisionInput.parse(Object.fromEntries(Object.entries(input).filter(([k])=>k!=="action"))));
