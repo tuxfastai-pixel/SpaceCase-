@@ -7,7 +7,7 @@ const actorSchema=z.string().trim().min(1).max(200);
 const submissionSchema=z.object({requestId:z.string().uuid(),request:runnerRequestSchema}).strict();
 export type LedgerAuthority=PreflightContext & {personId:string};
 export class LedgerError extends Error{}
-const columns='id,project,source_reference AS "sourceReference",source_revision AS "sourceRevision",handoff_digest AS "handoffDigest",base_commit AS "baseCommit",state,revision,created_at AS "createdAt",cancelled_at AS "cancelledAt"';
+const columns='id,project,source_reference AS "sourceReference",source_revision AS "sourceRevision",handoff_digest AS "handoffDigest",base_commit AS "baseCommit",state,revision,created_at AS "createdAt",cancelled_at AS "cancelledAt",brief_expires_at AS "briefExpiresAt",(handoff IS NOT NULL AND brief_expires_at>clock_timestamp()) AS "briefAvailable"';
 async function transaction<T>(pool:Pool,work:(db:PoolClient)=>Promise<T>){
  const db=await pool.connect();
  try{await db.query('BEGIN');await db.query("SET LOCAL statement_timeout='5000ms'");await db.query("SET LOCAL lock_timeout='3000ms'");const value=await work(db);await db.query('COMMIT');return value;}

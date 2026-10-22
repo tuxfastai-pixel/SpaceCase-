@@ -28,3 +28,10 @@ export async function saveEngineeringTask(pool:Pool,c:SupportContext,input:z.inf
   return result;
  }catch(error){if(error instanceof SupportError)throw error;throw new SupportError('ENGINEERING_LEDGER_UNAVAILABLE',503);}
 }
+
+export function engineeringStorageStatus(env:Readonly<Record<string,string|undefined>>=process.env){
+ try{const url=new URL(env.PSG_ENGINEERING_BASE_URL??'');
+  const available=env.VERCEL_ENV==='production'&&env.SPACECASE_ENGINEERING_LEDGER_ENABLED==='true'&&url.protocol==='https:'&&url.pathname==='/'&&!url.username&&!url.password&&!url.search&&!url.hash&&Boolean(engineeringSigningKey(env.SPACECASE_ENGINEERING_SIGNING_PRIVATE_KEY??''));
+  return {available,retentionDays:7 as const,baseCommit:/^[a-f0-9]{40}$/.test(env.VERCEL_GIT_COMMIT_SHA??'')?env.VERCEL_GIT_COMMIT_SHA:undefined};
+ }catch{return {available:false,retentionDays:7 as const};}
+}
