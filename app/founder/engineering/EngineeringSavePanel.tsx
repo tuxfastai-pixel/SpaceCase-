@@ -5,13 +5,13 @@ import type {SavedEngineeringTask} from '../../../packages/engineering-control/r
 import {supportApi} from '../../support/shared';
 import {newSaveAttempt,confirmSavedTask} from './saveAttempt';
 import s from '../../support/support.module.css';
-export default function EngineeringSavePanel({ticketId,packet,onLock}:{ticketId:string;packet:{handoff:EngineeringHandoff;digest:string;storage?:{available:boolean;retentionDays:7;baseCommit?:string}};onLock:(locked:boolean)=>void}){
+export default function EngineeringSavePanel({ticketId,packet,onLock,onSaved}:{ticketId:string;packet:{handoff:EngineeringHandoff;digest:string;storage?:{available:boolean;retentionDays:7;baseCommit?:string}};onLock:(locked:boolean)=>void;onSaved?:()=>void}){
  const [commit,setCommit]=useState(packet.storage?.baseCommit??''),[consent,setConsent]=useState(false),[attempt,setAttempt]=useState<ReturnType<typeof newSaveAttempt>|null>(null),[busy,setBusy]=useState(false),[saved,setSaved]=useState<SavedEngineeringTask|null>(null),[error,setError]=useState('');
  async function save(){
   if(!consent||busy||saved)return;setError('');
   let next;try{next=attempt??newSaveAttempt(ticketId,packet,commit.trim(),crypto.randomUUID());}catch(e){setError(e instanceof Error?e.message:'Check the commit reference.');return;}
   setAttempt(next);setBusy(true);onLock(true);
-  try{const result=confirmSavedTask(await supportApi('/api/v1/founder','POST',next),packet,next.baseCommit);setSaved(result);onLock(false);}
+  try{const result=confirmSavedTask(await supportApi('/api/v1/founder','POST',next),packet,next.baseCommit);setSaved(result);onLock(false);onSaved?.();}
   catch(e){setError(`${e instanceof Error?e.message:'Save could not be confirmed.'} The task may already exist. Retry this same request; its reference and content are preserved while this page stays open.`);}
   finally{setBusy(false);}
  }

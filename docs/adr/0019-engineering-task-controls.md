@@ -1,0 +1,7 @@
+# ADR 0019 — Source-bound engineering task controls
+
+Founder task lists expose metadata only, selected by the opaque ticket reference resolved from the product database. Separate thirty-second Ed25519 control attestations bind actor, purpose, source and pagination or task/revision. They cannot be exchanged for save attestations. Product endpoints recheck PEOS founder authority and same-origin requests; PSG rejects previews and unsigned requests before opening storage.
+
+Closed tickets retain list/cancel access so closing a source cannot strand blocked work. Cancellation locks the matching task and source, checks its revision, and writes one cancellation audit event atomically. Identical retries may acknowledge the immediately following cancelled revision; stale or cross-source requests fail. Existing direct ledger callers retain strict revision semantics. Listings select no saved brief content, return at most 25 records, and use bounded offset pagination with a stable creation-time/ID ordering. New tasks inserted while browsing may shift pages; refresh starts from the latest snapshot.
+
+No runner, model, repository write or release permission is added. No new database grants, migrations, credentials or paid services are required. Seven-day brief expiry remains independent of cancellation. The founder UI requires explicit confirmation before permanent cancellation, refreshes explicitly, allows cancellation after source closure, and refreshes state after an uncertain response rather than claiming success.

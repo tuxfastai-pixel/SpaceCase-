@@ -41,15 +41,23 @@ export async function saveBlockedTask(pool:Pool,authority:LedgerAuthority,input:
  });
 }
 
-export async function cancelBlockedTask(pool:Pool,authority:LedgerAuthority,input:{taskId:string;revision:number}){
+export async function cancelBlockedTask(pool:Pool,authority:LedgerAuthority,input:{taskId:string;revision:number},options?:{sourceReference:string;idempotent:true}){
  const actor=founder(authority),parsed=z.object({taskId:z.string().uuid(),revision:z.number().int().nonnegative()}).strict().parse(input);
+ const scope=options?z.string().regex(/^SC-[A-F0-9]{12}$/).parse(options.sourceReference):null;
  return transaction(pool,async db=>{
-  const selected=await db.query(`SELECT ${columns} FROM engineering.tasks WHERE id=$1 FOR UPDATE`,[parsed.taskId]);
+  const selected=await db.query(`SELECT ${columns} FROM engineering.tasks WHERE id=$1 AND ($2::text IS NULL OR source_reference=$2) FOR UPDATE`,[parsed.taskId,scope]);
   const task=selected.rows[0];if(!task)throw new LedgerError('TASK_UNAVAILABLE');
+  if(options?.idempotent&&task.state==='CANCELLED'&&task.revision===parsed.revision+1)return {task,executionStarted:false as const};
   if(task.revision!==parsed.revision)throw new LedgerError('TASK_CHANGED');
   if(task.state!=='BLOCKED')throw new LedgerError('TASK_NOT_BLOCKED');
   const result=await db.query(`UPDATE engineering.tasks SET state='CANCELLED',revision=revision+1,cancelled_at=clock_timestamp() WHERE id=$1 RETURNING ${columns}`,[task.id]);
   await db.query("INSERT INTO engineering.events(task_id,actor_id,kind,revision) VALUES($1,$2,'CANCELLED',$3)",[task.id,actor,result.rows[0].revision]);
   return {task:result.rows[0],executionStarted:false as const};
  });
+}
+
+export async function listSourceTasks(pool:Pool,authority:LedgerAuthority,input:{sourceReference:string;offset:number}){
+ founder(authority);const parsed=z.object({sourceReference:z.string().regex(/^SC-[A-F0-9]{12}$/),offset:z.number().int().min(0).max(10000)}).strict().parse(input);
+ const result=await pool.query(`SELECT ${columns} FROM engineering.tasks WHERE project='SPACECASE' AND source_reference=$1 ORDER BY created_at DESC,id DESC LIMIT 26 OFFSET $2`,[parsed.sourceReference,parsed.offset]);
+ return {tasks:result.rows.slice(0,25),nextOffset:result.rows.length>25&&parsed.offset+25<=10000?parsed.offset+25:null,executionStarted:false as const};
 }
