@@ -4,7 +4,7 @@ import {taskListSchema,type EngineeringTaskList} from '../../../packages/enginee
 import {savedTaskSchema} from '../../../packages/engineering-control/result';
 import {supportApi} from '../../support/shared';import s from '../../support/support.module.css';
 export default function EngineeringTasksPanel({ticketId,sourceRevision,refreshKey}:{ticketId:string;sourceRevision:number;refreshKey:number}){
- const [data,setData]=useState<EngineeringTaskList|null>(null),[offset,setOffset]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
+ const [data,setData]=useState<EngineeringTaskList|null>(null),[offset,setOffset]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[pendingCancel,setPendingCancel]=useState<string|null>(null);
  const load=useCallback(async(nextOffset:number,signal?:AbortSignal)=>{
   setBusy(true);setError('');
   try{const result=taskListSchema.parse(await supportApi('/api/v1/founder','POST',{action:'LIST_ENGINEERING_TASKS',ticketId,offset:nextOffset},signal));if(!signal?.aborted){setData(result);setOffset(nextOffset);}}
@@ -13,7 +13,7 @@ export default function EngineeringTasksPanel({ticketId,sourceRevision,refreshKe
  },[ticketId]);
  useEffect(()=>{const controller=new AbortController();void load(0,controller.signal);return()=>controller.abort();},[load,refreshKey]);
  async function cancel(task:EngineeringTaskList['tasks'][number]){
-  setBusy(true);setError('');setNotice('');
+  setBusy(true);setError('');setNotice('');setPendingCancel(null);
   try{const result=savedTaskSchema.parse(await supportApi('/api/v1/founder','POST',{action:'CANCEL_ENGINEERING_TASK',ticketId,taskId:task.id,revision:task.revision}));
    if(result.task.id!==task.id||result.task.sourceReference!==task.sourceReference||result.task.state!=='CANCELLED'||result.task.revision!==task.revision+1)throw Error('Cancellation could not be confirmed.');
    setNotice('Task cancelled. Its audit history is retained and no agent was started.');await load(offset);
@@ -26,7 +26,7 @@ export default function EngineeringTasksPanel({ticketId,sourceRevision,refreshKe
  {data?.tasks.map(task=><article className={s.card} key={task.id}><p style={{overflowWrap:'anywhere'}}><strong>{task.state==='CANCELLED'?'Cancelled':'Blocked — no execution'}</strong> · {task.id}</p>
  <p>Ticket revision {task.sourceRevision}{task.sourceRevision!==sourceRevision?' · older ticket revision':''} · task revision {task.revision}</p>
  <p style={{overflowWrap:'anywhere'}}>Base commit: {task.baseCommit}</p><p>{task.briefAvailable?`Brief expires ${new Date(task.briefExpiresAt).toLocaleString()}.`:'Brief expired or removed. The task reference and audit history remain.'}</p>
- {task.state==='BLOCKED'?<button type='button' className={s.secondary} disabled={busy} onClick={()=>void cancel(task)}>Cancel task</button>:null}</article>)}
+ {task.state==='BLOCKED'?(pendingCancel===task.id?<div role='group' aria-label='Confirm task cancellation'><p>Cancel this task permanently? It cannot be restored, and saving the same brief and base commit will return this cancelled task.</p><div className={s.actions}><button type='button' className={s.secondary} disabled={busy} onClick={()=>void cancel(task)}>Confirm cancellation</button><button type='button' className={s.secondary} disabled={busy} onClick={()=>setPendingCancel(null)}>Keep task</button></div></div>:<button type='button' className={s.secondary} disabled={busy} onClick={()=>setPendingCancel(task.id)}>Cancel task</button>):null}</article>)}
  {data?<div className={s.actions}><button type='button' className={s.secondary} disabled={busy||offset===0} onClick={()=>void load(Math.max(0,offset-25))}>Newer tasks</button><button type='button' className={s.secondary} disabled={busy||data.nextOffset===null} onClick={()=>{if(data.nextOffset!==null)void load(data.nextOffset);}}>Older tasks</button></div>:null}
  </section>;
 }
