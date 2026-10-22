@@ -10,6 +10,9 @@ export async function storageReady(pool:Pool){
     AND to_regclass('school_ops.school_workspaces') IS NOT NULL
     AND to_regclass('school_ops.class_workspaces') IS NOT NULL AND to_regclass('audit.product_audit_events') IS NOT NULL
     AND to_regclass('learning.learner_profiles') IS NOT NULL
+    AND to_regclass('assessment.assessments') IS NOT NULL AND to_regclass('assessment.submissions') IS NOT NULL
+    AND to_regclass('assessment.pages') IS NOT NULL AND to_regclass('assessment.results') IS NOT NULL
+    AND to_regclass('assessment.result_events') IS NOT NULL AND to_regclass('assessment.ai_runs') IS NOT NULL
     AND to_regclass('learning.weekly_lesson_plans') IS NOT NULL
     AND to_regclass('learning.attendance_registers') IS NOT NULL AND to_regclass('learning.attendance_entries') IS NOT NULL
     AND to_regclass('support.ticket_work') IS NOT NULL AND to_regclass('support.work_events') IS NOT NULL AND to_regclass('support.work_requests') IS NOT NULL
@@ -18,6 +21,7 @@ export async function storageReady(pool:Pool){
   if(!result.rows[0]?.ready)throw new Error("STORAGE_SCHEMA_REQUIRED");
   // Prove runtime-role access rather than accepting a connection or table name alone.
   await pool.query("SELECT peos_school_id FROM school_ops.school_workspaces LIMIT 0");
+  for(const table of ["assessments","submissions","pages","results","result_events","ai_runs"])await pool.query(`SELECT id FROM assessment.${table} LIMIT 0`);
   await pool.query("SELECT teacher_person_id FROM learning.weekly_lesson_plans LIMIT 0");
   await pool.query("SELECT id FROM learning.attendance_registers LIMIT 0");
   await pool.query("SELECT register_id FROM learning.attendance_entries LIMIT 0");

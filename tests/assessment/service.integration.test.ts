@@ -1,0 +1,53 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {randomUUID,createHash} from "node:crypto";
+import {Pool} from "pg";
+import {configureWorkspace} from "../../domains/workspace/service";
+import {createAssessment,readAssessment,uploadPage,readPhoto,mutateAssessment,assistAssessment,type AssessmentScope} from "../../domains/assessment/service";
+import {type Proposal} from "../../domains/assessment/contracts";
+import type {PhotoStore} from "../../platform/assessment/storage";
+test("assessment workflow keeps photos private, resumes uploads, invalidates stale work and records teacher approval",{skip:!process.env.CI||!process.env.DATABASE_URL},async()=>{
+ const pool=new Pool({connectionString:process.env.DATABASE_URL});const s:AssessmentScope={actor:randomUUID(),school:randomUUID(),classId:randomUUID(),learnerIds:[randomUUID(),randomUUID()]};const id=randomUUID(),page=randomUUID(),questionId=randomUUID();
+ const definition={id,title:"CI assessment",subject:"Maths",instructions:"Test memorandum",rubric:[{id:questionId,label:"1",prompt:"1+1",expectedAnswer:"2",maxMarks:2}]};
+ const bytes=Buffer.from("synthetic test photo"),hash=createHash("sha256").update(bytes).digest("hex");const objects=new Map<string,Buffer>();let fail=true;
+ const store:PhotoStore={async put(k,b){if(fail)throw new Error("simulated interruption");objects.set(k,b);},async get(k){const b=objects.get(k);if(!b)throw new Error("missing test photo");return b;}};
+ const detail=()=>readAssessment(pool,s,id);const current=async()=> (await detail()).submissions[0];
+ try{
+  await configureWorkspace(pool,s.actor,s.school,[s.classId],{timezone:"Africa/Johannesburg",academicYearLabel:"2026"});
+  assert.equal((await createAssessment(pool,s,definition)).id,id);assert.equal((await createAssessment(pool,s,{...definition,rubric:[{maxMarks:2,expectedAnswer:"2",prompt:"1+1",label:"1",id:questionId}]})).id,id);
+  await assert.rejects(readAssessment(pool,{...s,actor:randomUUID()},id),/ASSESSMENT_UNAVAILABLE/);
+  await assert.rejects(uploadPage(pool,s,id,page,{bytes,hash},store),/OPEN_ASSESSMENT_REQUIRED/);
+  await mutateAssessment(pool,s,id,{action:"EDIT",revision:1,definition:{...definition,title:"Edited CI assessment"}});
+  await assert.rejects(mutateAssessment(pool,s,id,{action:"OPEN",revision:1}),/WORK_CHANGED/);
+  await mutateAssessment(pool,s,id,{action:"OPEN",revision:2});
+  await assert.rejects(mutateAssessment(pool,s,id,{action:"EDIT",revision:3,definition}),/RUBRIC_LOCKED/);
+  await assert.rejects(uploadPage(pool,s,id,page,{bytes,hash},store),/simulated interruption/);assert.equal((await detail()).pages.length,0);
+  fail=false;await uploadPage(pool,s,id,page,{bytes,hash},store);assert.equal((await detail()).pages.length,1);
+  assert.equal((await uploadPage(pool,s,id,randomUUID(),{bytes,hash},store)).id,page);
+  assert.deepEqual(await readPhoto(pool,s,id,page,store),bytes);
+  await mutateAssessment(pool,s,id,{action:"MATCH",pageId:page,revision:1,learnerId:s.learnerIds[0],pageNumber:1});
+  await assert.rejects(mutateAssessment(pool,s,id,{action:"MATCH",pageId:page,revision:1,learnerId:s.learnerIds[1],pageNumber:1}),/WORK_CHANGED/);
+  let sub=await current();const scores=[{questionId,marks:1,feedback:"Review sum",reviewed:true as const}];
+  await assert.rejects(mutateAssessment(pool,s,id,{action:"SAVE_REVIEW",submissionId:sub.id,revision:sub.revision,scores}),/CONFIRM_PAGES_REQUIRED/);
+  await mutateAssessment(pool,s,id,{action:"CONFIRM_PAGES",submissionId:sub.id,revision:sub.revision});sub=await current();
+  let calls=0;const runId=randomUUID();const proposal:Proposal={executionId:"test-run",modelRef:"test-model",policyVersion:"test-policy",items:[{questionId,marks:1,uncertain:false,feedback:"Draft only",evidencePageIds:[page]}],warnings:[]};
+  const input={action:"ASSIST" as const,submissionId:sub.id,revision:sub.revision,requestId:runId,acknowledged:true as const};
+  const ai={async propose(){calls++;return proposal;}};
+  assert.equal((await assistAssessment(pool,s,id,input,store,ai,async()=>s)).status,"COMPLETED");
+  assert.equal((await assistAssessment(pool,s,id,input,store,ai,async()=>s)).status,"COMPLETED");assert.equal(calls,1);
+  sub=await current();assert.equal(sub.currentResultId,null);assert.equal(sub.reviewScores,null);assert.equal(sub.proposal.items[0].feedback,"Draft only");
+  await assert.rejects(mutateAssessment(pool,s,id,{action:"APPROVE",submissionId:sub.id,revision:sub.revision,acknowledged:true}),/REVIEW_REQUIRED/);
+  const race=await Promise.allSettled([mutateAssessment(pool,s,id,{action:"SAVE_REVIEW",submissionId:sub.id,revision:sub.revision,scores}),mutateAssessment(pool,s,id,{action:"SAVE_REVIEW",submissionId:sub.id,revision:sub.revision,scores})]);assert.equal(race.filter(r=>r.status==="fulfilled").length,1);
+  sub=await current();const approve={action:"APPROVE" as const,submissionId:sub.id,revision:sub.revision,acknowledged:true as const};await mutateAssessment(pool,s,id,approve);await mutateAssessment(pool,s,id,approve);sub=await current();assert.equal(Number(sub.total),1);
+  await assert.rejects(mutateAssessment(pool,s,id,{action:"REMOVE_PAGE",pageId:page,revision:2}),/RESULT_APPROVED/);
+  const out=await readAssessment(pool,{...s,learnerIds:[s.learnerIds[1]]},id);assert.equal(out.pages.length,0);assert.equal(out.submissions.length,0);
+  await assert.rejects(readPhoto(pool,{...s,learnerIds:[s.learnerIds[1]]},id,page,store),/PHOTO_UNAVAILABLE/);
+  await mutateAssessment(pool,s,id,{action:"REOPEN",submissionId:sub.id,revision:sub.revision,reason:"Correcting a reviewed calculation"});sub=await current();assert.equal(sub.matchingConfirmed,false);assert.equal(sub.currentResultId,null);
+  await mutateAssessment(pool,s,id,{action:"CONFIRM_PAGES",submissionId:sub.id,revision:sub.revision});sub=await current();
+  const stale=await assistAssessment(pool,s,id,{...input,revision:sub.revision,requestId:randomUUID()},store,{async propose(){await mutateAssessment(pool,s,id,{action:"REMOVE_PAGE",pageId:page,revision:2});return proposal;}},async()=>s);assert.equal(stale.status,"STALE");sub=await current();assert.equal(sub.proposal,null);
+  const results=await pool.query("SELECT count(*)::int AS n FROM assessment.results WHERE submission_id=$1",[sub.id]);assert.equal(results.rows[0].n,1);
+  const events=await pool.query("SELECT metadata FROM audit.product_audit_events WHERE school_id=$1 AND action LIKE 'assessment.%'",[s.school]);assert.equal(JSON.stringify(events.rows).includes("Draft only"),false);assert.equal(JSON.stringify(events.rows).includes("Correcting a reviewed"),false);
+ }finally{
+  await pool.query("UPDATE assessment.submissions SET current_result_id=NULL WHERE assessment_id=$1",[id]);await pool.query("DELETE FROM assessment.result_events WHERE submission_id IN (SELECT id FROM assessment.submissions WHERE assessment_id=$1)",[id]);await pool.query("DELETE FROM assessment.results WHERE submission_id IN (SELECT id FROM assessment.submissions WHERE assessment_id=$1)",[id]);await pool.query("DELETE FROM assessment.ai_runs WHERE submission_id IN (SELECT id FROM assessment.submissions WHERE assessment_id=$1)",[id]);await pool.query("DELETE FROM assessment.pages WHERE assessment_id=$1",[id]);await pool.query("DELETE FROM assessment.submissions WHERE assessment_id=$1",[id]);await pool.query("DELETE FROM assessment.assessments WHERE id=$1",[id]);await pool.query("DELETE FROM school_ops.class_workspaces WHERE peos_school_id=$1",[s.school]);await pool.query("DELETE FROM school_ops.school_workspaces WHERE peos_school_id=$1",[s.school]);await pool.query("DELETE FROM audit.product_audit_events WHERE school_id=$1",[s.school]);await pool.end();
+ }
+});

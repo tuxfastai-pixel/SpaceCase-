@@ -19,10 +19,12 @@
   "dependencies": {
     "@supabase/ssr": "0.7.0",
     "@supabase/supabase-js": "2.57.4",
+    "@vercel/blob": "^2.8.2",
     "next": "^15.0.0",
     "pg": "^8.13.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "sharp": "^0.35.5",
     "zod": "^3.23.0"
   },
   "devDependencies": {
