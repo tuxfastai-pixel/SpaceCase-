@@ -22,6 +22,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <form action="/auth/google" method="post">
         <button className={styles.button} type="submit">Continue with Google</button>
       </form>
+      <form action="/auth/google?choose_account=1" method="post">
+        <button className={styles.switchAccount} type="submit">Use another Google account</button>
+      </form>
+      <p className={styles.note}>Choose the Google account you want to use. Signing out of SpaceCase does not sign you out of Google on this device.</p>
       <p className={styles.note}>New here? Your account is created when you continue. No separate password needed.</p>
       {error ? <p role="alert">{Object.hasOwn(messages, error) ? messages[error] : messages.signin}</p> : null}
     </section>

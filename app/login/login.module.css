@@ -7,4 +7,6 @@
 .button { margin-top: 20px; width: 100%; min-height: 50px; border: 1px solid #b5c9bf; border-radius: 10px; background: white; color: #183b35; font: inherit; font-weight: 600; cursor: pointer; }
 .button:hover { background: #eef5f1; }
 .button:focus-visible { outline: 3px solid #287d68; outline-offset: 4px; }
+.switchAccount { width: 100%; min-height: 44px; margin-top: 8px; border: 0; background: transparent; color: #183b35; font: inherit; text-decoration: underline; cursor: pointer; }
+.switchAccount:focus-visible { outline: 3px solid #287d68; outline-offset: 4px; border-radius: 6px; }
 .card .note { margin-top: 20px; color: #536b63; font-size: 13px; }
