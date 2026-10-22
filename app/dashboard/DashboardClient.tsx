@@ -173,7 +173,7 @@ export default function DashboardClient() {
               <div className={styles.cardMark} aria-hidden="true">{item.title.slice(0, 1)}</div>
               <h3>{item.title}</h3>
               <p>{item.description}</p>
-              <span className={styles.cardStatus}>{item.title === "Teaching" ? "Roster, attendance and weekly planning" : "More tools coming"}</span>
+              <span className={styles.cardStatus}>{item.title === "Teaching" ? "Roster, attendance, planning and assessments" : "More tools coming"}</span>
             </article>
           ))}
         </div>
@@ -200,6 +200,7 @@ export default function DashboardClient() {
                 <a href={`/classes/${context.schoolId}/${item.classId}`}>View class roster</a>
                 {item.workspaceConfigured&&context.schoolWorkspace.configured?<a href={`/classes/${context.schoolId}/${item.classId}/attendance`}>Take attendance</a>:null}
                 {item.workspaceConfigured&&context.schoolWorkspace.configured?<a href={`/classes/${context.schoolId}/${item.classId}/planner`}>Plan lessons</a>:null}
+                {item.workspaceConfigured&&context.schoolWorkspace.configured?<a href={`/classes/${context.schoolId}/${item.classId}/assessments`}>Assessments & marking</a>:null}
               </article>
             ))}
           </div>
