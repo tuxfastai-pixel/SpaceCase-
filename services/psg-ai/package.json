@@ -8,7 +8,7 @@
   "scripts": {
     "build": "next build",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test tests/*.test.ts",
+    "test": "node --import tsx --test --test-concurrency=1 tests/*.test.ts",
     "db:migrate": "node --import tsx db/migrate.ts"
   },
   "dependencies": {
