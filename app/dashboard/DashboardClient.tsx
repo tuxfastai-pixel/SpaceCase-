@@ -4,25 +4,9 @@ import { useEffect, useState } from "react";
 
 import styles from "./dashboard.module.css";
 
-type SchoolContext = {
-  teacherPersonId: string;
-  schoolId: string;
-  roleIds: string[];
-  setupStatus?: "CLASS_ASSIGNMENT_REQUIRED" | "CLASSROOM_SETUP_REQUIRED";
-  schoolWorkspace: {
-    configured: boolean | null;
-    timezone?: string;
-    academicYearLabel?: string;
-    settings: Record<string, unknown>;
-  };
-  classes: Array<{
-    classId: string;
-    name?:string;
-    academicYear?:number|null;
-    workspaceConfigured: boolean;
-    localSettings: Record<string, unknown>;
-  }>;
-};
+import ClassTools from "./ClassTools";
+import DayOverview from "./DayOverview";
+import {schoolContextSchema,orderedClasses,type SchoolContext} from "./workspaceModel";
 
 type DashboardState =
   | { status: "loading" }
@@ -31,31 +15,13 @@ type DashboardState =
   | { status: "onboarding" }
   | { status: "unavailable" };
 
-const capabilityGroups = [
-  {
-    title: "Teaching",
-    description: "Classes, lesson planning, assessments and homework.",
-  },
-  {
-    title: "Learner support",
-    description: "Authorized school learning profiles and bounded interventions.",
-  },
-  {
-    title: "Communication",
-    description: "Teacher-reviewed parent communication and school updates.",
-  },
-  {
-    title: "STA",
-    description: "SpaceCase Teacher Assistant — governed AI support for teacher workflows.",
-  },
-];
-
 export default function DashboardClient() {
   const [state, setState] = useState<DashboardState>({ status: "loading" });
 
   useEffect(() => {
     const controller = new AbortController();
 
+    const timeout=setTimeout(()=>controller.abort(),20000);
     async function load() {
       try {
         const response = await fetch("/api/v1/school/context", {
@@ -79,25 +45,27 @@ export default function DashboardClient() {
           return;
         }
 
-        const body = (await response.json()) as { schoolContext?: SchoolContext };
-        if (!body.schoolContext) {
+        const body = await response.json();
+        const parsed=schoolContextSchema.safeParse(body.schoolContext);
+        if (!parsed.success) {
           setState({ status: "unavailable" });
           return;
         }
 
-        setState({ status: "ready", context: body.schoolContext });
-      } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") return;
+        setState({ status: "ready", context: parsed.data });
+      } catch {
+        if (controller.signal.aborted && stopped) return;
         setState({ status: "unavailable" });
-      }
+      } finally {clearTimeout(timeout);}
     }
 
+    let stopped=false;
     void load();
-    return () => controller.abort();
+    return () => {stopped=true;clearTimeout(timeout);controller.abort();};
   }, []);
 
   if (state.status === "loading") {
-    return <DashboardShell><StatusPanel title="Loading teacher context" body="Checking your current PEOS school and class authority…" /></DashboardShell>;
+    return <DashboardShell><StatusPanel title="Loading teacher context" body="Checking your school and current class access…" /></DashboardShell>;
   }
 
   if (state.status === "unauthenticated") {
@@ -133,83 +101,28 @@ export default function DashboardClient() {
   if (context.setupStatus === "CLASS_ASSIGNMENT_REQUIRED") {
     return <DashboardShell><StatusPanel title="You’ve joined your school" body="Your teacher account is connected. Your school administrator needs to assign your classes before your teaching workspace is ready. You don’t need to accept the invitation again." /><p><button type="button" onClick={() => window.location.reload()}>Refresh workspace</button></p></DashboardShell>;
   }
-  if(context.setupStatus === "CLASSROOM_SETUP_REQUIRED") {
-    return <DashboardShell><StatusPanel title="Your classes are assigned" body="Your class access is confirmed. Classroom tools and learner records are still being set up by your school."/><section className={styles.section}><h2>My classes</h2><div className={styles.classList}>{context.classes.map(c=><article className={styles.classRow} key={c.classId}><strong>{c.name??"Assigned class"}</strong><span>{c.academicYear??"Year not set"}</span><a href={`/classes/${context.schoolId}/${c.classId}`}>View class roster</a></article>)}</div><p><button type="button" onClick={()=>window.location.reload()}>Refresh workspace</button></p></section></DashboardShell>;
-  }
-  return (
-    <DashboardShell>
-      <section className={styles.hero} aria-labelledby="dashboard-heading">
-        <div>
-          <p className={styles.eyebrow}>Teacher workspace</p>
-          <h1 id="dashboard-heading">SpaceCase Teacher OS</h1>
-          <p className={styles.lead}>
-            Your classes and daily teaching tools, together in one place.
-          </p>
-        </div>
-        <div className={styles.authorityBadge}>
-          <span>Your assigned classes</span>
-          <strong>{context.classes.length} class{context.classes.length === 1 ? "" : "es"}</strong>
-        </div>
-      </section>
+  return <WorkspaceHome context={context}/>;
+}
 
-      <section className={styles.summaryGrid} aria-label="Current workspace summary">
-        <SummaryCard label="School workspace" value={context.schoolWorkspace.configured ? "Configured" : "Not configured"} />
-        <SummaryCard label="Assigned classes" value={String(context.classes.length)} />
-        <SummaryCard label="Current roles" value={String(context.roleIds.length)} />
-        <SummaryCard label="Academic year" value={context.schoolWorkspace.academicYearLabel ?? "Not set"} />
-      </section>
-
-      <section className={styles.section} aria-labelledby="work-heading">
-        <div className={styles.sectionHeader}>
-          <div>
-            <p className={styles.eyebrow}>Your work</p>
-            <h2 id="work-heading">Teacher tools</h2>
-          </div>
-          <p>Start with your assigned classes below. More teaching tools will follow.</p>
-        </div>
-        <div className={styles.capabilityGrid}>
-          {capabilityGroups.map((item) => (
-            <article className={styles.capabilityCard} key={item.title}>
-              <div className={styles.cardMark} aria-hidden="true">{item.title.slice(0, 1)}</div>
-              <h3>{item.title}</h3>
-              <p>{item.description}</p>
-              <span className={styles.cardStatus}>{item.title === "Teaching" ? "Roster, attendance, planning and assessments" : "More tools coming"}</span>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className={styles.section} aria-labelledby="classes-heading">
-        <div className={styles.sectionHeader}>
-          <div>
-            <p className={styles.eyebrow}>Current authority</p>
-            <h2 id="classes-heading">My classes</h2>
-          </div>
-          <p>Open a class to view learners, take attendance or plan lessons.</p>
-        </div>
-        {context.classes.length === 0 ? (
-          <div className={styles.emptyState}>No current class assignments were returned by PEOS.</div>
-        ) : (
-          <div className={styles.classList}>
-            {context.classes.map((item, index) => (
-              <article className={styles.classRow} key={item.classId}>
-                <div>
-                  <strong>{item.name??`Assigned class ${index + 1}`}</strong>
-                  <span>{item.workspaceConfigured ? "SpaceCase workspace configured" : "Workspace not configured"}</span>
-                </div>
-                <a href={`/classes/${context.schoolId}/${item.classId}`}>View class roster</a>
-                {item.workspaceConfigured&&context.schoolWorkspace.configured?<a href={`/classes/${context.schoolId}/${item.classId}/attendance`}>Take attendance</a>:null}
-                {item.workspaceConfigured&&context.schoolWorkspace.configured?<a href={`/classes/${context.schoolId}/${item.classId}/planner`}>Plan lessons</a>:null}
-                {item.workspaceConfigured&&context.schoolWorkspace.configured?<a href={`/classes/${context.schoolId}/${item.classId}/homework`}>Manage homework</a>:null}
-                {item.workspaceConfigured&&context.schoolWorkspace.configured?<a href={`/classes/${context.schoolId}/${item.classId}/observations`}>Behaviour & observations</a>:null}
-                {item.workspaceConfigured&&context.schoolWorkspace.configured?<a href={`/classes/${context.schoolId}/${item.classId}/assessments`}>Assessments & marking</a>:null}
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
-    </DashboardShell>
-  );
+export function WorkspaceHome({context}:{context:SchoolContext}){
+  const [selectedId,setSelectedId]=useState(()=>typeof window!=="undefined"?new URL(window.location.href).searchParams.get("class")??"":"");
+  function chooseClass(id:string){setSelectedId(id);const url=new URL(window.location.href);url.searchParams.set("class",id);window.history.replaceState(null,"",url);}
+  const [classSearch,setClassSearch]=useState("");
+  const classes=orderedClasses(context.classes);
+  const selected=classes.find(c=>c.classId===selectedId)??classes[0];
+  const matches=orderedClasses(context.classes,classSearch);
+  const operational=context.setupStatus!=="CLASSROOM_SETUP_REQUIRED"&&context.schoolWorkspace.configured===true;
+  return <DashboardShell>
+    <section className={styles.hero} aria-labelledby="dashboard-heading"><div><p className={styles.eyebrow}>Teacher workspace</p><h1 id="dashboard-heading">Ready for your teaching day</h1><p className={styles.lead}>Your classes, teaching tools and follow-ups in one place.</p></div><div className={styles.authorityBadge}><span>Academic year</span><strong>{context.schoolWorkspace.academicYearLabel??"School year not set"}</strong></div></section>
+    <nav className={styles.workspaceNav} aria-label="Workspace sections"><a href="#classes-heading">My classes</a><a href="#tools-heading">Class tools</a>{operational&&selected?.workspaceConfigured?<a href="#day-heading">Today’s overview</a>:null}<a href="#next-heading">What’s next</a></nav>
+    <section className={styles.classPicker} aria-labelledby="classes-heading"><div className={styles.sectionHeader}><div><p className={styles.eyebrow}>{classes.length} assigned {classes.length===1?"class":"classes"}</p><h2 id="classes-heading">Choose your class</h2></div><button className={styles.secondaryButton} type="button" onClick={()=>window.location.reload()}>Refresh class access</button></div>
+      <div className={styles.pickerFields}><label>Find a class<input type="search" value={classSearch} onChange={e=>setClassSearch(e.target.value)} placeholder="Search by class name"/></label><label>Current class<select value={selected?.classId??""} onChange={e=>chooseClass(e.target.value)}>{classes.map((c,i)=><option key={c.classId} value={c.classId}>{c.name??`Assigned class ${i+1}`}{c.academicYear?` · ${c.academicYear}`:""}</option>)}</select></label></div>
+      {classSearch?<div className={styles.classChips} aria-label="Class search results">{matches.length?matches.map(c=><button type="button" key={c.classId} aria-pressed={selected?.classId===c.classId} onClick={()=>chooseClass(c.classId)}>{c.name??"Assigned class"}</button>):<p>No assigned classes match this search.</p>}</div>:null}
+      <p className={styles.subtle}>Only your current assigned classes appear here. Contact your school administrator if a class is missing.</p>
+    </section>
+    {selected?<>{operational&&selected.workspaceConfigured?<DayOverview key={`${context.schoolId}:${selected.classId}`} schoolId={context.schoolId} classId={selected.classId}/>:null}<ClassTools schoolId={context.schoolId} classroom={selected} schoolConfigured={operational}/></>:<p className={styles.emptyState}>No current class assignments are available. Ask your school administrator to assign your classes.</p>}
+    <section className={styles.roadmap} aria-labelledby="next-heading"><p className={styles.eyebrow}>Still to come</p><h2 id="next-heading">More support for your working day</h2><p>Reports, reviewed family communication, teaching resources and the SpaceCase Teacher Assistant are planned. These capabilities will appear as tools once they are available.</p><p className={styles.subtle}>Your planning, homework and observation notes remain private to your teacher workspace. Automatic email delivery and live AI execution are not enabled.</p></section>
+  </DashboardShell>;
 }
 
 function DashboardShell({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -237,14 +150,5 @@ function StatusPanel({ title, body }: Readonly<{ title: string; body: string }>)
       <h1>{title}</h1>
       <p>{body}</p>
     </section>
-  );
-}
-
-function SummaryCard({ label, value }: Readonly<{ label: string; value: string }>) {
-  return (
-    <article className={styles.summaryCard}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </article>
   );
 }

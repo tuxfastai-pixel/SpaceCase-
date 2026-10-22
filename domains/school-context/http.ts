@@ -15,8 +15,8 @@ export async function handleSchoolContextRequest(
 
   if (!result.ok) {
     const status = result.code === "UNAUTHENTICATED" ? 401 : 403;
-    return Response.json({ error: result.code }, { status });
+    return Response.json({ error: result.code }, { status, headers: {"cache-control":"no-store"} });
   }
 
-  return Response.json({ schoolContext: result.context });
+  return Response.json({ schoolContext: result.context }, {headers:{"cache-control":"no-store"}});
 }
