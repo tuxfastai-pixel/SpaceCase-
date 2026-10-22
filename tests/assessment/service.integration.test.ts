@@ -4,7 +4,7 @@ import {randomUUID,createHash} from "node:crypto";
 import {Pool} from "pg";
 import {configureWorkspace} from "../../domains/workspace/service";
 import {createAssessment,readAssessment,uploadPage,readPhoto,mutateAssessment,assistAssessment,type AssessmentScope} from "../../domains/assessment/service";
-import {type Proposal} from "../../domains/assessment/contracts";
+import {AssessmentError,type Proposal} from "../../domains/assessment/contracts";
 import type {PhotoStore} from "../../platform/assessment/storage";
 test("assessment workflow keeps photos private, resumes uploads, invalidates stale work and records teacher approval",{skip:!process.env.CI||!process.env.DATABASE_URL},async()=>{
  const pool=new Pool({connectionString:process.env.DATABASE_URL});const s:AssessmentScope={actor:randomUUID(),school:randomUUID(),classId:randomUUID(),learnerIds:[randomUUID(),randomUUID()]};const id=randomUUID(),page=randomUUID(),questionId=randomUUID();
@@ -44,6 +44,10 @@ test("assessment workflow keeps photos private, resumes uploads, invalidates sta
   await assert.rejects(readPhoto(pool,{...s,learnerIds:[s.learnerIds[1]]},id,page,store),/PHOTO_UNAVAILABLE/);
   await mutateAssessment(pool,s,id,{action:"REOPEN",submissionId:sub.id,revision:sub.revision,reason:"Correcting a reviewed calculation"});sub=await current();assert.equal(sub.matchingConfirmed,false);assert.equal(sub.currentResultId,null);
   await mutateAssessment(pool,s,id,{action:"CONFIRM_PAGES",submissionId:sub.id,revision:sub.revision});sub=await current();
+  let externalCalls=0;
+  await assert.rejects(assistAssessment(pool,s,id,{...input,revision:sub.revision,requestId:randomUUID()},store,{async propose(){externalCalls++;return proposal;}},async()=>{throw new AssessmentError("CLASS_ACCESS_REQUIRED");}),/CLASS_ACCESS_REQUIRED/);assert.equal(externalCalls,0);
+  let checks=0;
+  await assert.rejects(assistAssessment(pool,s,id,{...input,revision:sub.revision,requestId:randomUUID()},store,{async propose(){externalCalls++;return proposal;}},async()=>{checks++;if(checks===2)throw new AssessmentError("CLASS_ACCESS_REQUIRED");return s;}),/CLASS_ACCESS_REQUIRED/);assert.equal(externalCalls,1);assert.equal((await current()).proposal,null);
   const stale=await assistAssessment(pool,s,id,{...input,revision:sub.revision,requestId:randomUUID()},store,{async propose(){await mutateAssessment(pool,s,id,{action:"REMOVE_PAGE",pageId:page,revision:2});return proposal;}},async()=>s);assert.equal(stale.status,"STALE");sub=await current();assert.equal(sub.proposal,null);
   const results=await pool.query("SELECT count(*)::int AS n FROM assessment.results WHERE submission_id=$1",[sub.id]);assert.equal(results.rows[0].n,1);
   const events=await pool.query("SELECT metadata FROM audit.product_audit_events WHERE school_id=$1 AND action LIKE 'assessment.%'",[s.school]);assert.equal(JSON.stringify(events.rows).includes("Draft only"),false);assert.equal(JSON.stringify(events.rows).includes("Correcting a reviewed"),false);
