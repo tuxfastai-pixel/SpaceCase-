@@ -32,7 +32,7 @@ export default function PlannerClient({schoolId,classId}:{schoolId:string;classI
   catch(e){setStale(true);setError(e instanceof Error?e.message:"Save could not be confirmed. Reload before trying again.");}finally{setBusy(false);}
  }
  const ready=data?.lessons.filter(l=>l.status==="READY").length??0;const taught=data?.lessons.filter(l=>l.status==="TAUGHT").length??0;
- return <main className={styles.page}><header className={styles.header}><div><p className={styles.eyebrow}>SpaceCase · Teaching</p><h1>Weekly lesson planner</h1><p>{data?.className??"Your assigned class"}</p></div><a href="/dashboard" onClick={e=>{if(!discard())e.preventDefault();}}>Teacher workspace</a></header>
+ return <main className={styles.page}><header className={styles.header}><div><p className={styles.eyebrow}>SpaceCase · Teaching</p><h1>Weekly lesson planner</h1><p>{data?.className??"Your assigned class"}</p></div><a href={`/dashboard?class=${classId}`} onClick={e=>{if(!discard())e.preventDefault();}}>Teacher workspace</a></header>
  <p className={styles.intro}>Plan the week, prepare your lessons and reflect after teaching. These plans are private to your teacher account. Keep learner names and personal information out of lesson notes.</p>
  {error?<p role="alert" className={styles.error}>{error}</p>:null}{notice?<p role="status" className={styles.notice}>{notice}</p>:null}
  {busy&&!data?<p role="status">Loading your plan…</p>:null}

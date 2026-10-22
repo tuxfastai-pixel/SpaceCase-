@@ -39,7 +39,7 @@ export class HttpPeosGateway implements PeosGateway {
   async getTeacherContext(personId: string): Promise<PeosTeacherContext | null> {
     const response = await this.fetchImpl(
       new URL(`/v1/people/${encodeURIComponent(personId)}/teacher-context`, this.baseUrl),
-      { headers: this.headers() },
+      { headers: this.headers(), cache: "no-store", signal: AbortSignal.timeout(10_000) },
     );
 
     if (response.status === 404) return null;

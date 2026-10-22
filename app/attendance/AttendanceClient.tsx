@@ -44,7 +44,7 @@ export default function AttendanceClient({schoolId,classId}:{schoolId:string;cla
   }catch(e){setError(e instanceof Error?e.message:"The save result could not be confirmed. Reload before retrying.");setStale(true);}finally{setBusy(false);}
  }
  const locked=busy||stale;const counts=Object.fromEntries(statuses.map(status=>[status,data?.learners.filter(r=>r.status===status).length??0]));
- return <main className={styles.page}><header className={styles.topbar}><a className={styles.brand} href="/dashboard">SpaceCase <span>Teacher workspace</span></a><form action="/auth/logout" method="post"><button className={styles.secondary}>Sign out</button></form></header><div className={styles.content}>
+ return <main className={styles.page}><header className={styles.topbar}><a className={styles.brand} href={`/dashboard?class=${classId}`}>SpaceCase <span>Teacher workspace</span></a><form action="/auth/logout" method="post"><button className={styles.secondary}>Sign out</button></form></header><div className={styles.content}>
   <p><a href={`/classes/${schoolId}/${classId}`}>Back to class roster</a></p><h1>{data?`${data.class.name} attendance`:"Class attendance"}</h1>
   <p>Record daily attendance for your currently enrolled learners. Unmarked learners are never assumed absent. Earlier dates show the current class list, rather than a historical enrolment list.</p>
   {error?<p className={styles.error} role="alert">{error}</p>:null}{notice?<p className={styles.notice} role="status">{notice}</p>:null}

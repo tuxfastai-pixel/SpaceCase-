@@ -36,7 +36,7 @@ export default function ObservationsClient({schoolId,classId}:{schoolId:string;c
  }
  const current=detail??list;
  function learnerName(id:string){const l=current?.roster.learners.find(x=>x.personId===id);return l?`${l.givenName} ${l.familyName} · ${l.admissionNumber}`:"Current class learner";}
- return <main className={styles.page}><header className={styles.header}><div><p className={styles.eyebrow}>SpaceCase · Teaching</p><h1>Behaviour & observations</h1><p>{list?.className??"Assigned class"}</p></div><a href="/dashboard" onClick={e=>{if(!discard())e.preventDefault();}}>Teacher workspace</a></header>
+ return <main className={styles.page}><header className={styles.header}><div><p className={styles.eyebrow}>SpaceCase · Teaching</p><h1>Behaviour & observations</h1><p>{list?.className??"Assigned class"}</p></div><a href={`/dashboard?class=${classId}`} onClick={e=>{if(!discard())e.preventDefault();}}>Teacher workspace</a></header>
  <p className={styles.intro}>Your private classroom notebook for positive achievements and support needs. Describe observable facts and the support provided; avoid labels or diagnoses. Entries are not automatically shared with families, school administrators or Atlas.</p>
  <p className={styles.hint}>This notebook is not a monitored incident-reporting channel. Use your school’s established procedures for urgent concerns. Follow-up dates appear here without automatic reminders.</p>
  {current?<p className={styles.hint}>School timezone: {current.timezone} · Today: {current.today}</p>:null}

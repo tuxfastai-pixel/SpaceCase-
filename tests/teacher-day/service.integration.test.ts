@@ -1,0 +1,42 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {randomUUID} from "node:crypto";
+import {Pool} from "pg";
+import {configureWorkspace} from "../../domains/workspace/service";
+import {readTeacherDay} from "../../domains/teacher-day/service";
+import {teacherDaySchema} from "../../domains/teacher-day/contracts";
+import type {AttendanceRoster} from "../../domains/attendance/contracts";
+test("daily overview uses school date, current roster and scoped saved work without leaking narrative",{skip:!process.env.CI||!process.env.DATABASE_URL},async()=>{
+ const pool=new Pool({connectionString:process.env.DATABASE_URL});const actor=randomUUID(),other=randomUUID(),school=randomUUID(),classId=randomUUID(),otherClass=randomUUID(),first=randomUUID(),second=randomUUID(),former=randomUUID();
+ const roster:AttendanceRoster={class:{id:classId,name:"Class",academicYear:2026},learners:[first,second].map((personId,i)=>({personId,admissionNumber:`SC${i}`,givenName:"Private name",familyName:"Learner"}))};
+ const now=new Date("2026-10-22T22:30:00Z"),date="2026-10-23";
+ const homework=async(owner:string,c:string,due:string,state="ASSIGNED")=>pool.query(`INSERT INTO learning.homework_tasks(id,teacher_person_id,peos_school_id,peos_class_id,title,subject,instructions,assigned_date,due_date,state) VALUES(gen_random_uuid(),$1,$2,$3,'Saved task','Maths','Private instructions','2026-10-20',$4,$5)`,[owner,school,c,due,state]);
+ const observation=async(owner:string,c:string,learner:string,due:string,state="OPEN")=>pool.query(`INSERT INTO learning.classroom_observations(id,teacher_person_id,peos_school_id,peos_class_id,learner_person_id,kind,observed_date,context,evidence,follow_up_date,state,outcome) VALUES(gen_random_uuid(),$1,$2,$3,$4,'LEARNING_SUPPORT','2026-10-20','Private context','Private evidence',$5,$6,$7)`,[owner,school,c,learner,due,state,state==="RESOLVED"?"Private outcome":""]);
+ try{
+  await configureWorkspace(pool,actor,school,[classId,otherClass],{timezone:"Africa/Johannesburg",academicYearLabel:"2026"});
+  const r=await pool.query(`INSERT INTO learning.attendance_registers(peos_school_id,peos_class_id,attendance_date,revision,updated_by) VALUES($1,$2,$3,1,$4) RETURNING id`,[school,classId,date,actor]);
+  await pool.query(`INSERT INTO learning.attendance_entries(register_id,learner_person_id,status,updated_by) VALUES($1,$2,'PRESENT',$5),($1,$3,'UNMARKED',$5),($1,$4,'ABSENT',$5)`,[r.rows[0].id,first,second,former,actor]);
+  const lesson={id:randomUUID(),date,subject:"Literacy",topic:"Reading aloud",objectives:"Private objectives",activities:"Private activities",resources:"",reflection:"",status:"READY"};
+  await pool.query(`INSERT INTO learning.weekly_lesson_plans(teacher_person_id,peos_school_id,peos_class_id,week_start,lessons,revision) VALUES($1,$2,$3,'2026-10-19',$4::jsonb,1),($5,$2,$3,'2026-10-19',$6::jsonb,1)`,[actor,school,classId,JSON.stringify([lesson,{...lesson,id:randomUUID(),date:"2026-10-22"}]),other,JSON.stringify([{...lesson,topic:"Other teacher topic"}])]);
+  await homework(actor,classId,"2026-10-22");await homework(actor,classId,date);await homework(actor,classId,"2026-10-26");await homework(actor,classId,"2026-10-31");await homework(actor,classId,"2026-10-22","CLOSED");await homework(actor,classId,"2026-10-22","DRAFT");await homework(other,classId,"2026-10-22");await homework(actor,otherClass,"2026-10-22");
+  await observation(actor,classId,first,"2026-10-22");await observation(actor,classId,second,date);await observation(actor,classId,former,"2026-10-22");await observation(actor,classId,first,"2026-10-22","RESOLVED");await observation(other,classId,first,"2026-10-22");await observation(actor,otherClass,first,"2026-10-22");
+  const assessmentId=randomUUID();await pool.query(`INSERT INTO assessment.assessments(id,teacher_person_id,peos_school_id,peos_class_id,title,subject,rubric,status) VALUES($1,$2,$3,$4,'Task','Maths','[{"id":"q1","maximum":1}]','OPEN')`,[assessmentId,actor,school,classId]);
+  const subs=await pool.query(`INSERT INTO assessment.submissions(assessment_id,learner_person_id) VALUES($1,$2),($1,$3),($1,$4) RETURNING id,learner_person_id`,[assessmentId,first,second,former]);
+  for(const sub of subs.rows)await pool.query(`INSERT INTO assessment.pages(id,assessment_id,submission_id,page_number,object_key,content_hash,byte_size,upload_complete) VALUES(gen_random_uuid(),$1,$2,1,$3,$3,100,true)`,[assessmentId,sub.id,randomUUID()]);
+  const approved=subs.rows.find(s=>s.learner_person_id===second)!;const result=await pool.query(`INSERT INTO assessment.results(submission_id,teacher_person_id,source_revision,scores,total,maximum) VALUES($1,$2,1,'[]',1,1) RETURNING id`,[approved.id,actor]);await pool.query("UPDATE assessment.submissions SET current_result_id=$2 WHERE id=$1",[approved.id,result.rows[0].id]);
+  for(const complete of [true,false])await pool.query(`INSERT INTO assessment.pages(id,assessment_id,object_key,content_hash,byte_size,upload_complete) VALUES(gen_random_uuid(),$1,$2,$2,100,$3)`,[assessmentId,randomUUID(),complete]);
+  const day=await readTeacherDay(pool,actor,school,classId,roster,now);assert.equal(day.date,date);assert.deepEqual(day.attendance,{saved:true,rosterCount:2,marked:1,unmarked:1,present:1,absent:0,late:0,excused:0});assert.equal(day.lessons.total,1);assert.equal(day.lessons.items[0].topic,lesson.topic);
+  assert.deepEqual([day.homework.overdue,day.homework.dueToday,day.homework.upcoming,day.homework.items.length],[1,1,1,3]);assert.deepEqual(day.assessments,{awaitingReview:1,unmatchedPhotos:1});assert.deepEqual(day.followUps,{overdue:1,dueToday:1});assert.equal(teacherDaySchema.safeParse({...day,className:"Class"}).success,true);
+  for(const secret of [first,second,former,"Private","Other teacher"])assert.equal(JSON.stringify(day).includes(secret),false);
+  const otherDay=await readTeacherDay(pool,other,school,classId,roster,now);assert.equal(otherDay.homework.overdue,1);assert.equal(otherDay.assessments.awaitingReview,0);assert.equal(otherDay.followUps.dueToday,0);
+  const different={...roster,class:{...roster.class,id:otherClass}};const classDay=await readTeacherDay(pool,actor,school,otherClass,different,now);assert.equal(classDay.lessons.total,0);assert.equal(classDay.homework.overdue,1);assert.equal(classDay.attendance.marked,0);
+  await assert.rejects(readTeacherDay(pool,actor,randomUUID(),classId,roster,now),/CLASS_WORKSPACE_REQUIRED/);
+  await assert.rejects(readTeacherDay(pool,actor,school,classId,different,now),/ROSTER_CHANGED/);
+  await pool.query("UPDATE school_ops.class_workspaces SET status='INACTIVE' WHERE peos_class_id=$1",[classId]);await assert.rejects(readTeacherDay(pool,actor,school,classId,roster,now),/CLASS_WORKSPACE_REQUIRED/);
+  const events=await pool.query("SELECT metadata FROM audit.product_audit_events WHERE school_id=$1 AND action='teacher_day.read'",[school]);assert.equal(events.rowCount,3);assert.ok(events.rows.every(e=>JSON.stringify(e.metadata)===JSON.stringify({date})));
+ }finally{
+  await pool.query("UPDATE assessment.submissions SET current_result_id=NULL WHERE assessment_id IN(SELECT id FROM assessment.assessments WHERE peos_school_id=$1)",[school]);
+  for(const table of ["pages","results","submissions"])await pool.query(`DELETE FROM assessment.${table} WHERE ${table==="results"?"submission_id IN(SELECT id FROM assessment.submissions WHERE assessment_id IN(SELECT id FROM assessment.assessments WHERE peos_school_id=$1))":"assessment_id IN(SELECT id FROM assessment.assessments WHERE peos_school_id=$1)"}`,[school]);
+  await pool.query("DELETE FROM assessment.assessments WHERE peos_school_id=$1",[school]);await pool.query("DELETE FROM learning.homework_tasks WHERE peos_school_id=$1",[school]);await pool.query("DELETE FROM learning.classroom_observations WHERE peos_school_id=$1",[school]);await pool.query("DELETE FROM learning.weekly_lesson_plans WHERE peos_school_id=$1",[school]);await pool.query("DELETE FROM learning.attendance_entries WHERE register_id IN(SELECT id FROM learning.attendance_registers WHERE peos_school_id=$1)",[school]);await pool.query("DELETE FROM learning.attendance_registers WHERE peos_school_id=$1",[school]);await pool.query("DELETE FROM school_ops.class_workspaces WHERE peos_school_id=$1",[school]);await pool.query("DELETE FROM school_ops.school_workspaces WHERE peos_school_id=$1",[school]);await pool.query("DELETE FROM audit.product_audit_events WHERE school_id=$1",[school]);await pool.end();
+ }
+});
