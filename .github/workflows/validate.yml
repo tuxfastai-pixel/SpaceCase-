@@ -80,6 +80,10 @@ jobs:
         run: |
           test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT count(*) FROM audit.schema_migrations WHERE migration_name='0010_support_casework.sql'")" = "1"
           test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT has_table_privilege('spacecase_runtime','support.ticket_work','UPDATE') AND NOT has_table_privilege('spacecase_runtime','support.work_events','UPDATE') AND NOT has_table_privilege('spacecase_runtime','support.work_requests','DELETE')")" = "t"
+      - name: Verify planner migration state
+        run: |
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT count(*) FROM audit.schema_migrations WHERE migration_name='0011_teacher_weekly_planner.sql'")" = "1"
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT has_table_privilege('spacecase_runtime','learning.weekly_lesson_plans','UPDATE') AND NOT has_table_privilege('spacecase_runtime','learning.weekly_lesson_plans','DELETE')")" = "t"
       - name: Typecheck
         run: npm run typecheck
 
