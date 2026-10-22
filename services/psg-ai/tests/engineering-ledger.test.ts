@@ -24,6 +24,13 @@ test('dedicated Postgres ledger persists across connections, deduplicates concur
  const input={requestId:randomUUID(),request};
  try{
   await migrateEngineering(owner);await migrateEngineering(owner);
+  const grant=(await owner.query("SELECT format('GRANT CREATE ON DATABASE %I TO psg_engineering_runtime',current_database()) AS sql")).rows[0].sql;
+  const revoke=(await owner.query("SELECT format('REVOKE CREATE ON DATABASE %I FROM psg_engineering_runtime',current_database()) AS sql")).rows[0].sql;
+  await owner.query(grant);
+  try{await assert.rejects(migrateEngineering(owner),/RESTRICTED_ENGINEERING_ROLE_REQUIRED/);}finally{await owner.query(revoke);}
+  await owner.query('GRANT CREATE ON SCHEMA engineering TO psg_engineering_runtime');
+  try{await assert.rejects(migrateEngineering(owner),/RESTRICTED_ENGINEERING_ROLE_REQUIRED/);}finally{await owner.query('REVOKE CREATE ON SCHEMA engineering FROM psg_engineering_runtime');}
+  await migrateEngineering(owner);
   const results=await Promise.all(Array.from({length:6},()=>saveBlockedTask(runtime,authority,input)));
   const task=results[0].task;assert.equal(task.state,'BLOCKED');assert.ok(results.every(r=>r.task.id===task.id&&!r.executionStarted));
   const reopened=new Pool({connectionString,options:'-c role=psg_engineering_runtime'});
@@ -53,7 +60,7 @@ test('dedicated Postgres ledger persists across connections, deduplicates concur
 });
 
 test('migration refuses product databases and unsafe runtime roles before creating schemas',async()=>{
- for(const fixture of [{product:true,role:null},{product:false,role:null},{product:false,role:{rolsuper:true}},{product:false,role:{owner:true}},{product:false,role:{inherited:true}}]){
+ for(const fixture of [{product:true,role:null},{product:false,role:null},{product:false,role:{rolsuper:true}},{product:false,role:{owner:true}},{product:false,role:{inherited:true}},{product:false,role:{database_create:true}},{product:false,role:{schema_create:true}}]){
   const statements:string[]=[];let released=false;
   const db={query:async(sql:string)=>{statements.push(sql);if(sql.includes("to_regclass('support.tickets')"))return {rows:[{product:fixture.product}]};if(sql.includes('FROM pg_roles r'))return {rowCount:fixture.role?1:0,rows:fixture.role?[fixture.role]:[]};return {rows:[]};},release:()=>{released=true;}};
   const pool={connect:async()=>db} as unknown as Pool;

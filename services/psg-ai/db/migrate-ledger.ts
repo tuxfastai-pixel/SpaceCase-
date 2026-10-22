@@ -8,7 +8,7 @@ export async function migrateEngineering(pool:Pool){
   // Fail before creating metadata if pointed at SpaceCase or PEOS by mistake.
   const tables=await db.query("SELECT to_regclass('support.tickets') IS NOT NULL OR to_regnamespace('school_ops') IS NOT NULL OR to_regnamespace('identity') IS NOT NULL AS product");
   if(tables.rows[0].product)throw new Error('DEDICATED_ENGINEERING_DATABASE_REQUIRED');
-  const role=await db.query("SELECT r.rolsuper,r.rolbypassrls,r.rolcreatedb,r.rolcreaterole,EXISTS(SELECT 1 FROM pg_auth_members m WHERE m.member=r.oid) AS inherited,EXISTS(SELECT 1 FROM pg_database d WHERE d.datname=current_database() AND d.datdba=r.oid) AS owner FROM pg_roles r WHERE r.rolname='psg_engineering_runtime'");
+  const role=await db.query("SELECT r.rolsuper,r.rolbypassrls,r.rolcreatedb,r.rolcreaterole,has_database_privilege(r.oid,current_database(),'CREATE') AS database_create,EXISTS(SELECT 1 FROM pg_namespace n WHERE n.nspname !~ '^pg_' AND n.nspname<>'information_schema' AND has_schema_privilege(r.oid,n.oid,'CREATE')) AS schema_create,EXISTS(SELECT 1 FROM pg_auth_members m WHERE m.member=r.oid) AS inherited,EXISTS(SELECT 1 FROM pg_database d WHERE d.datname=current_database() AND d.datdba=r.oid) AS owner FROM pg_roles r WHERE r.rolname='psg_engineering_runtime'");
   if(!role.rowCount||Object.values(role.rows[0]).some(Boolean))throw new Error('RESTRICTED_ENGINEERING_ROLE_REQUIRED');
   await db.query('BEGIN');
   await db.query("SET LOCAL statement_timeout='10000ms'");
