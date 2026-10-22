@@ -7,10 +7,7 @@ const claimsSchema=saveTaskInputSchema.extend({
  version:z.literal('psg.engineering-save.v1'),issuer:z.literal('SPACECASE'),audience:z.literal('PSG_ENGINEERING_LEDGER'),
  purpose:z.literal('SAVE_BLOCKED_TASK'),actorPersonId:z.string().uuid(),issuedAt:z.number().int().nonnegative(),expiresAt:z.number().int().nonnegative(),
 }).strict();
-export const savedTaskSchema=z.object({
- task:z.object({id:z.string().uuid(),project:z.literal('SPACECASE'),sourceReference:z.string().regex(/^SC-[A-F0-9]{12}$/),sourceRevision:z.number().int().nonnegative(),handoffDigest:z.string().regex(/^[a-f0-9]{64}$/),baseCommit:z.string().regex(/^[a-f0-9]{40}$/),state:z.enum(['BLOCKED','CANCELLED']),revision:z.number().int().nonnegative(),createdAt:z.string().datetime(),cancelledAt:z.string().datetime().nullable()}).strict(),
- executionStarted:z.literal(false),
-}).strict();
+export {savedTaskSchema} from './result';
 export class AttestationError extends Error{}
 export function engineeringSigningKey(pem:string){const key=createPrivateKey(pem);if(key.asymmetricKeyType!=='ed25519')throw new AttestationError('ED25519_KEY_REQUIRED');return key;}
 export function engineeringVerificationKey(pem:string){if(!pem.trim().startsWith('-----BEGIN PUBLIC KEY-----'))throw new AttestationError('PUBLIC_KEY_REQUIRED');const key=createPublicKey(pem);if(key.asymmetricKeyType!=='ed25519')throw new AttestationError('ED25519_KEY_REQUIRED');return key;}

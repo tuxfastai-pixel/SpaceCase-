@@ -9,7 +9,7 @@ import {createTicket,listTickets,getTicket,replyTicket,updateTicket,prepareRecom
 import {directoryHealth,schoolOperations} from "../../domains/support/operations";
 import {handoffInput} from "../../packages/engineering-control/contracts";
 import {prepareEngineeringHandoff} from "../../domains/support/engineering";
-import {engineeringSaveInput,saveEngineeringTask} from "./engineeringAdapter";
+import {engineeringSaveInput,saveEngineeringTask,engineeringStorageStatus} from "./engineeringAdapter";
 import {founderInsights} from "../../domains/support/insights";
 type Deps={context:(request:Request)=>Promise<SupportContext>;pool:()=>Pool;peos:typeof peosRead};
 const defaults:Deps={context:supportAuthority,pool:getDatabasePool,peos:peosRead};
@@ -61,7 +61,7 @@ export function founderHandler(deps:Deps=defaults){return (request:Request)=>han
  if(request.method==="POST"){
  const input=actionSchema.parse(await body(request));
  if(input.action==="SAVE_ENGINEERING_TASK")return saveEngineeringTask(deps.pool(),c,engineeringSaveInput.parse(Object.fromEntries(Object.entries(input).filter(([k])=>k!=="action"))));
- if(input.action==="ENGINEERING_HANDOFF"){return prepareEngineeringHandoff(deps.pool(),c,handoffInput.parse(Object.fromEntries(Object.entries(input).filter(([k])=>k!=="action"))));}
+ if(input.action==="ENGINEERING_HANDOFF"){return {...await prepareEngineeringHandoff(deps.pool(),c,handoffInput.parse(Object.fromEntries(Object.entries(input).filter(([k])=>k!=="action")))),storage:engineeringStorageStatus()};}
  if(input.action==="UPDATE_TICKET")return updateTicket(deps.pool(),c,updateInput.parse(Object.fromEntries(Object.entries(input).filter(([k])=>k!=="action"))));
  if(input.action==="RECOMMENDATION")return prepareRecommendation(deps.pool(),c,recommendationInput.parse(Object.fromEntries(Object.entries(input).filter(([k])=>k!=="action"))));
  return decideRecommendation(deps.pool(),c,decisionInput.parse(Object.fromEntries(Object.entries(input).filter(([k])=>k!=="action"))));
