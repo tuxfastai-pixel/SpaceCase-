@@ -1,0 +1,33 @@
+'use client';
+import {useEffect,useState} from 'react';
+import {z} from 'zod';
+import {progressSchema,reportQuery,type ProgressReport} from '@/domains/reports/contracts';
+import styles from './reports.module.css';
+const rosterSchema=z.object({className:z.string(),learners:z.array(z.object({personId:z.string().uuid(),givenName:z.string(),familyName:z.string(),admissionNumber:z.string()}))});
+type Roster=z.infer<typeof rosterSchema>;
+export default function ReportsClient({schoolId,classId}:{schoolId:string;classId:string}){
+ const endpoint=`/api/v1/schools/${schoolId}/classes/${classId}/reports`;
+ const [roster,setRoster]=useState<Roster|null>(null),[learnerId,setLearner]=useState(''),[start,setStart]=useState(''),[end,setEnd]=useState('');
+ const [report,setReport]=useState<ProgressReport|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[refresh,setRefresh]=useState(0);
+ useEffect(()=>{const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),20000);let active=true;setRoster(null);setReport(null);setLearner('');setError('');
+  void(async()=>{try{const r=await fetch(endpoint,{cache:'no-store',signal:controller.signal});if(!r.ok)throw Error(r.status===401?'Sign in again to continue.':r.status===403?'Your class access has changed. Return to your workspace.':'We could not load the current class list. Try again.');const data=rosterSchema.parse(await r.json());if(active)setRoster(data);}catch(e){if(active)setError(e instanceof Error&&e.name!=='AbortError'?e.message:'Loading timed out. Try again.');}finally{clearTimeout(timeout);}})();
+  return()=>{active=false;controller.abort();clearTimeout(timeout);};
+ },[endpoint,refresh]);
+ async function load(e:React.FormEvent<HTMLFormElement>){e.preventDefault();setReport(null);setError('');const q=reportQuery.safeParse({learnerId,start,end});if(!q.success){setError('Choose a learner and valid dates, in order, covering no more than 366 days.');return;}setBusy(true);
+  try{const r=await fetch(`${endpoint}?${new URLSearchParams(q.data)}`,{cache:'no-store',signal:AbortSignal.timeout(20000)});const body=await r.json();if(!r.ok)throw Error(r.status===401?'Sign in again to continue.':r.status===403?'This learner is no longer available to your teacher account.':body.error==='FUTURE_REPORT_DATE'?'Choose an end date no later than today in the school timezone.':'The report is unavailable. Please try again.');setReport(progressSchema.parse(body.report));}catch(e){setError(e instanceof Error&&e.name!=='ZodError'?e.message:'The report could not be verified. Try again.');}finally{setBusy(false);}
+ }
+ return <main className={styles.page}><header className={styles.controls}><a href={`/dashboard?class=${classId}`}>Back to teacher workspace</a><form action='/auth/logout' method='post'><button>Sign out</button></form></header><div className={styles.content}>
+ <section className={styles.controls}><p className={styles.eyebrow}>Reports</p><h1>Learner progress report</h1><p>{roster?.className??'Your assigned class'} · Review saved facts before sharing with a family.</p>
+ <p>This report includes attendance recorded for this class and your own teacher-approved assessment results. Assessment dates refer to approval dates. It is not an official term report or a complete school transcript.</p>
+ <button disabled={busy} onClick={()=>setRefresh(v=>v+1)}>Refresh learner access</button>
+ {roster?<form onSubmit={load}><fieldset disabled={busy}><div className={styles.fields}><label>Learner<select required value={learnerId} onChange={e=>{setLearner(e.target.value);setReport(null);}}><option value=''>Choose a learner</option>{roster.learners.map(l=><option key={l.personId} value={l.personId}>{l.givenName} {l.familyName} · {l.admissionNumber}</option>)}</select></label><label>From<input required type='date' value={start} onChange={e=>{setStart(e.target.value);setReport(null);}}/></label><label>To<input required type='date' value={end} onChange={e=>{setEnd(e.target.value);setReport(null);}}/></label></div><p>Choose a range of up to 366 days. Future dates are not included.</p><button type='submit' disabled={!roster.learners.length}>{busy?'Loading report…':'View report'}</button></fieldset>{!roster.learners.length?<p>No currently enrolled learners are available for this class.</p>:null}</form>:!error?<p role='status'>Checking current learner access…</p>:null}
+ {error?<p role='alert'>{error}</p>:null}</section>
+ {report?<article className={styles.report} aria-labelledby='report-heading'><p>SpaceCase · Learner progress summary · Not an official term report</p><h2 id='report-heading'>{report.learner.givenName} {report.learner.familyName}</h2><p>School reference: {report.learner.admissionNumber}<br/>Class: {roster?.className}<br/>Period: {report.start} to {report.end}<br/>Generated: {report.generatedOn} · {report.timezone}</p>
+ <h3>Recorded attendance</h3><p>{report.attendance.savedRegisters} saved class registers in this period.</p><dl className={styles.counts}>{(['present','absent','late','excused','unmarked'] as const).map(k=><div key={k}><dt>{k==='unmarked'?'No learner mark':k[0].toUpperCase()+k.slice(1)}</dt><dd>{report.attendance[k]}</dd></div>)}</dl>
+ <p>Missing or unmarked records are never counted as absence. Days with no saved class register are not included. This uses the current learner and class list, not historical enrolment; no attendance percentage is calculated.</p>
+ <h3>Teacher-approved assessment results</h3>{report.results.length?<div className={styles.table}><table><thead><tr><th>Assessment</th><th>Subject</th><th>Approved</th><th>Mark</th></tr></thead><tbody>{report.results.map(r=><tr key={r.id}><td>{r.title}</td><td>{r.subject}</td><td>{r.approvedOn}</td><td>{r.total} / {r.maximum}</td></tr>)}</tbody></table></div>:<p>No teacher-approved results are available in this approval-date range. Unmarked work and AI suggestions are not results.</p>}
+ {report.truncated?<p role='alert'>More than 200 results match. Narrow the date range to produce a complete printable report.</p>:null}
+ <p>Only the latest approved mark for each assessment is shown. Corrections approved outside this date range may move a result to a different reporting period. Scores are not combined across different assessments. Private observation notes, photos and AI drafts are excluded.</p>
+ <p className={styles.controls}>Review this report before sharing. Printing creates a copy outside SpaceCase; share it only with an authorised recipient.</p><button className={styles.controls} disabled={report.truncated} onClick={()=>window.print()}>Print / Save as PDF</button></article>:null}
+ </div></main>;
+}

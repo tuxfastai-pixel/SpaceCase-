@@ -10,6 +10,7 @@ export const teacherTools=[
  {path:"assessments",title:"Assessments & marking",mark:"04",description:"Upload work, confirm learner matches and review marks.",action:"Open assessments"},
  {path:"homework",title:"Homework",mark:"05",description:"Plan tasks, set due dates and record completion.",action:"Manage homework"},
  {path:"observations",title:"Behaviour & observations",mark:"06",description:"Record factual observations, support and follow-ups.",action:"Open observations"},
+ {path:"reports",title:"Learner progress reports",mark:"07",description:"Review saved attendance and your approved assessment results, then print a learner report.",action:"Open reports"},
 ] as const;
 export function classPath(school:string,classId:string,tool=""){return `/classes/${school}/${classId}${tool?`/${tool}`:""}`;}
 export function orderedClasses(classes:AssignedClass[],query=""){
