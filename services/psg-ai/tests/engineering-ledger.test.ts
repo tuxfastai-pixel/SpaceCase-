@@ -46,3 +46,13 @@ test('dedicated Postgres ledger persists across connections, deduplicates concur
   await assert.rejects(runtime.query("UPDATE engineering.tasks SET state='RUNNING' WHERE id=$1",[task.id]),/check constraint/);
  }finally{await runtime.end();await owner.end();}
 });
+
+test('migration refuses product databases and unsafe runtime roles before creating schemas',async()=>{
+ for(const fixture of [{product:true,role:null},{product:false,role:null},{product:false,role:{rolsuper:true}},{product:false,role:{owner:true}},{product:false,role:{inherited:true}}]){
+  const statements:string[]=[];let released=false;
+  const db={query:async(sql:string)=>{statements.push(sql);if(sql.includes("to_regclass('support.tickets')"))return {rows:[{product:fixture.product}]};if(sql.includes('FROM pg_roles r'))return {rowCount:fixture.role?1:0,rows:fixture.role?[fixture.role]:[]};return {rows:[]};},release:()=>{released=true;}};
+  const pool={connect:async()=>db} as unknown as Pool;
+  await assert.rejects(migrateEngineering(pool),/DEDICATED_ENGINEERING_DATABASE_REQUIRED|RESTRICTED_ENGINEERING_ROLE_REQUIRED/);
+  assert.equal(statements.some(s=>s.startsWith('CREATE')),false);assert.equal(released,true);
+ }
+});
