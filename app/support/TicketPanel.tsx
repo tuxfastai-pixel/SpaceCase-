@@ -1,5 +1,6 @@
 "use client";
 import {useEffect,useState} from "react";
+import EngineeringHandoffPanel from "../founder/engineering/EngineeringHandoffPanel";
 import CaseworkPanel from "../operations/CaseworkPanel";
 import {supportApi,statusLabels,showDate,type TicketData} from "./shared";
 import s from "./support.module.css";
@@ -20,7 +21,7 @@ export default function TicketPanel({data,founder=false,reload}:{data:TicketData
  {!founder&&["RESOLVED","CLOSED"].includes(ticket.status)?<label><input type="checkbox" checked={reopen} disabled={busy} onChange={e=>setReopen(e.target.checked)}/> Reopen this issue</label>:null}
  <p className={s.muted}>Do not include learner names, assessments, passwords or private family information.</p><button className={s.button} disabled={busy}>{founder?"Save status and update":"Submit reply"}</button>
  </form>
- {founder?<><hr className={s.divider}/><h3>Engineering recommendation</h3><p className={s.muted}>Manual preparation in this release. No agent investigation or automatic code execution is connected.</p>
+ {founder?<><EngineeringHandoffPanel key={`${ticket.id}:${ticket.revision}`} ticket={ticket}/><hr className={s.divider}/><h3>Engineering recommendation</h3><p className={s.muted}>Manual preparation in this release. No agent investigation or automatic code execution is connected.</p>
  {proposal?<section className={s.card}><span className={s.badge}>{proposal.decision.replaceAll("_"," ")}</span>{([["summary","Proposed change"],["benefit","Expected benefit"],["risks","Risks and limitations"],["validation","Submitted validation evidence"],["rollback","Rollback approach"]] as const).map(([key,title])=><div key={key}><h4>{title}</h4><p className={s.text}>{proposal[key]}</p></div>)}
  {proposal.changeUrl?<p><a href={proposal.changeUrl} target="_blank" rel="noreferrer">Review prepared pull request</a></p>:<p className={s.warning}>A prepared pull request reference is required before approval.</p>}
  {proposal.decisionReason?<p className={s.text}>Decision: {proposal.decisionReason}</p>:null}
