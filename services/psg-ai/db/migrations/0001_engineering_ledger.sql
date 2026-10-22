@@ -9,7 +9,7 @@ CREATE TABLE engineering.tasks (
  source_revision integer NOT NULL CHECK(source_revision>=0),
  handoff_digest text NOT NULL CHECK(handoff_digest ~ '^[a-f0-9]{64}$'),
  base_commit text NOT NULL CHECK(base_commit ~ '^[a-f0-9]{40}$'),
- handoff jsonb NOT NULL CHECK(jsonb_typeof(handoff)='object' AND octet_length(handoff::text)<=20000),
+ handoff jsonb NOT NULL CHECK(jsonb_typeof(handoff)='object' AND octet_length(handoff::text)<=65536),
  created_by text NOT NULL CHECK(length(created_by) BETWEEN 1 AND 200),
  state text NOT NULL DEFAULT 'BLOCKED' CHECK(state IN('BLOCKED','CANCELLED')),
  revision integer NOT NULL DEFAULT 0 CHECK(revision>=0),

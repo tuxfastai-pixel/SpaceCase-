@@ -40,6 +40,11 @@ test('dedicated Postgres ledger persists across connections, deduplicates concur
   assert.equal(cancelled.filter(r=>r.status==='fulfilled').length,1);assert.equal(cancelled.filter(r=>r.status==='rejected').length,1);
   const retry=await saveBlockedTask(runtime,authority,input);assert.equal(retry.task.state,'CANCELLED');assert.equal(retry.task.revision,1);
   const audit=await owner.query('SELECT kind,revision FROM engineering.events WHERE task_id=$1 ORDER BY revision',[task.id]);assert.deepEqual(audit.rows,[{kind:'CREATED',revision:0},{kind:'CANCELLED',revision:1}]);
+  // The shared contract bounds characters, so valid multilingual briefs can exceed 20KB.
+  const multilingual=createHandoff({...source,reference:`SC-${randomUUID().replaceAll('-','').slice(0,12).toUpperCase()}`},{problem:'漢'.repeat(1200),expected:'漢'.repeat(800),observed:'漢'.repeat(800),steps:Array(8).fill('漢'.repeat(500)),acceptance:Array(8).fill('漢'.repeat(500))});
+  const multilingualRequest={...request,handoff:multilingual,digest:createHash('sha256').update(JSON.stringify(multilingual)).digest('hex')};
+  assert.ok(Buffer.byteLength(JSON.stringify(multilingual))>20000);
+  assert.equal((await saveBlockedTask(runtime,authority,{requestId:randomUUID(),request:multilingualRequest})).task.state,'BLOCKED');
   await assert.rejects(runtime.query('UPDATE engineering.tasks SET handoff=$1 WHERE id=$2',[JSON.stringify(handoff),task.id]),/permission denied/);
   await assert.rejects(runtime.query('DELETE FROM engineering.events WHERE task_id=$1',[task.id]),/permission denied/);
   await assert.rejects(runtime.query("UPDATE engineering.events SET kind='CREATED' WHERE task_id=$1",[task.id]),/permission denied/);
