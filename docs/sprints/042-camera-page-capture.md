@@ -1,0 +1,10 @@
+# Sprint 042 — Camera capture and page preparation
+
+Source: SC-E2F268B9377E, administrator suggestion to take work photos like a scanner.
+Goal: let teachers capture multiple pages with a phone, inspect and manually crop/rotate each page, then use the existing private upload and learner-matching flow.
+Scope: native environment-camera file input with photo-library fallback; appendable 50-page local queue; previews; four-edge rectangular crop and quarter-turn rotation; bounded, metadata-stripped JPEG preparation; removal before upload; same-byte/same-ID retries after uncertain uploads; warning before leaving unsaved photos.
+Out of scope: automatic edge detection, perspective correction, PDF import/export, background camera streams, new OCR/model calls, automatic marks, automatic learner matching, changes to school permissions or storage provisioning.
+Failure analysis: unsupported HEIC, corrupt/oversized photos, tiny crops, 50-page memory pressure, late image results after unmount, lost queue on navigation, double upload clicks, ambiguous upload success, edited bytes reused under an existing page UUID, accidental deletion of saved work, camera unavailable on desktop.
+Acceptance: camera and library choices stay separate; selecting more pages appends; no upload until explicit action; processing stays bounded; previews disclose manual cropping; failed uploads lock edits and reuse prepared bytes and page UUID; clearing saved previews does not delete server records; server teacher authorization and marking approval are unchanged.
+Validation: geometry boundary tests, typecheck/lint/build, synthetic browser crop/rotation/append/retry and responsive checks, full database-backed CI. Physical phone camera behavior requires a real phone check; desktop automation does not prove native camera behavior.
+Release: no schema or new credentials required. Code rollback restores the prior uploader; already uploaded pages remain compatible JPEGs. Do not mark this suggestion resolved until production behavior has been verified.

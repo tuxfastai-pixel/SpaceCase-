@@ -1,0 +1,15 @@
+"use client";
+import {useEffect,useRef,useState} from 'react';
+import {drawPhoto,fullPhoto,preparePhoto,type PhotoEdits} from './photoPreparation';
+import styles from './assessment.module.css';
+let previewWork:Promise<void>=Promise.resolve();
+export function LocalPhoto({file,edits=fullPhoto}:{file:File;edits?:PhotoEdits}){
+ const canvas=useRef<HTMLCanvasElement>(null);const [error,setError]=useState('');
+ useEffect(()=>{let active=true;setError('');previewWork=previewWork.catch(()=>{}).then(async()=>{if(!active)return;const target=document.createElement('canvas');try{await drawPhoto(file,target,edits);if(active&&canvas.current){const ratio=Math.min(1,600/target.width,800/target.height);canvas.current.width=Math.round(target.width*ratio);canvas.current.height=Math.round(target.height*ratio);canvas.current.getContext('2d')?.drawImage(target,0,0,canvas.current.width,canvas.current.height);}}catch{if(active)setError('Preview unavailable. Reset the crop or choose another photo.');}finally{target.width=0;target.height=0;}});return()=>{active=false;};},[file,edits]);
+ return <>{error?<p role='alert' className={styles.error}>{error}</p>:null}<canvas ref={canvas} className={styles.localPhoto} role='img' aria-label='Local page preview. Check that all writing is clear and included.'/></>;
+}
+export default function PhotoEditor({file,onApply,onCancel}:{file:File;onApply:(file:File)=>void;onCancel:()=>void}){
+ const [edits,setEdits]=useState<PhotoEdits>(fullPhoto);const [busy,setBusy]=useState(false);const [error,setError]=useState('');
+ async function apply(){setBusy(true);setError('');try{onApply(await preparePhoto(file,edits));}catch(e){setError(e instanceof Error?e.message:'Could not prepare this page.');}finally{setBusy(false);}}
+ return <section className={styles.editor} aria-label='Crop and rotate page'><h3>Crop and rotate</h3><p>Trim the background with the four sliders. Keep every answer and page number visible. This is a manual crop; it does not automatically detect page edges or straighten perspective.</p><LocalPhoto file={file} edits={edits}/><fieldset disabled={busy} className={styles.fieldset}><div className={styles.grid}>{(['left','right','top','bottom'] as const).map(edge=><label key={edge}>Trim {edge}: {edits[edge]}%<input type='range' min={0} max={40} step={1} value={edits[edge]} onChange={e=>setEdits(x=>({...x,[edge]:Number(e.target.value)}))}/></label>)}</div><div className={styles.actions}><button type='button' onClick={()=>setEdits(x=>({...x,turns:(x.turns+1)%4}))}>Rotate 90° clockwise</button><button type='button' onClick={()=>setEdits(fullPhoto)}>Reset edits</button><button type='button' className={styles.primary} onClick={()=>void apply()}>Use this page</button><button type='button' onClick={onCancel}>Cancel edits</button></div></fieldset>{busy?<p role='status'>Preparing page…</p>:null}{error?<p role='alert' className={styles.error}>{error}</p>:null}</section>;
+}
