@@ -37,6 +37,9 @@ export function supportHandler(deps:Deps=defaults){return (request:Request,ticke
 });}
 const founderQuery=z.object({view:z.enum(["directory","school","tickets","ticket","insights"]).default("tickets"),q:z.string().trim().max(100).default(""),offset:z.coerce.number().int().min(0).max(1000000).default(0),schoolId:id.optional(),ticketId:id.optional(),status:z.enum(["SUBMITTED","UNDER_REVIEW","NEEDS_INFORMATION","PLANNED","RESOLVED","CLOSED"]).optional()}).strict();
 const controlActions=[
+ z.object({action:z.literal("LINK_ENGINEERING_PR"),ticketId:id,taskId:id,revision:z.number().int().nonnegative(),pullRequest:z.number().int().positive().max(100000000),headCommit:z.string().regex(/^[a-f0-9]{40}$/)}).strict(),
+ z.object({action:z.literal("ENGINEERING_LINKED_REVIEW"),ticketId:id,taskId:id}).strict(),
+ z.object({action:z.literal("ENGINEERING_REVIEW_DECISION"),ticketId:id,taskId:id,revision:z.number().int().nonnegative(),requestId:id,reviewDigest:z.string().regex(/^[a-f0-9]{64}$/),decision:z.enum(['APPROVED','CHANGES_REQUESTED','DEFERRED','DECLINED'])}).strict(),
  z.object({action:z.literal("ENGINEERING_TASK_HISTORY"),ticketId:id,taskId:id}).strict(),
  z.object({action:z.literal("LIST_ENGINEERING_TASKS"),ticketId:id,offset:z.number().int().min(0).max(10000).default(0)}).strict(),
  z.object({action:z.literal("CANCEL_ENGINEERING_TASK"),ticketId:id,taskId:id,revision:z.number().int().nonnegative()}).strict(),
@@ -71,6 +74,9 @@ export function founderHandler(deps:Deps=defaults){return (request:Request)=>han
  if(request.method==="POST"){
  const input=actionSchema.parse(await body(request));
  if(input.action==="INSPECT_ENGINEERING_PR")return inspectFounderRepository(c,{pullRequest:input.pullRequest,expectedHeadCommit:input.expectedHeadCommit});
+ if(input.action==="LINK_ENGINEERING_PR")return controlEngineeringTask(deps.pool(),c,taskControlInput.parse({operation:'LINK',...Object.fromEntries(Object.entries(input).filter(([k])=>k!=='action'))}));
+ if(input.action==="ENGINEERING_LINKED_REVIEW")return controlEngineeringTask(deps.pool(),c,taskControlInput.parse({operation:'REVIEW',ticketId:input.ticketId,taskId:input.taskId}));
+ if(input.action==="ENGINEERING_REVIEW_DECISION"){if(input.decision==='APPROVED')throw new SupportError('ENGINEERING_REVIEW_NOT_READY',409);return controlEngineeringTask(deps.pool(),c,taskControlInput.parse({operation:'DECIDE',...Object.fromEntries(Object.entries(input).filter(([k])=>k!=='action'))}));}
  if(input.action==="ENGINEERING_TASK_HISTORY")return controlEngineeringTask(deps.pool(),c,taskControlInput.parse({operation:'HISTORY',ticketId:input.ticketId,taskId:input.taskId}));
  if(input.action==="LIST_ENGINEERING_TASKS")return controlEngineeringTask(deps.pool(),c,taskControlInput.parse({operation:'LIST',ticketId:input.ticketId,offset:input.offset}));
  if(input.action==="CANCEL_ENGINEERING_TASK")return controlEngineeringTask(deps.pool(),c,taskControlInput.parse({operation:'CANCEL',ticketId:input.ticketId,taskId:input.taskId,revision:input.revision}));

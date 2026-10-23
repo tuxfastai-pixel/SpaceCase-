@@ -3,7 +3,7 @@ import {useEffect,useState} from 'react';
 import {taskHistorySchema,type EngineeringTaskHistory} from '../../../packages/engineering-control/control-contract';
 import {supportApi} from '../../support/shared';
 import s from '../../support/support.module.css';
-const labels={CREATED:'Reviewed task saved',CANCELLED:'Task cancelled',BRIEF_EXPIRED:'Saved brief removed by retention'};
+const labels={PR_LINKED:'Pull request linked or linked commit updated',DECISION_RECORDED:'Founder review decision recorded',CREATED:'Reviewed task saved',CANCELLED:'Task cancelled',BRIEF_EXPIRED:'Saved brief removed by retention'};
 export default function EngineeringTaskHistory({ticketId,taskId,sourceReference,revision}:{ticketId:string;taskId:string;sourceReference:string;revision:number}){
  const [open,setOpen]=useState(false),[reload,setReload]=useState(0),[data,setData]=useState<EngineeringTaskHistory|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState('');
  useEffect(()=>{
