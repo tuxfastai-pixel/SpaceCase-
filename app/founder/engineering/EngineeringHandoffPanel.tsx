@@ -2,6 +2,7 @@
 import {useState} from 'react';
 import {handoffSchema,engineeringBriefSchema,projectRegistry,type EngineeringHandoff} from '../../../packages/engineering-control/contracts';
 import {supportApi,type Ticket} from '../../support/shared';
+import RepositoryInspectionPanel from './RepositoryInspectionPanel';
 import EngineeringTasksPanel from './EngineeringTasksPanel';
 import EngineeringSavePanel from './EngineeringSavePanel';
 import s from '../../support/support.module.css';
@@ -25,6 +26,7 @@ export default function EngineeringHandoffPanel({ticket}:{ticket:Ticket}){
  <p>Prepare a reviewed task for a future engineering team. SpaceCase supplies the ticket; the shared PSG contract defines responsibilities, evidence and founder review. This creates a handoff, not an investigation or a deployed fix.</p>
  <div className={s.stats}>{Object.entries(projectRegistry).map(([id,p])=><div key={id} className={s.stat}><strong>{p.name}</strong>{p.status==='HANDOFF_READY'?'Handoff preparation available':'Project adapter not connected'}</div>)}</div>
  <p className={s.notice}>Agent runner: not connected. Model calls, repository writes, and production changes are disabled. Reviewed task storage is separate and requires explicit consent when configured. Existing staff assignments refer to people; they do not authorise AI agents.</p>
+ <RepositoryInspectionPanel/>
  <EngineeringTasksPanel ticketId={ticket.id} sourceRevision={ticket.revision} refreshKey={taskRefresh}/>
  {closed?<p>This ticket is resolved or closed. Reopen it through the existing ticket workflow before preparing new work.</p>:<details><summary>Prepare a reviewed engineering handoff</summary><p>Rewrite the issue using synthetic examples. The original title, description, school identity and reporter details are not copied into the handoff. This form does not automatically detect or remove personal information.</p>
  <form onSubmit={prepare}><fieldset disabled={busy||saveLocked} style={{border:0,padding:0,margin:0}}>

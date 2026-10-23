@@ -1,3 +1,5 @@
+import {repositoryInspectionInput} from '../../packages/engineering-control/repository-contract';
+import {inspectFounderRepository} from './repositoryInspection';
 import {z,ZodError} from "zod";
 import type {Pool} from "pg";
 import {resolvePeosAuthorization} from "../session/peosAuthorization";
@@ -41,6 +43,7 @@ const controlActions=[
 ] as const;
 const actionSchema=z.discriminatedUnion("action",[
  ...controlActions,
+ repositoryInspectionInput.extend({action:z.literal("INSPECT_ENGINEERING_PR")}),
  handoffInput.extend({action:z.literal("ENGINEERING_HANDOFF")}),
  engineeringSaveInput.extend({action:z.literal("SAVE_ENGINEERING_TASK")}),
  updateInput.extend({action:z.literal("UPDATE_TICKET")}),
@@ -67,6 +70,7 @@ export function founderHandler(deps:Deps=defaults){return (request:Request)=>han
  }
  if(request.method==="POST"){
  const input=actionSchema.parse(await body(request));
+ if(input.action==="INSPECT_ENGINEERING_PR")return inspectFounderRepository(c,{pullRequest:input.pullRequest,expectedHeadCommit:input.expectedHeadCommit});
  if(input.action==="ENGINEERING_TASK_HISTORY")return controlEngineeringTask(deps.pool(),c,taskControlInput.parse({operation:'HISTORY',ticketId:input.ticketId,taskId:input.taskId}));
  if(input.action==="LIST_ENGINEERING_TASKS")return controlEngineeringTask(deps.pool(),c,taskControlInput.parse({operation:'LIST',ticketId:input.ticketId,offset:input.offset}));
  if(input.action==="CANCEL_ENGINEERING_TASK")return controlEngineeringTask(deps.pool(),c,taskControlInput.parse({operation:'CANCEL',ticketId:input.ticketId,taskId:input.taskId,revision:input.revision}));

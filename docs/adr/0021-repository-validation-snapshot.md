@@ -1,0 +1,7 @@
+# ADR 0021 — Public repository validation snapshots
+
+The shared reader inspects public GitHub metadata for the fixed SpaceCase repository. It reads the requested PR, Validate workflow runs for its exact head, then re-reads the PR to detect concurrent changes. It uses only fixed GitHub HTTPS GET paths, no redirects, a total seven-second deadline, 1MiB response limits and no authentication credentials. GitHub rate limits are reported without retries or polling. A private or unavailable repository remains unavailable; no new access is provisioned.
+
+Validation is the GitHub workflow conclusion, not proof of individual test execution. Select the latest run number/attempt per push and pull_request event, so an older success or success on the other event cannot hide newer failed or pending work. More runs than the bounded response reports INCOMPLETE; unrelated heads, workflow paths or repositories fail closed. Unknown conclusions cannot count as success.
+
+Results are metadata snapshots with observation time and explicit false task-association, code-review, execution and release flags. No PR body, review comments or code are returned. An entered PR number is not proof that it belongs to an engineering task. The existing review-readiness policy is not fed these partial observations as a complete evidence bundle. Founder inspection is advisory and must not enable existing ticket recommendations or release actions.
