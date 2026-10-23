@@ -9,7 +9,7 @@ export function signTaskControl(input:EngineeringControlInput,authority:{founder
  const payload=Buffer.from(JSON.stringify(claims));return `${payload.toString('base64url')}.${sign(null,payload,key).toString('base64url')}`;
 }
 export function verifyTaskControl(token:string,key:KeyObject,now=Math.floor(Date.now()/1000)){
- if(token.length>4096||!/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)||key.type!=='public'||key.asymmetricKeyType!=='ed25519')throw Error('INVALID_ATTESTATION');
+ if(token.length>65536||!/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)||key.type!=='public'||key.asymmetricKeyType!=='ed25519')throw Error('INVALID_ATTESTATION');
  const [body,signature]=token.split('.'),payload=Buffer.from(body,'base64url'),sig=Buffer.from(signature,'base64url');
  if(sig.length!==64||!verify(null,payload,key,sig))throw Error('INVALID_ATTESTATION');
  const claims=claimsSchema.parse(JSON.parse(payload.toString('utf8')));

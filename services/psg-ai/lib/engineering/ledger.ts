@@ -69,7 +69,7 @@ export async function readTaskHistory(pool:Pool,authority:LedgerAuthority,input:
   // One statement binds source existence and events to the same database snapshot.
   const result=await db.query(`SELECT t.id AS "taskId",e.id,e.kind,e.revision,e.occurred_at AS "occurredAt"
    FROM engineering.tasks t LEFT JOIN LATERAL (
-    SELECT id,kind,revision,occurred_at FROM (SELECT id,kind,revision,occurred_at FROM engineering.events WHERE task_id=t.id UNION ALL SELECT id,kind,revision,occurred_at FROM engineering.review_events WHERE task_id=t.id) history ORDER BY revision DESC,id DESC LIMIT 26
+    SELECT id,kind,revision,occurred_at FROM (SELECT id,kind,revision,occurred_at FROM engineering.events WHERE task_id=t.id UNION ALL SELECT id,kind,revision,occurred_at FROM engineering.review_events WHERE task_id=t.id UNION ALL SELECT id,'EVIDENCE_SUBMITTED' AS kind,recorded_revision AS revision,recorded_at AS occurred_at FROM engineering.evidence_records WHERE task_id=t.id) history ORDER BY revision DESC,id DESC LIMIT 26
    ) e ON true WHERE t.id=$1 AND t.project='SPACECASE' AND t.source_reference=$2 ORDER BY e.revision DESC,e.id DESC`,[parsed.taskId,parsed.sourceReference]);
   if(!result.rowCount)throw new LedgerError('TASK_UNAVAILABLE');
   const rows=result.rows.filter(row=>row.id!==null);
