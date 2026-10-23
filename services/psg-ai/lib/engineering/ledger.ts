@@ -8,12 +8,12 @@ const submissionSchema=z.object({requestId:z.string().uuid(),request:runnerReque
 export type LedgerAuthority=PreflightContext & {personId:string};
 export class LedgerError extends Error{}
 const columns='id,project,source_reference AS "sourceReference",source_revision AS "sourceRevision",handoff_digest AS "handoffDigest",base_commit AS "baseCommit",state,revision,created_at AS "createdAt",cancelled_at AS "cancelledAt",brief_expires_at AS "briefExpiresAt",(handoff IS NOT NULL AND brief_expires_at>clock_timestamp()) AS "briefAvailable"';
-async function transaction<T>(pool:Pool,work:(db:PoolClient)=>Promise<T>){
+export async function transaction<T>(pool:Pool,work:(db:PoolClient)=>Promise<T>){
  const db=await pool.connect();
  try{await db.query('BEGIN');await db.query("SET LOCAL statement_timeout='5000ms'");await db.query("SET LOCAL lock_timeout='3000ms'");const value=await work(db);await db.query('COMMIT');return value;}
  catch(error){await db.query('ROLLBACK');throw error;}finally{db.release();}
 }
-function founder(authority:LedgerAuthority){if(!authority.founder)throw new LedgerError('FOUNDER_REQUIRED');return actorSchema.parse(authority.personId);}
+export function founder(authority:LedgerAuthority){if(!authority.founder)throw new LedgerError('FOUNDER_REQUIRED');return actorSchema.parse(authority.personId);}
 
 // Internal service entry point. Authority/current source are supplied by a trusted adapter,
 // never deserialized from an HTTP body. Persistence does not grant execution authority.
@@ -69,7 +69,7 @@ export async function readTaskHistory(pool:Pool,authority:LedgerAuthority,input:
   // One statement binds source existence and events to the same database snapshot.
   const result=await db.query(`SELECT t.id AS "taskId",e.id,e.kind,e.revision,e.occurred_at AS "occurredAt"
    FROM engineering.tasks t LEFT JOIN LATERAL (
-    SELECT id,kind,revision,occurred_at FROM engineering.events WHERE task_id=t.id ORDER BY revision DESC,id DESC LIMIT 26
+    SELECT id,kind,revision,occurred_at FROM (SELECT id,kind,revision,occurred_at FROM engineering.events WHERE task_id=t.id UNION ALL SELECT id,kind,revision,occurred_at FROM engineering.review_events WHERE task_id=t.id) history ORDER BY revision DESC,id DESC LIMIT 26
    ) e ON true WHERE t.id=$1 AND t.project='SPACECASE' AND t.source_reference=$2 ORDER BY e.revision DESC,e.id DESC`,[parsed.taskId,parsed.sourceReference]);
   if(!result.rowCount)throw new LedgerError('TASK_UNAVAILABLE');
   const rows=result.rows.filter(row=>row.id!==null);
