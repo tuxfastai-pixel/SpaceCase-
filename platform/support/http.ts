@@ -1,3 +1,4 @@
+import {evidenceContentSchema} from '../../packages/engineering-control/evidence-record-contract';
 import {repositoryInspectionInput} from '../../packages/engineering-control/repository-contract';
 import {inspectFounderRepository} from './repositoryInspection';
 import {z,ZodError} from "zod";
@@ -37,6 +38,8 @@ export function supportHandler(deps:Deps=defaults){return (request:Request,ticke
 });}
 const founderQuery=z.object({view:z.enum(["directory","school","tickets","ticket","insights"]).default("tickets"),q:z.string().trim().max(100).default(""),offset:z.coerce.number().int().min(0).max(1000000).default(0),schoolId:id.optional(),ticketId:id.optional(),status:z.enum(["SUBMITTED","UNDER_REVIEW","NEEDS_INFORMATION","PLANNED","RESOLVED","CLOSED"]).optional()}).strict();
 const controlActions=[
+ z.object({action:z.literal("SAVE_ENGINEERING_EVIDENCE"),ticketId:id,taskId:id,revision:z.number().int().nonnegative(),requestId:id,content:evidenceContentSchema}).strict(),
+ z.object({action:z.literal("ENGINEERING_EVIDENCE"),ticketId:id,taskId:id}).strict(),
  z.object({action:z.literal("LINK_ENGINEERING_PR"),ticketId:id,taskId:id,revision:z.number().int().nonnegative(),pullRequest:z.number().int().positive().max(100000000),headCommit:z.string().regex(/^[a-f0-9]{40}$/)}).strict(),
  z.object({action:z.literal("ENGINEERING_LINKED_REVIEW"),ticketId:id,taskId:id}).strict(),
  z.object({action:z.literal("ENGINEERING_REVIEW_DECISION"),ticketId:id,taskId:id,revision:z.number().int().nonnegative(),requestId:id,reviewDigest:z.string().regex(/^[a-f0-9]{64}$/),decision:z.enum(['APPROVED','CHANGES_REQUESTED','DEFERRED','DECLINED'])}).strict(),
@@ -74,6 +77,7 @@ export function founderHandler(deps:Deps=defaults){return (request:Request)=>han
  if(request.method==="POST"){
  const input=actionSchema.parse(await body(request));
  if(input.action==="INSPECT_ENGINEERING_PR")return inspectFounderRepository(c,{pullRequest:input.pullRequest,expectedHeadCommit:input.expectedHeadCommit});
+ if(input.action==="SAVE_ENGINEERING_EVIDENCE"||input.action==="ENGINEERING_EVIDENCE")return controlEngineeringTask(deps.pool(),c,taskControlInput.parse({operation:input.action==="SAVE_ENGINEERING_EVIDENCE"?"SAVE_EVIDENCE":"EVIDENCE",...Object.fromEntries(Object.entries(input).filter(([k])=>k!=="action"))}));
  if(input.action==="LINK_ENGINEERING_PR")return controlEngineeringTask(deps.pool(),c,taskControlInput.parse({operation:'LINK',...Object.fromEntries(Object.entries(input).filter(([k])=>k!=='action'))}));
  if(input.action==="ENGINEERING_LINKED_REVIEW")return controlEngineeringTask(deps.pool(),c,taskControlInput.parse({operation:'REVIEW',ticketId:input.ticketId,taskId:input.taskId}));
  if(input.action==="ENGINEERING_REVIEW_DECISION"){if(input.decision==='APPROVED')throw new SupportError('ENGINEERING_REVIEW_NOT_READY',409);return controlEngineeringTask(deps.pool(),c,taskControlInput.parse({operation:'DECIDE',...Object.fromEntries(Object.entries(input).filter(([k])=>k!=='action'))}));}

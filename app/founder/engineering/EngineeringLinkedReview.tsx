@@ -1,4 +1,5 @@
 'use client';
+import EngineeringEvidence from './EngineeringEvidence';
 import {useEffect,useId,useRef,useState} from 'react';
 import {linkedReviewSchema,linkedTaskSchema,recordedDecisionSchema,type LinkedReview,type RecordedDecision} from '../../../packages/engineering-control/linked-review-contract';
 import {supportApi} from '../../support/shared';import s from '../../support/support.module.css';
@@ -47,6 +48,7 @@ function ReviewContents({ticketId,taskId,sourceReference,revision,onChanged}:{ti
  {review.repository&&review.task.link&&review.repository.headCommit!==review.task.link.headCommit?<button type='button' className={s.secondary} onClick={()=>{setHead(review.repository!.headCommit);setPr(String(review.task.link!.pullRequest));setConfirmed(false);}}>Use current head for a new review</button>:null}
  <p className={s.muted}>Enter the full 40-character lowercase commit once. Later inspections use the saved link. Changes require a new explicit review of the linked commit.</p>
  <label><input type='checkbox' checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/> I confirm this pull request and commit are the work I intend to associate with this task.</label><p><button className={s.button} disabled={!confirmed||(Number(pr)===review.task.link?.pullRequest&&head===review.task.link.headCommit)}>Save reviewed link</button></p></fieldset></form>{!editable?<p>New links require an open, unchanged ticket, a blocked task and an unexpired brief.</p>:null}</details>
+ <EngineeringEvidence ticketId={ticketId} taskId={taskId} sourceReference={sourceReference} revision={review.task.taskRevision} editable={!!editable&&!!review.task.link&&!busy&&!intent} onChanged={()=>{setReload(v=>v+1);onChanged();}}/>
  <h5>Record a founder decision</h5><button type='button' className={s.secondary} disabled>Approve — required evidence is incomplete</button>
  {!intent?<><label className={s.field}>Decision<select disabled={busy} value={choice} onChange={e=>setChoice(e.target.value as Choice|'')}><option value=''>Choose a decision</option>{Object.entries(choiceText).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label><button type='button' className={s.secondary} disabled={busy||!choice} onClick={prepareDecision}>Review decision</button></>:null}
  {review.decisions.length?<><h5>Latest recorded decisions</h5><ul>{review.decisions.map(item=><li key={item.id}>{choiceText[item.decision]} · task revision {item.recordedRevision} · <time dateTime={item.recordedAt}>{new Date(item.recordedAt).toLocaleString()}</time></li>)}</ul></>:<p>No founder decision has been recorded for this task.</p>}</>:null}

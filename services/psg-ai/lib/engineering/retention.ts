@@ -8,6 +8,7 @@ export function retentionHandler(deps:{env:()=>Readonly<Record<string,string|und
  if(provided.length!==expected.length||!timingSafeEqual(provided,expected))return reply({error:'UNAUTHENTICATED'},401);
  try{
   let removed=0;for(let batch=0;batch<4;batch++){const r=await deps.pool().query('SELECT engineering.expire_briefs(500) AS removed');removed+=r.rows[0].removed;if(r.rows[0].removed<500)break;}
-  return reply({removed,executionStarted:false});
+  let evidenceRemoved=0;for(let batch=0;batch<4;batch++){const r=await deps.pool().query('SELECT engineering.expire_evidence(500) AS removed');evidenceRemoved+=r.rows[0].removed;if(r.rows[0].removed<500)break;}
+  return reply({removed,evidenceRemoved,executionStarted:false});
  }catch{return reply({error:'RETENTION_UNAVAILABLE'},503);}
 };}
