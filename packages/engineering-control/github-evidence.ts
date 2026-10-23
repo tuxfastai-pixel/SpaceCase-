@@ -55,7 +55,7 @@ export async function verifyGithubEvidence(input:EvidencePacket,packetDigest:str
   if(!approved.length)result.blockers.push('INDEPENDENT_CURRENT_REVIEW_REQUIRED');
   else if(!reviewer)result.blockers.push('EXPLICIT_PACKET_REVIEW_REQUIRED');
   const runs=inspection.runs;
-  if(!runs.length||!runs.some(r=>r.event==='pull_request'))throw Error('WORKFLOW_PROOF_REQUIRED');
+  if(!runs.length||!runs.some(r=>r.event==='pull_request')||runs.some(r=>r.status!=='completed'||r.conclusion!=='success'))throw Error('WORKFLOW_PROOF_REQUIRED');
   for(const run of runs){
    const jobs=jobsSchema.parse(await read(`/actions/runs/${run.id}/attempts/${run.attempt}/jobs?per_page=100`));
    if(jobs.total_count!==jobs.jobs.length||!jobs.jobs.length||jobs.jobs.some(j=>j.run_id!==run.id||j.status!=='completed'||j.conclusion!=='success'))throw Error('TEST_JOBS_UNVERIFIED');
