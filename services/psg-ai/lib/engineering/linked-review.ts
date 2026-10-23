@@ -1,4 +1,5 @@
 import {verifyGithubEvidence} from '../../../../packages/engineering-control/github-evidence';
+import {verifyManagedGithubEvidence} from './github-connection';
 import {listEvidence} from './evidence-records';
 import {createHash} from 'node:crypto';import type {Pool,PoolClient} from 'pg';
 import {z} from 'zod';
@@ -48,7 +49,7 @@ export async function readLinkedReview(pool:Pool,authority:LedgerAuthority,input
  if(latest){
   const binding=latest.packet?.binding;const matches=binding&&binding.taskId===task.taskId&&binding.sourceReference===task.sourceReference&&binding.taskRevision===task.taskRevision&&binding.sourceRevision===authority.sourceRevision&&binding.baseCommit===task.baseCommit&&binding.headCommit===task.link?.headCommit&&binding.pullRequest===task.link?.pullRequest;
   let checked={evidenceVerified:false,blockers:[latest.packet?'EVIDENCE_BINDING_CHANGED':'EVIDENCE_DETAILS_EXPIRED'],reviewId:null as number|null,reviewerGithubId:null as number|null,runIds:[] as number[],artifactDigests:[] as string[]};
-  if(matches&&latest.packet&&repository&&authority.sourceOpen&&task.state==='BLOCKED'&&task.briefAvailable){try{checked=await(deps.verify??verifyGithubEvidence)(latest.packet,latest.packetDigest,repository);}catch{checked.blockers=['GITHUB_EVIDENCE_UNAVAILABLE'];}}
+  if(matches&&latest.packet&&repository&&authority.sourceOpen&&task.state==='BLOCKED'&&task.briefAvailable){try{checked=await(deps.verify??verifyManagedGithubEvidence)(latest.packet,latest.packetDigest,repository);}catch{checked.blockers=['GITHUB_EVIDENCE_UNAVAILABLE'];}}
   verification={evidenceId:latest.id,packetDigest:latest.packetDigest,headCommit:latest.headCommit,expiresAt:latest.expiresAt,...checked};
  }
  const decisions=await transaction(pool,async db=>{

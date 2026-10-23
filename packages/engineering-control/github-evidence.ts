@@ -14,7 +14,7 @@ const jobsSchema=z.object({total_count:z.number().int().nonnegative(),jobs:z.arr
 export type GithubEvidenceResult={evidenceVerified:boolean;blockers:string[];reviewId:number|null;reviewerGithubId:number|null;runIds:number[];artifactDigests:string[]};
 
 // Public, fixed-repository GETs only. No token, arbitrary URL, source narrative or packet text leaves the service.
-export async function verifyGithubEvidence(input:EvidencePacket,packetDigest:string,inspection:z.infer<typeof repositoryInspectionSchema>,deps:{fetch:typeof fetch;readToken?:string}={fetch,readToken:process.env.PSG_ENGINEERING_GITHUB_READ_TOKEN}):Promise<GithubEvidenceResult>{
+export async function verifyGithubEvidence(input:EvidencePacket,packetDigest:string,inspection:z.infer<typeof repositoryInspectionSchema>,deps:{fetch:typeof fetch;readToken?:string;getReadToken?:(signal:AbortSignal)=>Promise<string|null>}={fetch,readToken:process.env.PSG_ENGINEERING_GITHUB_READ_TOKEN}):Promise<GithubEvidenceResult>{
  const packet=evidencePacketSchema.parse(input),binding=packet.binding,signal=AbortSignal.timeout(10000);
  inspection=repositoryInspectionSchema.parse(inspection);
  const result:GithubEvidenceResult={evidenceVerified:false,blockers:[],reviewId:null,reviewerGithubId:null,runIds:[],artifactDigests:[]};
@@ -24,9 +24,12 @@ export async function verifyGithubEvidence(input:EvidencePacket,packetDigest:str
   if(!response.ok||response.headers.get('link')?.includes('rel="next"'))throw Error('GITHUB_EVIDENCE_UNAVAILABLE');
   return JSON.parse(await boundedEngineeringText(response,max));
  }
+ let credential:Promise<string|null>|undefined;
  async function threads(){
-  if(!deps.readToken) return null;
-  const token=z.string().min(20).max(4096).regex(/^[!-~]+$/).parse(deps.readToken);
+  credential??=deps.getReadToken?deps.getReadToken(signal):Promise.resolve(deps.readToken??null);
+  const supplied=await credential;signal.throwIfAborted();
+  if(!supplied) return null;
+  const token=z.string().min(20).max(4096).regex(/^[!-~]+$/).parse(supplied);
   const response=await deps.fetch('https://api.github.com/graphql',{method:'POST',redirect:'error',credentials:'omit',cache:'no-store',signal,headers:{'content-type':'application/json',authorization:`Bearer ${token}`},body:JSON.stringify({query:'query($number:Int!){repository(owner:"tuxfastai-pixel",name:"SpaceCase-"){pullRequest(number:$number){headRefOid baseRefOid reviewThreads(first:100){totalCount nodes{id isResolved} pageInfo{hasNextPage}}}}}',variables:{number:binding.pullRequest}})});
   if(!response.ok)throw Error('REVIEW_THREADS_UNVERIFIED');
   const data=z.object({data:z.object({repository:z.object({pullRequest:z.object({headRefOid:sha,baseRefOid:sha,reviewThreads:z.object({totalCount:z.number().int().nonnegative(),nodes:z.array(z.object({id:z.string().min(1).max(200),isResolved:z.boolean()})).max(100),pageInfo:z.object({hasNextPage:z.boolean()})})})})}),errors:z.array(z.unknown()).optional()}).parse(JSON.parse(await boundedEngineeringText(response,131072)));
