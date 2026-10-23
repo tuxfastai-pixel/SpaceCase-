@@ -1,0 +1,7 @@
+# ADR 0020 — Founder task audit history
+
+Decision: expose the existing durable audit records through the founder engineering desk. A separate READ_TASK_HISTORY signed purpose binds founder, opaque ticket reference and task ID. Product authority is checked afresh through the existing PEOS boundary. PSG checks production configuration and the pinned thirty-second signature before opening storage. Closed tickets retain history access.
+
+The ledger reads source existence and its latest events in one statement under bounded transaction timeouts, ordered by task revision descending. It selects only event ID, kind, revision and timestamp. It does not select saved briefs, actor identifiers, request identifiers or source narratives. Unknown and cross-source tasks both return TASK_UNAVAILABLE. At most 25 events are returned with an explicit truncation flag; earlier records remain stored. Current event kinds are CREATED, CANCELLED and BRIEF_EXPIRED. Retention removes only brief content and history remains readable.
+
+The product validates returned task/reference binding and a strict metadata schema. History loads only when opened, supports explicit refresh, aborts requests when hidden or unmounted, clears stale results on reload and reloads after a task revision changes. The UI calls each result a snapshot; expiry time alone is not presented as proof that the retention job ran. This adds no writes, worker execution, model calls, database grants, credentials or migrations.

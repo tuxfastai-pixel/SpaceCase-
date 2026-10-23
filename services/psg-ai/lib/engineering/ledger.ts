@@ -61,3 +61,18 @@ export async function listSourceTasks(pool:Pool,authority:LedgerAuthority,input:
  const result=await pool.query(`SELECT ${columns} FROM engineering.tasks WHERE project='SPACECASE' AND source_reference=$1 ORDER BY created_at DESC,id DESC LIMIT 26 OFFSET $2`,[parsed.sourceReference,parsed.offset]);
  return {tasks:result.rows.slice(0,25),nextOffset:result.rows.length>25&&parsed.offset+25<=10000?parsed.offset+25:null,executionStarted:false as const};
 }
+
+// Read only a bounded audit projection. No actor identifiers or saved brief content.
+export async function readTaskHistory(pool:Pool,authority:LedgerAuthority,input:{sourceReference:string;taskId:string}){
+ founder(authority);const parsed=z.object({sourceReference:z.string().regex(/^SC-[A-F0-9]{12}$/),taskId:z.string().uuid()}).strict().parse(input);
+ return transaction(pool,async db=>{
+  // One statement binds source existence and events to the same database snapshot.
+  const result=await db.query(`SELECT t.id AS "taskId",e.id,e.kind,e.revision,e.occurred_at AS "occurredAt"
+   FROM engineering.tasks t LEFT JOIN LATERAL (
+    SELECT id,kind,revision,occurred_at FROM engineering.events WHERE task_id=t.id ORDER BY revision DESC,id DESC LIMIT 26
+   ) e ON true WHERE t.id=$1 AND t.project='SPACECASE' AND t.source_reference=$2 ORDER BY e.revision DESC,e.id DESC`,[parsed.taskId,parsed.sourceReference]);
+  if(!result.rowCount)throw new LedgerError('TASK_UNAVAILABLE');
+  const rows=result.rows.filter(row=>row.id!==null);
+  return {taskId:parsed.taskId,sourceReference:parsed.sourceReference,events:rows.slice(0,25).map(({id,kind,revision,occurredAt})=>({id,kind,revision,occurredAt})),truncated:rows.length>25,executionStarted:false as const};
+ });
+}
