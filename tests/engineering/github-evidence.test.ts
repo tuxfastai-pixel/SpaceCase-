@@ -30,6 +30,15 @@ test('review threads require complete authenticated resolution; missing connecti
  f.threads.data.repository.pullRequest.reviewThreads.nodes[0].isResolved=false;assert.equal((await verifyGithubEvidence(packet.packet,packet.packetDigest,inspection,{...reader(f),readToken:'synthetic-read-token-only'})).evidenceVerified,false);
  f.threads.data.repository.pullRequest.reviewThreads.nodes[0].isResolved=true;f.threads.data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage=true;assert.equal((await verifyGithubEvidence(packet.packet,packet.packetDigest,inspection,{...reader(f),readToken:'synthetic-read-token-only'})).evidenceVerified,false);
 });
+test('managed credential is lazy, reused only within verification and never sent to public REST reads',async()=>{
+ let calls=0;const getReadToken=async(signal:AbortSignal)=>{assert.equal(signal.aborted,false);calls++;return 'synthetic-read-token-only';};
+ assert.equal((await verifyGithubEvidence(packet.packet,packet.packetDigest,inspection,{...reader(),getReadToken})).evidenceVerified,true);assert.equal(calls,0);
+ const f=fixtures();f.comments=[{id:9}];const r=reader(f);let graphReads=0;
+ const fetcher:typeof fetch=async(url,init)=>{if(String(url)==='https://api.github.com/graphql'){graphReads++;assert.equal(new Headers(init?.headers).get('authorization'),'Bearer synthetic-read-token-only');}return r.fetch(url,init);};
+ assert.equal((await verifyGithubEvidence(packet.packet,packet.packetDigest,inspection,{fetch:fetcher,getReadToken})).evidenceVerified,true);assert.equal(calls,1);assert.equal(graphReads,2);
+ const rejected=await verifyGithubEvidence(packet.packet,packet.packetDigest,inspection,{...reader(f),getReadToken:async()=>{throw Error('REVIEW_THREADS_UNVERIFIED');}});assert.equal(rejected.evidenceVerified,false);assert.ok(rejected.blockers.includes('REVIEW_THREADS_UNVERIFIED'));
+ const malformed=await verifyGithubEvidence(packet.packet,'0'.repeat(64),inspection,{...reader(f),getReadToken});assert.equal(malformed.evidenceVerified,false);assert.equal(calls,1);
+});
 test('changed proof bytes, incomplete jobs, skipped tests, moved PRs and mutable review changes fail closed',async()=>{
  const f=fixtures();f.file.content=Buffer.from('Different proof bytes').toString('base64');assert.equal((await verifyGithubEvidence(packet.packet,packet.packetDigest,inspection,reader(f))).evidenceVerified,false);
  const missing=fixtures();missing.jobs.total_count=2;assert.equal((await verifyGithubEvidence(packet.packet,packet.packetDigest,inspection,reader(missing))).evidenceVerified,false);
