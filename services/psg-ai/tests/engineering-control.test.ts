@@ -29,3 +29,20 @@ test('listing/cancellation are source-bound, metadata-only, paginated and replay
   await assert.rejects(listSourceTasks(pool,{...actor,founder:false},{sourceReference:source,offset:0}),/FOUNDER_REQUIRED/);
  }finally{await owner.end();await pool.end();}
 });
+test('audit history stays source-bound and survives brief expiry without exposing actors or saved content',{skip:!process.env.PSG_ENGINEERING_TEST_DATABASE_URL},async()=>{
+ const owner=new Pool({connectionString:process.env.PSG_ENGINEERING_TEST_DATABASE_URL}),pool=new Pool({connectionString:process.env.PSG_ENGINEERING_TEST_DATABASE_URL,options:'-c role=psg_engineering_runtime'});
+ try{
+  await migrateEngineering(owner);const reference=`SC-${randomUUID().replaceAll('-','').slice(0,12).toUpperCase()}`;
+  const packet={...handoff,source:{...handoff.source,reference}},submission={handoff:packet,digest:createHash('sha256').update(JSON.stringify(packet)).digest('hex'),baseCommit:'c'.repeat(40)};
+  const saved=await saveBlockedTask(pool,actor,{requestId:randomUUID(),request:submission});const taskId=saved.task.id;
+  const handle=engineeringControlHandler({env:()=>env,pool:()=>pool,now:()=>1000});
+  const history=(sourceReference=reference,id=taskId)=>handle(req(signTaskControl({purpose:'READ_TASK_HISTORY',sourceReference,taskId:id},actor,keys.privateKey,1000)));
+  assert.equal((await history('SC-000000000000')).status,404);assert.equal((await history(reference,randomUUID())).status,404);
+  const first=await history();assert.equal(first.status,200);assert.deepEqual((await first.json()).events.map((e:{kind:string})=>e.kind),['CREATED']);
+  const cancellation=signTaskControl({purpose:'CANCEL_TASK',sourceReference:reference,taskId,revision:0},actor,keys.privateKey,1000);assert.equal((await handle(req(cancellation))).status,200);
+  await owner.query("UPDATE engineering.tasks SET brief_expires_at=clock_timestamp()-interval '1 second' WHERE id=$1",[taskId]);await pool.query('SELECT engineering.expire_briefs(500)');
+  const result=await (await history()).json();assert.deepEqual(result.events.map((e:{kind:string})=>e.kind),['BRIEF_EXPIRED','CANCELLED','CREATED']);assert.deepEqual(result.events.map((e:{revision:number})=>e.revision),[2,1,0]);assert.equal(result.truncated,false);assert.equal(result.executionStarted,false);
+  assert.equal(JSON.stringify(result).includes(actor.personId),false);assert.equal(JSON.stringify(result).includes(handoff.brief.problem),false);assert.equal(JSON.stringify(result).includes('actor'),false);
+  assert.deepEqual(await (await history()).json(),result);assert.equal((await owner.query('SELECT handoff FROM engineering.tasks WHERE id=$1',[taskId])).rows[0].handoff,null);
+ }finally{await owner.end();await pool.end();}
+});

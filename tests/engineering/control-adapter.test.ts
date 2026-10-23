@@ -15,3 +15,11 @@ test('product controls require fresh founder authority and bind closed-ticket ca
  response={tasks:[{...task,sourceReference:'SC-000000000000'}],nextOffset:null,executionStarted:false};await assert.rejects(controlEngineeringTask(pool,actor,{operation:'LIST',ticketId,offset:0},deps),/ENGINEERING_LEDGER_UNAVAILABLE/);
  response={tasks:[task],nextOffset:null,executionStarted:false};assert.deepEqual(await controlEngineeringTask(pool,actor,{operation:'LIST',ticketId,offset:0},deps),response);
 });
+test('history acknowledgement is bound to the resolved ticket and requested task with no actor or narrative fields',async()=>{
+ const {privateKey,publicKey}=generateKeyPairSync('ed25519');const actor={personId:randomUUID(),founder:true,schools:[]};const ticketId=randomUUID(),taskId=randomUUID();
+ const pool={query:async()=>({rowCount:1,rows:[{reference:'SC-ABCDEF012345'}]})} as unknown as Pool;
+ const history={taskId,sourceReference:'SC-ABCDEF012345',events:[{id:randomUUID(),kind:'CREATED',revision:0,occurredAt:new Date(0).toISOString()}],truncated:false,executionStarted:false};let response:unknown=history;
+ const deps={env:()=>({VERCEL_ENV:'production',SPACECASE_ENGINEERING_LEDGER_ENABLED:'true',PSG_ENGINEERING_BASE_URL:'https://engineering.test/',SPACECASE_ENGINEERING_SIGNING_PRIVATE_KEY:privateKey.export({type:'pkcs8',format:'pem'}).toString()}),now:()=>1000,fetch:async(_url:URL|RequestInfo,init?:RequestInit)=>{const claims=verifyTaskControl(JSON.parse(String(init?.body)).attestation,publicKey,1000);assert.deepEqual(claims.input,{purpose:'READ_TASK_HISTORY',sourceReference:history.sourceReference,taskId});return Response.json(response);}};
+ const input={operation:'HISTORY' as const,ticketId,taskId};assert.deepEqual(await controlEngineeringTask(pool,actor,input,deps),history);
+ for(const bad of [{...history,taskId:randomUUID()},{...history,sourceReference:'SC-000000000000'},{...history,events:[{...history.events[0],actorId:actor.personId}]},{...history,brief:'private'}]){response=bad;await assert.rejects(controlEngineeringTask(pool,actor,input,deps),/ENGINEERING_LEDGER_UNAVAILABLE/);}
+});
