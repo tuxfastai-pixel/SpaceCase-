@@ -43,3 +43,10 @@ test('bad digest fails before network; failures/rate limits and incomplete enume
  const partial=await verifyGithubEvidence(packet.packet,packet.packetDigest,inspection,reader(fixtures(),()=>new Response('{}',{headers:{link:'<https://api.github.com/next>; rel="next"'}})));assert.equal(partial.evidenceVerified,false);
  const failed=await verifyGithubEvidence(packet.packet,packet.packetDigest,{...inspection,validation:'FAILED'},reader());assert.equal(failed.evidenceVerified,false);
 });
+test('twenty distinct proof files preserve the ten-artifact limit in each section receipt',async()=>{
+ const files=new Map<string,{text:string;hash:string}>();for(let i=0;i<20;i++){const value=`Synthetic proof ${i}\n`,sha=createHash('sha256').update(value).digest('hex');files.set(sha,{text:value,hash:sha});}
+ const values=[...files.values()],many=collectEvidencePacket({...packet.packet,reproduction:{...packet.packet.reproduction,artifacts:values.slice(0,10).map(f=>({kind:'TEST_LOG',sha256:f.hash}))},rollback:{...packet.packet.rollback,artifacts:values.slice(10).map(f=>({kind:'ROLLBACK_PLAN',sha256:f.hash}))}});
+ const f=fixtures();f.reviews[0].body=`PSG_REPRODUCTION_REVIEWED ${many.packetDigest}\nPSG_ROLLBACK_REVIEWED ${many.packetDigest}`;const other=reader(f);
+ const fetcher:typeof fetch=async(url,init)=>{const u=new URL(String(url)),match=u.pathname.match(/\/contents\/\.engineering\/evidence\/([a-f0-9]{64})\.txt$/);if(match){const file=files.get(match[1])!;return Response.json({type:'file',encoding:'base64',size:Buffer.byteLength(file.text),content:Buffer.from(file.text).toString('base64'),path:`.engineering/evidence/${file.hash}.txt`});}return other.fetch(url,init);};
+ const result=await verifyGithubEvidence(many.packet,many.packetDigest,inspection,{fetch:fetcher});assert.equal(result.evidenceVerified,true);assert.equal(result.artifactDigests.length,20);
+});

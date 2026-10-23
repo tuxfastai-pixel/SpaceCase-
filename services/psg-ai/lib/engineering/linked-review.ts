@@ -80,7 +80,7 @@ export async function recordReviewDecision(pool:Pool,authority:LedgerAuthority,i
  return transaction(pool,async db=>{
   await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[JSON.stringify([actor,parsed.requestId])]);const retry=await oldDecision(db,actor,parsed,hash);if(retry)return retry;
   const task=await selectLinked(db,{taskId:parsed.taskId,sourceReference:parsed.sourceReference},true);if(JSON.stringify(task)!==JSON.stringify(review.task))throw new LedgerError('REVIEW_CHANGED');
-  if(parsed.decision==='APPROVED'){const proof=review.verification!;const available=await db.query('SELECT id FROM engineering.evidence_records WHERE id=$1 AND task_id=$2 AND recorded_revision=$3 AND packet_digest=$4 AND packet IS NOT NULL AND expires_at>clock_timestamp() FOR SHARE',[proof.evidenceId,task.taskId,task.taskRevision,proof.packetDigest]);if(!available.rowCount)throw new LedgerError('REVIEW_NOT_READY');}
+  if(parsed.decision==='APPROVED'){const proof=review.verification!;const available=await db.query('SELECT engineering.lock_approval_evidence($1,$2,$3,$4) AS available',[proof.evidenceId,task.taskId,task.taskRevision,proof.packetDigest]);if(!available.rows[0].available)throw new LedgerError('REVIEW_NOT_READY');}
   const revision=task.taskRevision+1;await db.query('UPDATE engineering.tasks SET revision=$2 WHERE id=$1',[task.taskId,revision]);
   await db.query("INSERT INTO engineering.review_events(task_id,actor_id,kind,revision) VALUES($1,$2,'DECISION_RECORDED',$3)",[task.taskId,actor,revision]);
   const values=[task.taskId,actor,parsed.requestId,hash,parsed.revision,revision,parsed.decision,parsed.reviewDigest,task.link?.headCommit??null];

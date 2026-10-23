@@ -22,3 +22,17 @@ CREATE TABLE engineering.verified_approvals (
 CREATE INDEX verified_approvals_task ON engineering.verified_approvals(task_id,recorded_revision DESC);
 REVOKE ALL ON engineering.verified_approvals FROM PUBLIC;
 GRANT SELECT,INSERT ON engineering.verified_approvals TO psg_engineering_runtime;
+
+-- SELECT FOR SHARE requires UPDATE privileges; expose only this bounded lock instead.
+CREATE FUNCTION engineering.lock_approval_evidence(evidence uuid,task uuid,revision integer,packet_hash text) RETURNS boolean
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
+DECLARE selected uuid;
+BEGIN
+ SELECT e.id INTO selected FROM engineering.evidence_records e
+ WHERE e.id=evidence AND e.task_id=task AND e.recorded_revision=revision AND e.packet_digest=packet_hash
+ AND e.packet IS NOT NULL AND e.expires_at>clock_timestamp() FOR SHARE;
+ RETURN FOUND;
+END
+$$;
+REVOKE ALL ON FUNCTION engineering.lock_approval_evidence(uuid,uuid,integer,text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION engineering.lock_approval_evidence(uuid,uuid,integer,text) TO psg_engineering_runtime;
