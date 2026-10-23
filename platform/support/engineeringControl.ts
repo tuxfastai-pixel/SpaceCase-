@@ -13,12 +13,12 @@ export const taskControlInput=z.discriminatedUnion('operation',[
  z.object({operation:z.literal('HISTORY'),ticketId:z.string().uuid(),taskId:z.string().uuid()}).strict(),
  z.object({operation:z.literal('LINK'),ticketId:z.string().uuid(),taskId:z.string().uuid(),revision:z.number().int().nonnegative(),pullRequest:z.number().int().positive().max(100000000),headCommit:z.string().regex(/^[a-f0-9]{40}$/)}).strict(),
  z.object({operation:z.literal('REVIEW'),ticketId:z.string().uuid(),taskId:z.string().uuid()}).strict(),
- z.object({operation:z.literal('DECIDE'),ticketId:z.string().uuid(),taskId:z.string().uuid(),revision:z.number().int().nonnegative(),requestId:z.string().uuid(),reviewDigest:z.string().regex(/^[a-f0-9]{64}$/),decision:z.enum(['APPROVED','CHANGES_REQUESTED','DEFERRED','DECLINED'])}).strict(),
+ z.object({operation:z.literal('DECIDE'),ticketId:z.string().uuid(),taskId:z.string().uuid(),revision:z.number().int().nonnegative(),requestId:z.string().uuid(),reviewDigest:z.string().regex(/^[a-f0-9]{64}$/),evidenceId:z.string().uuid().optional(),decision:z.enum(['APPROVED','CHANGES_REQUESTED','DEFERRED','DECLINED'])}).strict(),
  z.object({operation:z.literal('CANCEL'),ticketId:z.string().uuid(),taskId:z.string().uuid(),revision:z.number().int().nonnegative()}).strict(),
 ]);
 export async function controlEngineeringTask(pool:Pool,c:SupportContext,input:z.infer<typeof taskControlInput>,deps={env:()=>process.env as Readonly<Record<string,string|undefined>>,fetch,now:()=>Math.floor(Date.now()/1000)}){
  assertFounder(c);const parsed=taskControlInput.parse(input),env=deps.env();
- if(parsed.operation==='DECIDE'&&parsed.decision==='APPROVED')throw new SupportError('ENGINEERING_REVIEW_NOT_READY',409);
+ if(parsed.operation==='DECIDE'&&parsed.decision==='APPROVED'&&!parsed.evidenceId)throw new SupportError('ENGINEERING_REVIEW_NOT_READY',409);
  if(env.VERCEL_ENV!=='production'||env.SPACECASE_ENGINEERING_LEDGER_ENABLED!=='true'||!env.PSG_ENGINEERING_BASE_URL||!env.SPACECASE_ENGINEERING_SIGNING_PRIVATE_KEY)throw new SupportError('ENGINEERING_LEDGER_DISABLED',503);
  let origin:URL,key;
  try{origin=new URL(env.PSG_ENGINEERING_BASE_URL);if(origin.protocol!=='https:'||origin.pathname!=='/'||origin.username||origin.password||origin.search||origin.hash)throw Error();key=engineeringSigningKey(env.SPACECASE_ENGINEERING_SIGNING_PRIVATE_KEY);}catch{throw new SupportError('ENGINEERING_LEDGER_DISABLED',503);}
@@ -31,8 +31,8 @@ export async function controlEngineeringTask(pool:Pool,c:SupportContext,input:z.
  if(parsed.operation==='SAVE_EVIDENCE')control={purpose:'SAVE_EVIDENCE',...currentSource,taskId:parsed.taskId,revision:parsed.revision,requestId:parsed.requestId,content:parsed.content};
  else if(parsed.operation==='EVIDENCE')control={purpose:'LIST_EVIDENCE',sourceReference:reference,taskId:parsed.taskId};
  else if(parsed.operation==='LINK')control={purpose:'LINK_PULL_REQUEST',...currentSource,taskId:parsed.taskId,revision:parsed.revision,pullRequest:parsed.pullRequest,headCommit:parsed.headCommit};
- else if(parsed.operation==='REVIEW')control={purpose:'READ_LINKED_REVIEW',...currentSource,taskId:parsed.taskId};
- else if(parsed.operation==='DECIDE')control={purpose:'RECORD_REVIEW_DECISION',...currentSource,taskId:parsed.taskId,revision:parsed.revision,requestId:parsed.requestId,reviewDigest:parsed.reviewDigest,decision:parsed.decision};
+ else if(parsed.operation==='REVIEW')control={purpose:'READ_LINKED_REVIEW',verificationVersion:'github.v1',...currentSource,taskId:parsed.taskId};
+ else if(parsed.operation==='DECIDE')control={purpose:'RECORD_REVIEW_DECISION',...currentSource,taskId:parsed.taskId,revision:parsed.revision,requestId:parsed.requestId,reviewDigest:parsed.reviewDigest,evidenceId:parsed.evidenceId,decision:parsed.decision};
  else control=parsed.operation==='LIST'?{purpose:'LIST_TICKET_TASKS',sourceReference:reference,offset:parsed.offset}:parsed.operation==='HISTORY'?{purpose:'READ_TASK_HISTORY',sourceReference:reference,taskId:parsed.taskId}:{purpose:'CANCEL_TASK',sourceReference:reference,taskId:parsed.taskId,revision:parsed.revision};
  const attestation=signTaskControl(control,{founder:c.founder,personId:c.personId},key,deps.now());
  try{
