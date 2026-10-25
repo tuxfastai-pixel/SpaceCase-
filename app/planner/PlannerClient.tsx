@@ -1,6 +1,7 @@
 "use client";
 import {useEffect,useState} from "react";
 import {addDays,monday,planInput,type Lesson} from "../../domains/planner/contracts";
+import TeacherGuide from "../teacher-help/TeacherGuide";
 import styles from "./planner.module.css";
 type Plan={week:string;timezone:string;className:string;revision:number;lessons:Lesson[];updatedAt:string|null};
 const errors:Record<string,string>={UNAUTHENTICATED:"Your session has ended. Sign in again.",CLASS_ACCESS_REQUIRED:"You no longer have teacher access to this class.",CLASS_WORKSPACE_REQUIRED:"Ask your administrator to connect this class to the learning workspace.",PLAN_CHANGED:"This plan changed in another tab. Your edits are still here. Copy anything you need, then reload the saved plan before editing again.",INVALID_INPUT:"Check the lesson dates, subjects and topics. Ready and taught lessons also need objectives and activities."};
@@ -33,6 +34,7 @@ export default function PlannerClient({schoolId,classId}:{schoolId:string;classI
  }
  const ready=data?.lessons.filter(l=>l.status==="READY").length??0;const taught=data?.lessons.filter(l=>l.status==="TAUGHT").length??0;
  return <main className={styles.page}><header className={styles.header}><div><p className={styles.eyebrow}>SpaceCase · Teaching</p><h1>Weekly lesson planner</h1><p>{data?.className??"Your assigned class"}</p></div><a href={`/dashboard?class=${classId}`} onClick={e=>{if(!discard())e.preventDefault();}}>Teacher workspace</a></header>
+ <TeacherGuide topic="planner"/>
  <p className={styles.intro}>Plan the week, prepare your lessons and reflect after teaching. These plans are private to your teacher account. Keep learner names and personal information out of lesson notes.</p>
  {error?<p role="alert" className={styles.error}>{error}</p>:null}{notice?<p role="status" className={styles.notice}>{notice}</p>:null}
  {busy&&!data?<p role="status">Loading your plan…</p>:null}

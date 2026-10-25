@@ -2,6 +2,7 @@
 import {useEffect,useState} from 'react';
 import {z} from 'zod';
 import {progressSchema,reportQuery,type ProgressReport} from '@/domains/reports/contracts';
+import TeacherGuide from "../teacher-help/TeacherGuide";
 import styles from './reports.module.css';
 import ReportDateInput from './ReportDateInput';
 const rosterSchema=z.object({className:z.string(),learners:z.array(z.object({personId:z.string().uuid(),givenName:z.string(),familyName:z.string(),admissionNumber:z.string()}))});
@@ -20,6 +21,7 @@ export default function ReportsClient({schoolId,classId}:{schoolId:string;classI
  return <main className={styles.page}><header className={styles.controls}><a href={`/dashboard?class=${classId}`}>Back to teacher workspace</a><form action='/auth/logout' method='post'><button>Sign out</button></form></header><div className={styles.content}>
  <section className={styles.controls}><p className={styles.eyebrow}>Reports</p><h1>Learner progress report</h1><p>{roster?.className??'Your assigned class'} · Review saved facts before sharing with a family.</p>
  <p>This report includes attendance recorded for this class and your own teacher-approved assessment results. Assessment dates refer to approval dates. It is not an official term report or a complete school transcript.</p>
+ <TeacherGuide topic="reports"/>
  <button disabled={busy} onClick={()=>setRefresh(v=>v+1)}>Refresh learner access</button>
  {roster?<form onSubmit={load}><fieldset disabled={busy}><div className={styles.fields}><label>Learner<select required value={learnerId} onChange={e=>{setLearner(e.target.value);setReport(null);}}><option value=''>Choose a learner</option>{roster.learners.map(l=><option key={l.personId} value={l.personId}>{l.givenName} {l.familyName} · {l.admissionNumber}</option>)}</select></label><ReportDateInput label='From' value={start} onChange={value=>{setStart(value);setReport(null);}}/><ReportDateInput label='To' value={end} onChange={value=>{setEnd(value);setReport(null);}}/></div><p>Choose a range of up to 366 days. Future dates are not included.</p><button type='submit' disabled={!roster.learners.length}>{busy?'Loading report…':'View report'}</button></fieldset>{!roster.learners.length?<p>No currently enrolled learners are available for this class.</p>:null}</form>:!error?<p role='status'>Checking current learner access…</p>:null}
  {error?<p role='alert'>{error}</p>:null}</section>

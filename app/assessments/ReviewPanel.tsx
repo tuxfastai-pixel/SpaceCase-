@@ -4,6 +4,7 @@ import ReadingPanel from "./ReadingPanel";
 import {useState} from "react";
 import {validateScores,reviewScores,type ReviewScores} from "../../domains/assessment/contracts";
 import type {AssessmentDetail,Submission} from "./api";
+import TeacherGuide from "../teacher-help/TeacherGuide";
 import styles from "./assessment.module.css";
 export default function ReviewPanel({data,submission,base,busy,onAction,onDirty,onBack}:{data:AssessmentDetail;submission:Submission;base:string;busy:boolean;onAction:(action:unknown)=>Promise<void>;onDirty:(v:boolean)=>void;onBack:()=>void}){
  const [values,setValues]=useState(()=>data.assessment.rubric.map(q=>{const saved=submission.reviewScores?.find(s=>s.questionId===q.id);const proposed=submission.proposal?.items.find(s=>s.questionId===q.id);return {questionId:q.id,marks:saved?String(saved.marks):proposed?.marks!==null&&proposed?.marks!==undefined?String(proposed.marks):"",feedback:saved?.feedback??proposed?.feedback??"",reviewed:saved?.reviewed??false};}));
@@ -12,6 +13,7 @@ export default function ReviewPanel({data,submission,base,busy,onAction,onDirty,
  function update(id:string,patch:Partial<typeof values[number]>){setValues(xs=>xs.map(x=>x.questionId===id?{...x,...patch}:x));setDirty(true);onDirty(true);}
  async function save(){try{const parsed=reviewScores.parse(values.map(x=>({...x,marks:x.marks.trim()===""?NaN:Number(x.marks)})));validateScores(data.assessment.rubric,parsed as ReviewScores);setError("");await onAction({action:"SAVE_REVIEW",submissionId:submission.id,revision:submission.revision,scores:parsed});}catch{setError("Enter a valid mark for every question, stay within its maximum, and tick each reviewed box.");}}
  return <section><button disabled={busy} onClick={onBack}>Back to work overview</button><h2>{learner?`${learner.givenName} ${learner.familyName}`:"Current learner"} · Review work</h2>
+ <TeacherGuide topic="review"/>
  {submission.currentResultId?<p className={styles.notice}>Approved result: <strong>{submission.total} / {submission.maximum}</strong>. Changes require a correction reason; earlier results remain in the audit history.</p>:<p>Inspect every page and question. Assistant suggestions are drafts and may be wrong. Unclear answers need your judgement.</p>}
  <div className={styles.photoGrid}>{pages.map(p=><figure key={p.id}><a href={`${base}/pages/${p.id}`} target="_blank" rel="noreferrer">Open full-size page {p.pageNumber}</a><Image unoptimized src={`${base}/pages/${p.id}`} alt={`Work page ${p.pageNumber}`} width={360} height={480} className={styles.photo}/></figure>)}</div>
  {!submission.matchingConfirmed&&!submission.currentResultId?<section className={styles.card}><h3>Confirm learner and pages</h3><p>Check that all photos belong to this learner and are numbered 1, 2, 3… with no missing pages. Return to the overview to correct a match.</p><button disabled={busy||pages.length===0} onClick={()=>void onAction({action:"CONFIRM_PAGES",submissionId:submission.id,revision:submission.revision})}>I checked the learner and page order</button></section>:null}

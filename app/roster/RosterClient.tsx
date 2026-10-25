@@ -1,6 +1,7 @@
 "use client";
 import {useEffect,useState} from "react";
 import {generateLearnerReference,learnerValidationMessage,referenceHelp,learnerSchema,parseLearnerCsv,reviewLearners,type LearnerInput,type LearnerReview} from "../../platform/learners/import";
+import TeacherGuide from "../teacher-help/TeacherGuide";
 import styles from "../admin/admin.module.css";
 type Learner=LearnerInput&{personId:string};
 type Roster={class:{id:string;name:string;academicYear:number|null};learners:Learner[];nextOffset:number|null};
@@ -37,7 +38,8 @@ export default function RosterClient({schoolId,classId,admin}:{schoolId:string;c
  function edit(index:number,patch:Partial<LearnerReview>){setRows(current=>current?.map((r,i)=>i===index?{...r,...patch}:r)??null);}
  return <main className={styles.page}><header className={styles.topbar}><a className={styles.brand} href={admin?"/admin":"/dashboard"}>SpaceCase <span>{admin?"School administration":"Teacher workspace"}</span></a><form action="/auth/logout" method="post"><button className={styles.secondary}>Sign out</button></form></header><div className={styles.content}>
   <p><a href={admin?"/admin":"/dashboard"}>Back to workspace</a></p><h1>{data?data.class.name:"Class roster"}</h1><p>{data?.class.academicYear??""} · {admin?"Manage learner enrolment":"Your assigned class"}</p>
-  {!admin?<p><a href={`/classes/${schoolId}/${classId}/attendance`}>Take attendance</a></p>:null}
+  {!admin?<TeacherGuide topic="roster"/>:null}
+{!admin?<p><a href={`/classes/${schoolId}/${classId}/attendance`}>Take attendance</a></p>:null}
   {error?<p className={styles.error} role="alert">{error}</p>:null}{notice?<p className={styles.notice} role="status">{notice}</p>:null}
   {results?<section className={styles.card} aria-live="polite"><h2>Enrolment results</h2><ul>{results.map(r=><li key={r.admissionNumber}><strong>{r.admissionNumber}</strong>: {labels[r.status]}</li>)}</ul></section>:null}
   {admin&&data?<section className={styles.card}><h2>Add a learner</h2><p>Use the learner’s admission number from the school register or learner management system. If none exists, choose the option below to generate a SpaceCase reference. References are unique within this school. Matching an existing reference requires matching names; it never overwrites them. No learner login is created.</p>
