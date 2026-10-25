@@ -121,6 +121,7 @@ export function WorkspaceHome({context}:{context:SchoolContext}){
       <p className={styles.subtle}>Only your current assigned classes appear here. Contact your school administrator if a class is missing.</p>
     </section>
     {selected?<>{operational&&selected.workspaceConfigured?<DayOverview key={`${context.schoolId}:${selected.classId}`} schoolId={context.schoolId} classId={selected.classId}/>:null}<ClassTools schoolId={context.schoolId} classroom={selected} schoolConfigured={operational}/></>:<p className={styles.emptyState}>No current class assignments are available. Ask your school administrator to assign your classes.</p>}
+    <p><a href="/family/onboarding">Family setup: start or continue your private draft</a></p>
     <section className={styles.roadmap} aria-labelledby="next-heading"><p className={styles.eyebrow}>Still to come</p><h2 id="next-heading">More support for your working day</h2><p>Official term reports, reviewed family communication, teaching resources and the SpaceCase Teacher Assistant are planned. These capabilities will appear as tools once they are available.</p><p className={styles.subtle}>Your planning, homework and observation notes remain private to your teacher workspace. Automatic email delivery and live AI execution are not enabled.</p></section>
   </DashboardShell>;
 }
@@ -149,6 +150,7 @@ function StatusPanel({ title, body }: Readonly<{ title: string; body: string }>)
       <p className={styles.eyebrow}>Secure workspace</p>
       <h1>{title}</h1>
       <p>{body}</p>
+      <p><a href="/family/onboarding">Set up your family profile draft</a> · <a href="/help/parents">Parent / guardian help</a></p>
     </section>
   );
 }
