@@ -1,5 +1,6 @@
 "use client";
 import {useEffect,useState} from "react";
+import {AdministratorGuide} from "../help/AdministratorHelp";
 import styles from "./admin.module.css";
 type State={storageReady:boolean;workspace:{timezone:string|null;academicYearLabel:string|null;autoGenerateLearnerReferences:boolean}|null};
 export default function WorkspaceSetup({schoolId}:{schoolId:string}){
@@ -12,7 +13,7 @@ export default function WorkspaceSetup({schoolId}:{schoolId:string}){
       .then(value=>{setData(value);setAutoReferences(value.workspace?.autoGenerateLearnerReferences===true);if(value.workspace?.timezone)setTimezone(value.workspace.timezone);if(value.workspace?.academicYearLabel)setYear(value.workspace.academicYearLabel);})
       .catch(e=>{if(!controller.signal.aborted)setError(e.message);});return ()=>controller.abort();
   },[url]);
-  return <section className={styles.card}><p className={styles.eyebrow}>Workspace readiness</p><h2>School learning workspace</h2>
+  return <section className={styles.card}><p className={styles.eyebrow}>Workspace readiness</p><h2>School learning workspace</h2><AdministratorGuide topic="setup"/>
     <p>Set the school timezone and academic year, and connect its current classes to the learning workspace. Learner enrolment remains available through PEOS while learning storage is being configured.</p>
     {error?<p className={styles.error} role="alert">{error}</p>:null}{notice?<p className={styles.notice} role="status">{notice}</p>:null}
     {data?<><p>{data.workspace?"Workspace configured. New classes connect automatically. Save to update settings or reconnect any pending classes.":"Storage connection confirmed. Complete the workspace settings."}</p>

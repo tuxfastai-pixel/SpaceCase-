@@ -27,6 +27,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       </form>
       <p className={styles.note}>Choose the Google account you want to use. Signing out of SpaceCase does not sign you out of Google on this device.</p>
       <p className={styles.note}>New here? Your account is created when you continue. No separate password needed.</p>
+      <p className={styles.note}><a href="/help/parents">Need a hand? Parent / guardian help and current availability</a></p>
       {error ? <p role="alert">{Object.hasOwn(messages, error) ? messages[error] : messages.signin}</p> : null}
     </section>
   </main>;

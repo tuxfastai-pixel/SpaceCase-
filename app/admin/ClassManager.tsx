@@ -1,5 +1,6 @@
 "use client";
 import { useEffect,useState } from "react";
+import {AdministratorGuide} from "../help/AdministratorHelp";
 import styles from "./admin.module.css";
 type Classroom={id:string;name:string;academicYear:number|null};
 type Teacher={personId:string;email:string|null};
@@ -24,7 +25,7 @@ export default function ClassManager({schoolId}:{schoolId:string}){
   },[base]);
   async function action(run:()=>Promise<void>){setBusy(true);setError("");setNotice("");try{await run();setData(await request<Directory>(base));}catch(e){setError(e instanceof Error?e.message:"Please try again.");}finally{setBusy(false);}}
   return <section className={styles.card} aria-labelledby="class-manager-heading">
-    <p className={styles.eyebrow}>Classroom setup</p><h2 id="class-manager-heading">Classes and teachers</h2>
+    <p className={styles.eyebrow}>Classroom setup</p><h2 id="class-manager-heading">Classes and teachers</h2><AdministratorGuide topic="classes"/>
     <p>Create your school’s real classes, then assign teachers who have accepted their invitations. Assignments control access to the learners enrolled in each class.</p>
     {error?<p className={styles.error} role="alert">{error}</p>:null}{notice?<p className={styles.notice} role="status">{notice}</p>:null}
     {data===null?<p>Loading classes…</p>:<>

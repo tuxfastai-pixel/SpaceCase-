@@ -2,6 +2,7 @@
 import {useState} from "react";
 import {BULK_LIMIT,MAX_IMPORT_SIZE,parseInvitationImport,reviewRecipients,invitationResultsCsv,type ReviewRow,type BulkResult} from "../../platform/invitations/bulk";
 import {prepareInvitationMessage,invitationEmailDraft} from "../../platform/invitations/message";
+import {AdministratorGuide} from "../help/AdministratorHelp";
 import styles from "./admin.module.css";
 
 function download(name:string,content:string){
@@ -42,7 +43,7 @@ export default function BulkInvitations({schoolId,schoolName,disabled,onBusyChan
   async function copy(text:string){try{await navigator.clipboard.writeText(text);setNotice("Copied. Share it only with the matching recipient. Sending is not confirmed.");}catch{setError("Copying is unavailable in this browser. Use Download invitation links instead.");}}
 
   return <section className={styles.card} aria-labelledby="bulk-invite-heading">
-    <p className={styles.eyebrow}>Invite your team</p><h2 id="bulk-invite-heading">Bulk invitations</h2>
+    <p className={styles.eyebrow}>Invite your team</p><h2 id="bulk-invite-heading">Bulk invitations</h2><AdministratorGuide topic="bulk"/>
     <p>Paste email addresses or upload a CSV, then review access before creating up to {BULK_LIMIT} invitations. A separate link is created for each person. SpaceCase does not email the batch.</p>
     {error?<p className={styles.error} role="alert">{error}</p>:null}{notice?<p className={styles.notice} role="status">{notice}</p>:null}
     {results===null?<>
