@@ -3,6 +3,7 @@ import { authConfiguration, createAuthClient } from "../../../platform/auth/supa
 import { POST as exchangeSession } from "../../api/v1/auth/session/route";
 import { completeSignIn } from "../../../platform/auth/completeSignIn";
 import { cookies } from "next/headers";
+import {familyInvitationsEnabled,FAMILY_INVITATION_COOKIE} from '../../../platform/family/invitationConfig';
 import { INVITATION_COOKIE } from "../../../platform/admin/peosProxy";
 
 export async function GET(request: Request) {
@@ -19,7 +20,8 @@ export async function GET(request: Request) {
         method: "POST", headers: { authorization: `Bearer ${token}` },
       })));
     if ("cookie" in result) {
-      const destination = (await cookies()).has(INVITATION_COOKIE) ? "/join" : "/dashboard";
+      const jar=await cookies();
+      const destination = familyInvitationsEnabled()&&jar.has(FAMILY_INVITATION_COOKIE)?"/family/invitation":jar.has(INVITATION_COOKIE)?"/join":"/dashboard";
       const response = NextResponse.redirect(`${origin}${destination}`, 303);
       response.headers.append("set-cookie", result.cookie);
       response.headers.set("cache-control", "no-store");

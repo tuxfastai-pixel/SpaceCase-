@@ -1,4 +1,5 @@
 "use client";
+import {CreateFamilyInvitation} from '../admin/families/FamilyInvitations';
 import {useEffect,useState} from "react";
 import {generateLearnerReference,learnerValidationMessage,referenceHelp,learnerSchema,parseLearnerCsv,reviewLearners,type LearnerInput,type LearnerReview} from "../../platform/learners/import";
 import {AdministratorGuide} from "../help/AdministratorHelp";
@@ -14,7 +15,7 @@ async function api<T>(url:string,method="GET",body?:unknown,signal?:AbortSignal)
  const value=await r.json();if(!r.ok)throw new Error(messages[value.error]??"The result could not be confirmed. Refresh the roster before retrying.");return value as T;
 }
 function template(){const url=URL.createObjectURL(new Blob(["admission_number,given_name,family_name\r\n"],{type:"text/csv;charset=utf-8"}));const a=document.createElement("a");a.href=url;a.download="spacecase-learners-template.csv";a.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000);}
-export default function RosterClient({schoolId,classId,admin}:{schoolId:string;classId:string;admin:boolean}){
+export default function RosterClient({schoolId,classId,admin,familyInvitations=false}:{schoolId:string;classId:string;admin:boolean;familyInvitations?:boolean}){
  const base=admin?`/api/v1/admin/schools/${schoolId}/classes/${classId}/learners`:`/api/v1/schools/${schoolId}/classes/${classId}/roster`;
  const [data,setData]=useState<Roster|null>(null);const [offset,setOffset]=useState(0);const [error,setError]=useState("");const [notice,setNotice]=useState("");const [busy,setBusy]=useState(false);
  const [generated,setGenerated]=useState(false);const [autoReferences,setAutoReferences]=useState(false);const [settingsLoading,setSettingsLoading]=useState(admin);const [settingsError,setSettingsError]=useState("");
@@ -58,8 +59,8 @@ export default function RosterClient({schoolId,classId,admin}:{schoolId:string;c
     </>}
     <p className={styles.note}>Generated references create new registrations; names alone do not detect an existing learner. Reuse existing references when importing learners who are already registered. This matches learners only by reference within this school. Cross-school transfers and identity merging require a separate reviewed process.</p>
   </section>:null}
-  <section className={styles.card}><h2>Enrolled learners</h2>{!data?<p>{error?"No learner records are shown.":"Loading roster…"}</p>:<>
-    {!data.learners.length?<p>No learners are enrolled on this page.</p>:<div className={styles.tableWrap}><table><thead><tr><th>School reference</th><th>Given name</th><th>Family name / surname</th>{admin?<th>Action</th>:null}</tr></thead><tbody>{data.learners.map(r=><tr key={r.personId}><td>{r.admissionNumber}</td><td>{r.givenName}</td><td>{r.familyName}</td>{admin?<td><button className={styles.secondary} disabled={locked} onClick={()=>{if(!window.confirm(`Remove ${r.givenName} ${r.familyName} from this class? Their school registration and records are retained.`))return;setBusy(true);setError("");void api(`${base}/${r.personId}`,"DELETE").then(reload).catch(e=>setError(e.message)).finally(()=>setBusy(false));}}>Remove from class</button></td>:null}</tr>)}</tbody></table></div>}
+  <section className={styles.card}><h2>Enrolled learners</h2>{admin&&familyInvitations?<p><a href={`/admin/families/${schoolId}`}>Family invitations & school review</a></p>:null}{!data?<p>{error?"No learner records are shown.":"Loading roster…"}</p>:<>
+    {!data.learners.length?<p>No learners are enrolled on this page.</p>:<div className={styles.tableWrap}><table><thead><tr><th>School reference</th><th>Given name</th><th>Family name / surname</th>{admin?<th>Action</th>:null}</tr></thead><tbody>{data.learners.map(r=><tr key={r.personId}><td>{r.admissionNumber}</td><td>{r.givenName}</td><td>{r.familyName}</td>{admin?<td>{familyInvitations?<details><summary>Invite parent / caregiver</summary><CreateFamilyInvitation schoolId={schoolId} learnerPersonId={r.personId} name={`${r.givenName} ${r.familyName}`}/></details>:null}<button className={styles.secondary} disabled={locked} onClick={()=>{if(!window.confirm(`Remove ${r.givenName} ${r.familyName} from this class? Their school registration and records are retained.`))return;setBusy(true);setError("");void api(`${base}/${r.personId}`,"DELETE").then(reload).catch(e=>setError(e.message)).finally(()=>setBusy(false));}}>Remove from class</button></td>:null}</tr>)}</tbody></table></div>}
     <div className={styles.actions}><button className={styles.secondary} disabled={locked||offset===0} onClick={()=>setOffset(Math.max(0,offset-100))}>Previous</button><span>Page {offset/100+1}</span><button className={styles.secondary} disabled={locked||data.nextOffset===null} onClick={()=>setOffset(data.nextOffset!)}>Next</button><button className={styles.secondary} disabled={locked} onClick={()=>{setError("");void reload().catch(e=>{setData(null);setError(e.message);});}}>Refresh roster</button></div>
   </>}
   </section>
