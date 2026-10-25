@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import AdministratorHelp, {AdministratorGuide} from "../help/AdministratorHelp";
 import styles from "./admin.module.css";
 import { invitationEmailDraft, prepareInvitationMessage, type InvitationMessage } from "../../platform/invitations/message";
 import ClassManager from "./ClassManager";
@@ -75,6 +76,7 @@ export default function AdminClient() {
     <div className={styles.content}>
       <p className={styles.eyebrow}>Your school, ready to grow</p>
       <h1>School workspace</h1><p className={styles.lead}>Set up your school and welcome your pilot team.</p>
+      <AdministratorHelp/>
       {error ? <p className={styles.error} role="alert">{error}</p> : null}
       {message ? <p className={styles.notice} role="status">{message}</p> : null}
       <section className={styles.card} aria-label="Invitation delivery"><p className={styles.eyebrow}>Pilot invitation delivery</p><h2>Share invitations manually</h2><p>Automatic email delivery is disabled. Creating an invitation does not send an email. Open a prefilled email draft or copy the link or message to share it with the invited person.</p><p className={styles.note}>Email delivery will become available after setup is complete.</p></section>
@@ -90,7 +92,7 @@ export default function AdminClient() {
               <button className={styles.primary} disabled={busy}>Save school name</button>
             </form><p className={styles.note}>Your administrator access applies to this school.</p>
           </section>
-          <section className={styles.card}><p className={styles.eyebrow}>Invite your team</p><h2>Bring someone aboard</h2>
+          <section className={styles.card}><p className={styles.eyebrow}>Invite your team</p><h2>Bring someone aboard</h2><AdministratorGuide topic="invitations"/>
             <form onSubmit={e => { e.preventDefault(); void action(async () => {
               setLink(""); setShareMessage(null);
               const data = await api<{ token: string; expiresAt: string }>(`${base}/invitations`, "POST", { email, roleCode: role });
