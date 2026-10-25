@@ -1,0 +1,9 @@
+# Sprint 043 — Findable capture-first teacher workflow
+
+Goal: expose a camera icon and Scan / upload work shortcut in the selected assigned class tools. Teachers may capture local pages before choosing or creating an assessment.
+Scope: prominent labelled camera shortcut; scan=1 route mode; persistent local capture queue across assessment selection, draft creation and rubric opening; upload remains disabled until an authorized open assessment with configured storage is loaded. Existing assessment entry remains supported.
+Failure analysis: photos lost when setup changes views, queue bytes retried against another assessment, collection endpoint mistaken for a page endpoint, stale authority during loading, navigation silently discarding pages, hidden icon-only controls, phone overflow.
+Acceptance: camera plus visible text beside the current class; native camera and multi-photo choices immediately available after authorized class load; unattempted pages survive choosing or creating an assessment; changing assessment after any upload attempt resets the queue (warn before discarding unsaved/uncertain pages); all network upload and teacher authority checks remain in force. No localStorage or new persistent photo store.
+Out of scope: automatic marking, camera edge detection, PDF scans, background saving, new roles, schema changes or model calls.
+Validation: typecheck/lint/build, browser fixture exercising actual ClassTools and AssessmentClient with synthetic records, create/open/queue continuity and changed-target retry protection, database-backed CI. A real camera was tested separately in sprint 042; it is not re-proven by a desktop fixture.
+Release: no database changes; approval for production release remains separate. Rollback restores previous entry flow; saved JPEG pages remain compatible.
