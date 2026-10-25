@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
 import type {AttendanceStatus} from "../../domains/attendance/contracts";
+import TeacherGuide from "../teacher-help/TeacherGuide";
 import styles from "../admin/admin.module.css";
 type Learner={personId:string;admissionNumber:string;givenName:string;familyName:string;status:AttendanceStatus};
 type Register={class:{id:string;name:string;academicYear:number|null};date:string;today:string;timezone:string;revision:number;updatedAt:string|null;learners:Learner[]};
@@ -46,6 +47,7 @@ export default function AttendanceClient({schoolId,classId}:{schoolId:string;cla
  const locked=busy||stale;const counts=Object.fromEntries(statuses.map(status=>[status,data?.learners.filter(r=>r.status===status).length??0]));
  return <main className={styles.page}><header className={styles.topbar}><a className={styles.brand} href={`/dashboard?class=${classId}`}>SpaceCase <span>Teacher workspace</span></a><form action="/auth/logout" method="post"><button className={styles.secondary}>Sign out</button></form></header><div className={styles.content}>
   <p><a href={`/classes/${schoolId}/${classId}`}>Back to class roster</a></p><h1>{data?`${data.class.name} attendance`:"Class attendance"}</h1>
+<TeacherGuide topic="attendance"/>
   <p>Record daily attendance for your currently enrolled learners. Unmarked learners are never assumed absent. Earlier dates show the current class list, rather than a historical enrolment list.</p>
   {error?<p className={styles.error} role="alert">{error}</p>:null}{notice?<p className={styles.notice} role="status">{notice}</p>:null}
   <section className={styles.card}><h2>Daily register</h2><div className={styles.actions}><label className={styles.field}>Attendance date<input type="date" value={date||data?.date||""} max={data?.today} min="1900-01-01" disabled={busy} onChange={e=>{if(e.target.value&&discard())setDate(e.target.value);}}/></label><button className={styles.secondary} disabled={busy} onClick={()=>void reload()}>Reload register</button></div>

@@ -3,6 +3,7 @@ import {useEffect,useState} from "react";
 import {observationInput,type ObservationRecord,type ObservationFields as Fields} from "../../domains/observations/contracts";
 import type {AttendanceRoster} from "../../domains/attendance/contracts";
 import ObservationFields,{kindLabels} from "./ObservationFields";
+import TeacherGuide from "../teacher-help/TeacherGuide";
 import styles from "../planner/planner.module.css";
 type Summary=Pick<ObservationRecord,"id"|"learnerId"|"kind"|"observedDate"|"followUpDate"|"state"|"revision">;
 type Common={roster:AttendanceRoster;className:string;timezone:string;today:string};
@@ -37,6 +38,7 @@ export default function ObservationsClient({schoolId,classId}:{schoolId:string;c
  const current=detail??list;
  function learnerName(id:string){const l=current?.roster.learners.find(x=>x.personId===id);return l?`${l.givenName} ${l.familyName} · ${l.admissionNumber}`:"Current class learner";}
  return <main className={styles.page}><header className={styles.header}><div><p className={styles.eyebrow}>SpaceCase · Teaching</p><h1>Behaviour & observations</h1><p>{list?.className??"Assigned class"}</p></div><a href={`/dashboard?class=${classId}`} onClick={e=>{if(!discard())e.preventDefault();}}>Teacher workspace</a></header>
+ <TeacherGuide topic="observations"/>
  <p className={styles.intro}>Your private classroom notebook for positive achievements and support needs. Describe observable facts and the support provided; avoid labels or diagnoses. Entries are not automatically shared with families, school administrators or Atlas.</p>
  <p className={styles.hint}>This notebook is not a monitored incident-reporting channel. Use your school’s established procedures for urgent concerns. Follow-up dates appear here without automatic reminders.</p>
  {current?<p className={styles.hint}>School timezone: {current.timezone} · Today: {current.today}</p>:null}
