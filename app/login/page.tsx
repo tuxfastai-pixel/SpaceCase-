@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { currentSession } from "../../platform/auth/currentSession";
 import styles from "./login.module.css";
+import SignInForm from "./SignInForm";
+import {onboardingPath} from "../../platform/auth/onboardingPath";
 
 const messages: Record<string, string> = {
   signin: "Sign-in wasn’t completed. Please try again.",
@@ -9,23 +11,19 @@ const messages: Record<string, string> = {
 };
 
 export const metadata={title:'Sign in | SpaceCase'};
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string;onboarding?:string }> }) {
+  const query=await searchParams;const initialPath=onboardingPath(query.onboarding)??"existing";
   let signedIn = false;
   try { signedIn = Boolean(await currentSession()); } catch { /* Show sign-in without granting access. */ }
-  if (signedIn) redirect("/dashboard");
-  const { error } = await searchParams;
+  if (signedIn) redirect(initialPath==="parent"?"/parent":"/dashboard");
+  const { error } = query;
   return <main className={styles.page}>
     <section className={styles.card} aria-labelledby="welcome">
       <span className={styles.mark} aria-hidden="true">S</span>
       <p className={styles.brand}>SPACECASE</p>
       <h1 id="welcome">More time for what matters.</h1>
       <p>A calmer space for teaching, learning and supporting your school community.</p>
-      <form action="/auth/google" method="post">
-        <button className={styles.button} type="submit">Continue with Google</button>
-      </form>
-      <form action="/auth/google?choose_account=1" method="post">
-        <button className={styles.switchAccount} type="submit">Use another Google account</button>
-      </form>
+      <SignInForm initialPath={initialPath}/>
       <p className={styles.note}>Choose the Google account you want to use. Signing out of SpaceCase does not sign you out of Google on this device.</p>
       <p className={styles.note}>New here? Your account is created when you continue. No separate password needed.</p>
       <p className={styles.note}><a href="/help/parents">Need a hand? Parent / guardian help and current availability</a></p>

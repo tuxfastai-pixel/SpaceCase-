@@ -128,3 +128,11 @@ ROLE-01 — **IMPLEMENTED / release verification pending**: current canonical fo
 ROLE-02 — **IMPLEMENTED / live verification pending**: account switching clears the previous local PEOS cookie before OAuth on success/failure; accessible from workspace headers. Confirm intended Google account selection and callback/error recovery. No session activity history was read. These items extend QA-01/06 and REL-01; the 70% pilot estimate is unchanged pending live evidence.
 
 ROLE-01 release evidence: SpaceCase PR58 and PEOS PR17 deployed; both CI suites and live health/readiness passed. Synthetic browser validated school-preserving switching in both directions and absence of the principal selector for admin-only scope. Production /principal redirects an unsigned-in user to sign-in. Actual-account sign-in remains pending. Follow-up role-specific browser page titles replace the inherited Teacher OS label; no permission changes.
+
+## New user and parent entry — 26 October 2026
+
+ENTRY-01 — **IMPLEMENTED / release verification pending**: sign-in journey choices with fixed destinations and short-lived HttpOnly OAuth intent; /parent owner-only workspace entry; teacher/school invitation guides; unassigned dashboard choices. No school/guardian permissions from selection. Sprint 056. First actual parent account sign-in, correct callback, pending-invite precedence and intended-email checks remain to verify. An email not yet registered is not pre-created or pre-linked.
+
+SCHOOL-01 — **PLANNED**: verified new-school self-service registration/request process for a school with no inviter. Requires verification ownership, duplicate-school handling, authorized signatory/staff checks, review/rejection/recovery and scoped initial principal provisioning. Current pilot coordination is manual; selecting the school onboarding path creates no school or role. Stage A/B; no native app publication or access grant is implied by installation.
+
+Parent entry remembers no permanent account role preference. Parent users can choose Parent / caregiver at sign-in or use /parent; a later canonical product preference may improve returning-user routing without affecting permissions. Full parent record access remains FAM-01/02, not ENTRY-01.
