@@ -65,7 +65,7 @@ export default function DashboardClient() {
   }, []);
 
   if (state.status === "loading") {
-    return <DashboardShell><StatusPanel title="Loading teacher context" body="Checking your school and current class access…" /></DashboardShell>;
+    return <DashboardShell><StatusPanel title="Checking your workspace" body="Checking your school and current class access…" /></DashboardShell>;
   }
 
   if (state.status === "unauthenticated") {
@@ -134,10 +134,10 @@ function DashboardShell({ children }: Readonly<{ children: React.ReactNode }>) {
           <span className={styles.brandMark}>S</span>
           <div>
             <strong>SpaceCase</strong>
-            <span>Teacher OS</span>
+            <span>Secure workspace</span>
           </div>
         </div>
-        <form action="/auth/logout" method="post"><button type="submit">Sign out</button></form>
+        <div><form action="/auth/google?choose_account=1" method="post"><button type="submit">Use another Google account</button></form><form action="/auth/logout" method="post"><button type="submit">Sign out</button></form></div>
       </header>
       <div className={styles.content}>{children}</div>
     </main>
