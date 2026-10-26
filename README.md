@@ -2,6 +2,10 @@
 
 SpaceCase is the Pinnacle Sentle Group education operating environment. The first production surface is **SpaceCase Teacher OS (STOS)**.
 
+## Feature completion and activation
+
+See [the maintained completion register](docs/FEATURE_COMPLETION_REGISTER.md) for disabled functions, unfinished work, verification gaps, activation dependencies and stage exit criteria. Historical sprint notes below are not a current production feature inventory.
+
 ## Engineering status
 
 Sprint 001 — Foundation: **PASS**.
