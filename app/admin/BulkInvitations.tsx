@@ -1,7 +1,8 @@
 "use client";
 import {useState} from "react";
 import {BULK_LIMIT,MAX_IMPORT_SIZE,parseInvitationImport,reviewRecipients,invitationResultsCsv,type ReviewRow,type BulkResult} from "../../platform/invitations/bulk";
-import {prepareInvitationMessage,invitationEmailDraft} from "../../platform/invitations/message";
+import InvitationShare from "./InvitationShare";
+import {prepareInvitationMessage} from "../../platform/invitations/message";
 import {AdministratorGuide} from "../help/AdministratorHelp";
 import styles from "./admin.module.css";
 
@@ -38,9 +39,8 @@ export default function BulkInvitations({schoolId,schoolName,disabled,onBusyChan
   }
   const created=(results??[]).filter((row):row is Extract<BulkResult,{status:"CREATED"}>=>row.status==="CREATED").map(row=>{
     const message=prepareInvitationMessage({origin:window.location.origin,token:row.token,schoolName,roleCode:row.roleCode,expiresAt:row.expiresAt});
-    return {...row,message,draft:invitationEmailDraft(row.email,message)};
+    return {...row,message};
   });
-  async function copy(text:string){try{await navigator.clipboard.writeText(text);setNotice("Copied. Share it only with the matching recipient. Sending is not confirmed.");}catch{setError("Copying is unavailable in this browser. Use Download invitation links instead.");}}
 
   return <section className={styles.card} aria-labelledby="bulk-invite-heading">
     <p className={styles.eyebrow}>Invite your team</p><h2 id="bulk-invite-heading">Bulk invitations</h2><AdministratorGuide topic="bulk"/>
@@ -74,7 +74,7 @@ export default function BulkInvitations({schoolId,schoolName,disabled,onBusyChan
       {created.length?<button className={styles.primary} disabled={locked} onClick={()=>download(`spacecase-invitations-${new Date().toISOString().slice(0,10)}.csv`,invitationResultsCsv(created.map(row=>({email:row.email,roleCode:row.roleCode,link:row.message.link,expiresAt:row.expiresAt}))))}>Download invitation links</button>:null}
       <div className={styles.tableWrap}><table><thead><tr><th>Email</th><th>Access</th><th>Result</th><th>Share</th></tr></thead><tbody>{results.map(row=>{
         const share=created.find(value=>value.email===row.email);
-        return <tr key={row.email}><td>{row.email}</td><td>{row.roleCode==="TEACHER"?"Teacher":"School administrator"}</td><td>{row.status==="CREATED"?"Link created · Email not sent":reasonText[row.reason]??"Not created"}</td><td>{share?<div className={styles.actions}><button className={styles.secondary} onClick={()=>void copy(share.message.link)}>Copy link</button><button className={styles.secondary} onClick={()=>void copy(share.message.text)}>Copy message</button><a className={styles.secondary} href={share.draft} onClick={()=>setNotice("Email draft requested. Review and press Send in your email app; sending is not confirmed.")}>Open email draft</a></div>:null}</td></tr>;
+        return <tr key={row.email}><td>{row.email}</td><td>{row.roleCode==="TEACHER"?"Teacher":"School administrator"}</td><td>{row.status==="CREATED"?"Link created · Email not sent":reasonText[row.reason]??"Not created"}</td><td>{share?<InvitationShare recipient={row.email} message={share.message}/>:null}</td></tr>;
       })}</tbody></table></div>
       <p className={styles.note}>Skipped invitations are not replaced and existing staff roles are not changed. If a pending link is missing, use Replace link in Invitations. Opening an email draft does not confirm sending or delivery.</p>
       <button className={styles.secondary} disabled={locked} onClick={()=>{setResults(null);setRows(null);setSource("");setError("");setNotice("");setConfirmAdmin(false);}}>Start a new import (clears these links)</button>

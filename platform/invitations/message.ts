@@ -33,3 +33,20 @@ export function prepareInvitationMessage(input: {
   const html = `<div style="font-family:Arial,sans-serif;color:#172b22;line-height:1.6;max-width:560px;margin:auto"><p><strong>SpaceCase</strong></p><h1>${escapeHtml(subject)}</h1><p>You’re invited as a ${role}.</p><p><a href="${escapeHtml(link)}">Join ${escapeHtml(schoolName)}</a></p><p>Continue with Google using the email address this invitation was sent to, then select Accept invitation.</p><p>This link expires on ${escapeHtml(expires)} and can be used once. A replacement link invalidates the previous link.</p><p>If you weren’t expecting this invitation, you can ignore it.</p></div>`;
   return { subject, text, html, link };
 }
+
+/** Explicit user-initiated webmail composer in the current/default browser. */
+export function invitationWebEmailDraft(recipient: string, message: Pick<InvitationMessage, "subject" | "text">): string {
+  invitationEmailDraft(recipient,message); // validate recipient and header before constructing either composer
+  return `https://mail.google.com/mail/?${new URLSearchParams({view:"cm",fs:"1",to:recipient.trim().toLowerCase(),su:message.subject,body:message.text})}`;
+}
+export function invitationWhatsAppDraft(message: Pick<InvitationMessage,"text">): string {
+  return `https://wa.me/?${new URLSearchParams({text:message.text})}`;
+}
+export function prepareFamilyInvitationMessage(input: {origin:string;token:string;expiresAt:string}): InvitationMessage {
+  // Reuse the strict origin, token and expiry validation; family wording has no learner PII.
+  const validated=prepareInvitationMessage({...input,schoolName:"your school",roleCode:"TEACHER"});
+  const link=validated.link.replace("/join#", "/family/invitation#");
+  const subject="Your SpaceCase parent / caregiver invitation";
+  const text=`Your school invites you to connect as a parent / caregiver on SpaceCase.\n\nOpen your private invitation:\n${link}\n\nContinue with Google using the exact email address you gave the school, then accept the invitation. You may use this same link from email or WhatsApp.\n\nThe school must review your acceptance before confirming you as a school contact. Accepting does not yet open learner records.\n\nExpires: ${new Date(input.expiresAt).toISOString()}. Share only with the intended adult. If this invitation is unexpected, ignore it.\n\nSpaceCase`;
+  return {subject,text,link,html:escapeHtml(text)};
+}
