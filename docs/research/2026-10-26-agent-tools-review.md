@@ -1,0 +1,21 @@
+# Bird, Everything Claude Code (ECC), and RuFlo — 26 October 2026
+
+Read-only repository/documentation review; none installed, executed, granted production access or connected to school/learner data. Maintainer feature and benchmark statements are claims, not independent proof. Free source code does not establish free model inference, hosting, message delivery or operational support. Recommendations below are engineering judgments for the current pilot stage.
+
+## ECC / Everything Claude Code
+Canonical source: https://github.com/affaan-m/ECC (old everything-claude-code URL redirects). MIT. Maintainer describes planning/review/testing/security skills, hooks, memory and configurable multi-harness support, including Codex; warns against stacking installation methods and notes support varies by harness. Its hosted private-repository service is separate from the open-source toolkit.
+
+Best near-term candidate for selective engineering practices: research-first changes, explicit impact/risk checklists, compact continuity records, reviewed reusable tests, source/configuration scanning and bounded cost reporting. Much overlaps our constitution, register, CI/review and approval controls. Evaluate a small pinned subset in an isolated engineering checkout; measure completed tasks, regressions, elapsed time and model cost versus the existing workflow. Do not import hundreds of skills, global hooks, model credentials, bypass permissions or automatically export memory/diagnostics. No current install is claimed.
+
+## Bird — name is ambiguous
+1. https://github.com/srujan375/bird — Apache-2.0 architecture-workbench coding agent. Maintainer describes a shared engine, visual design canvas, critic/design review and code handoff; local Ollama, Ollama Cloud and OpenRouter. Its website https://www.bird-agent.com/ reports a tiny self-run comparison, which is not evidence it improves SpaceCase or replaces current engineering checks. Promising for local-model ownership and visual architectural discussion, but evaluate maturity, reproducible results, isolation, permissions and hardware needs before adoption. Low-priority sandbox experiment, not a production dependency.
+2. https://github.com/messagebird/bird-ai — MIT agent skills/CLI/hosted-MCP integration for Bird communications (email/SMS/WhatsApp/voice). Relevant to future school notifications, not handwriting OCR. A repository license does not make hosted delivery free. Any adoption still needs sender/channel setup, scoped identity, recipient verification, budget/consent/retention controls and our durable outbox. No signup, test email, credential provisioning or sender activation authorized/performed by this review.
+3. Other repos called Bird, including X/Twitter CLIs, are different products and are not needed for the current school pilot. An exact URL is needed before selecting a specific Bird implementation to install.
+
+## RuFlo
+Source: https://github.com/ruvnet/ruflo — MIT agent harness; maintainer lists multi-agent coordination, specialized roles, shared memory, provider routing, workflows, security and cost tools. Potential fit for PSG's future ticket → diagnosis → patch → independent verification → founder approval workflow. It is an engineering layer, not a replacement for PEOS identity, product authority or storage, nor a document-reading model.
+
+Stage after controlled single-agent evidence is established: isolate a synthetic ticket/fixture checkout, pin source/dependencies, disable background execution, federated/shared memory and production credentials, bound concurrency/tokens/time, require exact-commit CI and human approval, and compare against the current process. Do not equate installed guards or a swarm count with audited safety/performance. Wider adoption needs measured benefit and a clear owner.
+
+## Decision
+Selective ECC evaluation first; RuFlo later for a bounded engineering-agent pilot; Bird coding workbench as a smaller local-model experiment. Bird communications is an optional future delivery-provider path, not an email workaround today. Keep operational teaching/parent workflows independent from all these tools. None removes the OCR/provider dependency for handwriting-to-editable-text.

@@ -5,13 +5,15 @@ const text=(max:number,min=0)=>z.string().trim().min(min).max(max).refine(v=>!/[
 const score=z.number().finite().min(0).max(1000).refine(v=>Number.isInteger(v*10),"Use marks in steps of 0.1");
 export class AssessmentError extends Error{constructor(public code:string,public status=403){super(code);}}
 export const questionSchema=z.object({id:uuid,label:text(40,1),prompt:text(2000,1),expectedAnswer:text(4000,1),maxMarks:z.number().int().min(1).max(1000)}).strict();
-export const rubricSchema=z.array(questionSchema).min(1).max(50).superRefine((qs,ctx)=>{
+const rubricList=z.array(questionSchema).max(50).superRefine((qs,ctx)=>{
  if(new Set(qs.map(q=>q.id)).size!==qs.length)ctx.addIssue({code:"custom",message:"Question references must be unique"});
  if(new Set(qs.map(q=>q.label.toLowerCase())).size!==qs.length)ctx.addIssue({code:"custom",message:"Question labels must be unique"});
  if(qs.reduce((n,q)=>n+q.maxMarks,0)>1000)ctx.addIssue({code:"custom",message:"An assessment can have at most 1,000 marks"});
 });
+export const rubricSchema=rubricList.refine(qs=>qs.length>0,"Add at least one complete question and memorandum before opening.");
+export const draftRubricSchema=rubricList;
 export type Rubric=z.infer<typeof rubricSchema>;
-export const assessmentInput=z.object({id:uuid,title:text(160,1),subject:text(80,1),instructions:text(4000),rubric:rubricSchema}).strict();
+export const assessmentInput=z.object({id:uuid,title:text(160,1),subject:text(80,1),instructions:text(4000),rubric:draftRubricSchema}).strict();
 export type AssessmentInput=z.infer<typeof assessmentInput>;
 export const reviewScores=z.array(z.object({questionId:uuid,marks:score,feedback:text(2000),reviewed:z.literal(true)}).strict()).min(1).max(50);
 export type ReviewScores=z.infer<typeof reviewScores>;
