@@ -20,3 +20,6 @@ Local typecheck/lint both repos passed. SpaceCase generic share/status unit test
 
 ## Out of scope
 Automatic email or WhatsApp sending/provider activation, child creation from unreviewed parent input, submission of private family drafts, legal guardianship, record access contracts and timer-based approval. Track MSG-01, FAM-01/02, QA-01/06, SHARE-01 and ATT-01.
+
+
+Closeout: PEOS PR18 and SpaceCase PR61 released after full CI; both production health/readiness passed and scoped error/fatal logs were empty. Exact commits/deployments and synthetic browser scenarios are in the feature register. Actual intended-parent acceptance, independent real-account review, teacher production save and phone email/WhatsApp handoff still require pilot evidence.
