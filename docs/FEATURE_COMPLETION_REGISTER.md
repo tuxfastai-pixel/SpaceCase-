@@ -4,6 +4,8 @@ Updated: 26 October 2026 (Africa/Johannesburg).
 
 Purpose: keep disabled functions, unfinished work and verification gaps visible until the system is finalized. This is the current engineering register for SpaceCase and its PEOS/PSG/Atlas dependencies. Historical sprint notes describe their release at the time; they are not proof of current production configuration. This register is a source/release audit, not a fresh signed-in audit of every production capability. No feature is enabled by this document.
 
+Pilot preparation estimate: approximately **70% for a small supervised teacher/admin pilot**, not general launch readiness. See [the scope, weighted planning rubric and mandatory gates](PILOT_READINESS.md). This is an engineering estimate; the in-app /pilot checklist records separate self-reported observations.
+
 ## Status and completion stages
 
 - **OFF**: intentionally not executing in the current implementation/release evidence.
@@ -76,6 +78,10 @@ These are roadmap items, not promises that complete tools already exist. Existin
 | TOOL-04 | Workload, professional development and wellbeing tools | Defined useful workflows, voluntary/private boundaries and completion evidence / later pilot priorities | Constitution lists domains; full operational tools not established in this audit |
 | TOOL-05 | Wider learner/intervention/behaviour and school analytics workflows | Audit existing foundations, agree remaining acceptance criteria and implement without clinical inference or Atlas data merging / A/C | Constitution and earlier learner/intervention closeouts; do not classify all existing foundations as absent |
 
+## Pilot handover
+
+PILOT-01 — **IMPLEMENTED / release verification pending**: /pilot role guide, 18 acceptance checks, transient results and minimized download, scoped issue-title prefill, and entry links from teacher/founder/admin/parent help. No launch authority or persistent evidence store. Sprint 054; current release/live/device verification remains QA-01–06. The estimate above has not been increased for this guide.
+
 ## Protections that must not be treated as activation backlog
 
 | ID | Protection | Future extension boundary |
@@ -112,3 +118,5 @@ Before each stage exit, review all rows for that stage and the protections. Sepa
 | School family invitations and contact review | PEOS PR14; SpaceCase PR54; flag activated in production | QA-01; no automatic learner-record permission |
 | Parent connection history, withdrawal and review filters | PEOS PR15 merge `c7f315b09173edacdeebdc6cf16a6f99ef3cc6bb`; SpaceCase PR55 merge `e9937596fe2d7b222b3d4b42f6331b92f6ac3555`; both CI/deployments passed readiness checks | QA-01/02 |
 | Email transport/retry preparation | PEOS PR16, final-head CI passed | Open/unmerged; MSG-01/02 remain inactive |
+
+Pilot feedback limitation: parent-only accounts currently cannot submit school support tickets (staff authority required). Coordinate through the school pilot lead; a governed account-level parent support flow remains follow-on work (MSG-03 / FAM-02).

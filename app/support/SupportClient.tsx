@@ -6,10 +6,10 @@ import TicketPanel from "./TicketPanel";
 import s from "./support.module.css";
 type Home={context:SupportContext;tickets:Ticket[];nextOffset:number|null};
 const areas=["DASHBOARD","ATTENDANCE","ROSTER","SCHOOL_ADMIN","OTHER"] as const;
-export default function SupportClient({initialArea="OTHER"}:{initialArea?:string}){
+export default function SupportClient({initialArea="OTHER",initialTitle=""}:{initialArea?:string;initialTitle?:string}){
  const [home,setHome]=useState<Home|null>(null);const [offset,setOffset]=useState(0);const [selected,setSelected]=useState("");const [detail,setDetail]=useState<TicketData|null>(null);
  const [error,setError]=useState("");const [notice,setNotice]=useState("");const [busy,setBusy]=useState(false);const [loading,setLoading]=useState(true);
- const [requestId,setRequestId]=useState("");const [draft,setDraft]=useState({schoolId:"",category:"BUG",impact:"DEGRADED",area:areas.some(a=>a===initialArea)?initialArea:"OTHER",title:"",description:""});
+ const [requestId,setRequestId]=useState("");const [draft,setDraft]=useState({schoolId:"",category:"BUG",impact:"DEGRADED",area:areas.some(a=>a===initialArea)?initialArea:"OTHER",title:initialTitle,description:""});
  const load=useCallback(async(signal?:AbortSignal)=>{const value=await supportApi<Home>("/api/v1/support?offset="+offset,"GET",undefined,signal);if(!signal?.aborted){setHome(value);setDraft(old=>({...old,schoolId:old.schoolId||value.context.schools[0]?.id||""}));}return value;},[offset]);
  useEffect(()=>{const controller=new AbortController();setLoading(true);setError("");void load(controller.signal).catch(e=>{if(!controller.signal.aborted)setError(e.message);}).finally(()=>{if(!controller.signal.aborted)setLoading(false);});return ()=>controller.abort();},[load]);
  const loadDetail=useCallback(async(signal?:AbortSignal)=>{if(!selected)return;const value=await supportApi<TicketData>("/api/v1/support/"+selected,"GET",undefined,signal);if(!signal?.aborted)setDetail(value);},[selected]);
