@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
-  title: "SpaceCase Teacher OS",
-  description: "AI-assisted teacher operating environment from Pinnacle Sentle Group.",
+  title: "SpaceCase",
+  description: "School, teacher and family workspaces from Pinnacle Sentle Group.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
