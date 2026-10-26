@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 import { adminSchools } from "../../platform/admin/peosProxy";
 import { PEOS_SESSION_COOKIE } from "../../platform/session/peosAuthorization";
 
+export const metadata={title:'Your workspace | SpaceCase'};
 export const dynamic="force-dynamic";
 
 export default async function DashboardPage() {

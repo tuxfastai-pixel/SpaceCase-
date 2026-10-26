@@ -8,6 +8,7 @@ const messages: Record<string, string> = {
   unavailable: "We couldn’t open your workspace just now. Please try again shortly.",
 };
 
+export const metadata={title:'Sign in | SpaceCase'};
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   let signedIn = false;
   try { signedIn = Boolean(await currentSession()); } catch { /* Show sign-in without granting access. */ }
