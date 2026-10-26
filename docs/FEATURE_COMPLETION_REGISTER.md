@@ -120,3 +120,9 @@ Before each stage exit, review all rows for that stage and the protections. Sepa
 | Email transport/retry preparation | PEOS PR16, final-head CI passed | Open/unmerged; MSG-01/02 remain inactive |
 
 Pilot feedback limitation: parent-only accounts currently cannot submit school support tickets (staff authority required). Coordinate through the school pilot lead; a governed account-level parent support flow remains follow-on work (MSG-03 / FAM-02).
+
+## Role workspace correction — 26 October 2026
+
+ROLE-01 — **IMPLEMENTED / release verification pending**: current canonical founder/principal/admin landing precedence, fail-closed role lookup, neutral fallback labels, principal overview and principal/admin switch with school preserved. Sprint 055; verify actual-account home routing and ended/revoked role behavior after release. Existing pilot role repair was scoped and audited; no email allowlist.
+
+ROLE-02 — **IMPLEMENTED / live verification pending**: account switching clears the previous local PEOS cookie before OAuth on success/failure; accessible from workspace headers. Confirm intended Google account selection and callback/error recovery. No session activity history was read. These items extend QA-01/06 and REL-01; the 70% pilot estimate is unchanged pending live evidence.

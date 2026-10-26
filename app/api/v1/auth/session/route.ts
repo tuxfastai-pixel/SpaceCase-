@@ -58,7 +58,7 @@ export async function POST(request: Request): Promise<Response> {
       authorization: externalAuthorization,
       accept: "application/json",
     },
-    cache: "no-store",
+    cache: "no-store", signal:AbortSignal.timeout(10000),
   });
 
   if (response.status === 401 || response.status === 403) {
@@ -87,7 +87,7 @@ export async function DELETE(request: Request): Promise<Response> {
       await fetch(new URL("/v1/sessions/revoke", environment.PEOS_BASE_URL), {
         method: "POST",
         headers: { authorization, accept: "application/json" },
-        cache: "no-store",
+        cache: "no-store", signal:AbortSignal.timeout(5000),
       });
     } catch {
       // Cookie clearing remains local and deterministic even if PEOS is temporarily unavailable.

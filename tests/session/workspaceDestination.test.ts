@@ -12,3 +12,9 @@ test("school admins and teachers keep their existing workspace destinations", as
 test("an unavailable authority never infers founder access", async () => {
   await assert.rejects(workspaceDestination(async () => {throw new Error("unavailable");}, async () => [{}]), /unavailable/);
 });
+
+test('principal lands in school overview and founder remains the highest-priority home',async()=>{
+ assert.equal(await workspaceDestination(async()=>({founder:false}),async()=>[{principal:true}]),'/principal');
+ assert.equal(await workspaceDestination(async()=>({founder:true}),async()=>[{principal:true}]),'/founder');
+ await assert.rejects(workspaceDestination(async()=>({founder:false}),async()=>{throw Error('lookup failed');}),/lookup failed/);
+});

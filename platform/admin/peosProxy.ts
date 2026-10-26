@@ -1,3 +1,4 @@
+import {z} from "zod";
 import { readServerEnvironment } from "../config/env";
 import { resolvePeosAuthorization } from "../session/peosAuthorization";
 
@@ -22,13 +23,13 @@ export async function peosProxy(request: Request, path: string, body?: unknown, 
   } catch { return Response.json({ error: "PEOS_UNAVAILABLE" }, { status: 503 }); }
 }
 
-export async function adminSchools(authorization: string) {
+export async function adminSchools(authorization: string, fetchImpl:typeof fetch=fetch) {
   const env = readServerEnvironment();
-  if (!env.PEOS_BASE_URL) return [];
-  const response = await fetch(new URL("/v1/admin/schools", env.PEOS_BASE_URL), {
+  if (!env.PEOS_BASE_URL) throw new Error("PEOS_UNAVAILABLE");
+  const response = await fetchImpl(new URL("/v1/admin/schools", env.PEOS_BASE_URL), {
     headers: { authorization }, cache: "no-store", signal: AbortSignal.timeout(10_000),
   });
-  if (!response.ok) return [];
-  const data = await response.json() as { schools: Array<{ id: string; displayName: string }> };
+  if (!response.ok) throw new Error("WORKSPACE_AUTHORITY_UNAVAILABLE");
+  const data = z.object({schools:z.array(z.object({id:z.string().uuid(),displayName:z.string(),principal:z.boolean().default(false)}))}).parse(await response.json());
   return data.schools;
 }

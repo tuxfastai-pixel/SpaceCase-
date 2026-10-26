@@ -7,8 +7,9 @@ import ClassManager from "./ClassManager";
 import BulkInvitations from "./BulkInvitations";
 import BillingPanel from "../billing/BillingPanel";
 import WorkspaceSetup from "./WorkspaceSetup";
+import WorkspaceSwitcher from "../workspace/WorkspaceSwitcher";
 
-type School = { id: string; displayName: string };
+type School = { id: string; displayName: string; principal?:boolean };
 type Invite = { id: string; email: string; roleCode: string; expiresAt: string; acceptedAt: string | null; revokedAt: string | null };
 const errors: Record<string, string> = {
   SCHOOL_ADMIN_REQUIRED: "You don’t have administrator access to this school.",
@@ -27,7 +28,7 @@ async function api<T>(path: string, method = "GET", body?: unknown, signal?: Abo
 const roleName = (role: string) => role === "SCHOOL_ADMINISTRATOR" ? "School administrator" : "Teacher";
 const inviteStatus = (i: Invite) => i.acceptedAt ? "Accepted" : i.revokedAt ? "Revoked" : Date.parse(i.expiresAt) <= Date.now() ? "Expired" : "Pending";
 
-export default function AdminClient() {
+export default function AdminClient({initialSchool}:{initialSchool?:string}) {
   const [schools, setSchools] = useState<School[] | null>(null);
   const [schoolId, setSchoolId] = useState("");
   const [name, setName] = useState("");
@@ -44,10 +45,10 @@ export default function AdminClient() {
   useEffect(() => {
     const controller = new AbortController();
     api<{ schools: School[] }>("/api/v1/admin/schools", "GET", undefined, controller.signal)
-      .then(data => { setSchools(data.schools); setSchoolId(data.schools[0]?.id ?? ""); setName(data.schools[0]?.displayName ?? ""); })
+      .then(data => { setSchools(data.schools); const selected=data.schools.find(s=>s.id===initialSchool)??data.schools[0];setSchoolId(selected?.id??"");setName(selected?.displayName??""); })
       .catch(e => { if (!controller.signal.aborted) setError(e.message); });
     return () => controller.abort();
-  }, []);
+  }, [initialSchool]);
 
   useEffect(() => {
     if (!schoolId) return;
@@ -71,8 +72,8 @@ export default function AdminClient() {
   }
 
   return <main className={styles.page}>
-    <header className={styles.topbar}><a className={styles.brand} href="/dashboard">SpaceCase <span>School administration</span></a>
-      <form action="/auth/logout" method="post"><button className={styles.secondary}>Sign out</button></form></header>
+    <header className={styles.topbar}><div><a className={styles.brand} href="/dashboard">SpaceCase</a><WorkspaceSwitcher current="ADMIN" schoolId={schoolId} principal={schools?.find(s=>s.id===schoolId)?.principal===true}/></div>
+      <div className={styles.actions}><form action="/auth/google?choose_account=1" method="post"><button className={styles.secondary}>Use another Google account</button></form><form action="/auth/logout" method="post"><button className={styles.secondary}>Sign out</button></form></div></header>
     <div className={styles.content}>
       <p className={styles.eyebrow}>Your school, ready to grow</p>
       <h1>School workspace</h1><p className={styles.lead}>Set up your school and welcome your pilot team.</p>
