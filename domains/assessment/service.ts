@@ -1,13 +1,13 @@
 import {createHash} from "node:crypto";
 import type {Pool,PoolClient} from "pg";
-import {AssessmentError,validateScores,validateProposal,type AssessmentInput,type AssessmentAction,type Rubric,type ReviewScores} from "./contracts";
+import {AssessmentError,rubricSchema,validateScores,validateProposal,type AssessmentInput,type AssessmentAction,type Rubric,type ReviewScores} from "./contracts";
 import type {PhotoStore,NormalizedPhoto} from "../../platform/assessment/storage";
 import {exactPages,readingResultSchema,type ReadingReview} from "../../contracts/assessmentVision";
 import type {AssessmentAi} from "../../platform/assessment/ai";
 export type AssessmentScope={actor:string;school:string;classId:string;learnerIds:string[]};
 function canonical(v:unknown):unknown{if(Array.isArray(v))return v.map(canonical);if(v&&typeof v==="object")return Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b)).map(([k,value])=>[k,canonical(value)]));return v;}
 const digest=(v:unknown)=>createHash("sha256").update(JSON.stringify(canonical(v))).digest("hex");
-async function audit(db:PoolClient,s:AssessmentScope,id:string,action:string,metadata:unknown={}){
+export async function audit(db:PoolClient,s:AssessmentScope,id:string,action:string,metadata:unknown={}){
  await db.query(`INSERT INTO audit.product_audit_events(id,actor_person_id,action,resource_type,resource_id,school_id,decision,reason,metadata,occurred_at)
  VALUES(gen_random_uuid(),$1,$2,'ASSESSMENT',$3,$4,'ALLOW','current_peos_class_teacher',$5::jsonb,now())`,[s.actor,action,id,s.school,JSON.stringify(metadata)]);
 }
@@ -15,11 +15,11 @@ async function workspace(db:PoolClient,s:AssessmentScope){
  const r=await db.query(`SELECT 1 FROM school_ops.school_workspaces w JOIN school_ops.class_workspaces c ON c.peos_school_id=w.peos_school_id WHERE w.peos_school_id=$1 AND c.peos_class_id=$2 AND w.status='ACTIVE' AND c.status='ACTIVE' FOR SHARE OF w,c`,[s.school,s.classId]);
  if(!r.rowCount)throw new AssessmentError("CLASS_WORKSPACE_REQUIRED",409);
 }
-async function assessment(db:PoolClient,s:AssessmentScope,id:string){
+export async function assessment(db:PoolClient,s:AssessmentScope,id:string){
  const r=await db.query(`SELECT * FROM assessment.assessments WHERE id=$1 AND teacher_person_id=$2 AND peos_school_id=$3 AND peos_class_id=$4 FOR UPDATE`,[id,s.actor,s.school,s.classId]);
  if(!r.rowCount)throw new AssessmentError("ASSESSMENT_UNAVAILABLE",404);return r.rows[0] as {id:string;status:string;revision:number;rubric:Rubric;instructions:string;title:string;subject:string};
 }
-async function transaction<T>(pool:Pool,s:AssessmentScope,fn:(db:PoolClient)=>Promise<T>){const db=await pool.connect();try{await db.query("BEGIN");await workspace(db,s);const result=await fn(db);await db.query("COMMIT");return result;}catch(e){await db.query("ROLLBACK");throw e;}finally{db.release();}}
+export async function transaction<T>(pool:Pool,s:AssessmentScope,fn:(db:PoolClient)=>Promise<T>){const db=await pool.connect();try{await db.query("BEGIN");await workspace(db,s);const result=await fn(db);await db.query("COMMIT");return result;}catch(e){await db.query("ROLLBACK");throw e;}finally{db.release();}}
 function learner(s:AssessmentScope,id:string){if(!s.learnerIds.includes(id))throw new AssessmentError("LEARNER_ACCESS_REQUIRED");}
 async function submission(db:PoolClient,s:AssessmentScope,assessmentId:string,id:string){
  const r=await db.query("SELECT * FROM assessment.submissions WHERE id=$1 AND assessment_id=$2 FOR UPDATE",[id,assessmentId]);
@@ -81,7 +81,7 @@ export async function mutateAssessment(pool:Pool,s:AssessmentScope,id:string,inp
   const v=input.definition;await db.query("UPDATE assessment.assessments SET title=$2,subject=$3,instructions=$4,rubric=$5::jsonb,revision=revision+1 WHERE id=$1",[id,v.title,v.subject,v.instructions,JSON.stringify(v.rubric)]);
   await audit(db,s,id,"assessment.edit",{revision:input.revision});return {saved:true};
  }
- if(input.action==="OPEN"){if(a.status!=="OPEN"){revision(a,input.revision);await db.query("UPDATE assessment.assessments SET status='OPEN',revision=revision+1 WHERE id=$1",[id]);await audit(db,s,id,"assessment.open");}return {saved:true};}
+ if(input.action==="OPEN"){if(!rubricSchema.safeParse(a.rubric).success)throw new AssessmentError("RUBRIC_REQUIRED",409);if(a.status!=="OPEN"){revision(a,input.revision);await db.query("UPDATE assessment.assessments SET status='OPEN',revision=revision+1 WHERE id=$1",[id]);await audit(db,s,id,"assessment.open");}return {saved:true};}
  if(a.status!=="OPEN")throw new AssessmentError("OPEN_ASSESSMENT_REQUIRED",409);
  if(input.action==="MATCH"||input.action==="REMOVE_PAGE"){
   const r=await db.query("SELECT * FROM assessment.pages WHERE id=$1 AND assessment_id=$2 AND removed_at IS NULL AND upload_complete FOR UPDATE",[input.pageId,id]);if(!r.rowCount)throw new AssessmentError("PHOTO_UNAVAILABLE",404);const page=r.rows[0];revision(page,input.revision);

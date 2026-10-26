@@ -1,0 +1,20 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {randomUUID,createHash} from 'node:crypto';import {Pool} from 'pg';
+import {configureWorkspace} from '../../domains/workspace/service';import {createAssessment,mutateAssessment,type AssessmentScope} from '../../domains/assessment/service';
+import {listSources,uploadSource,readSource,saveSourceText,hideSource} from '../../domains/assessment/sources';import type {SourceStore} from '../../platform/assessment/sourceStore';
+test('source materials are teacher scoped, retry safe, revision checked and separate from learner pages',{skip:!process.env.CI||!process.env.DATABASE_URL},async()=>{
+ const pool=new Pool({connectionString:process.env.DATABASE_URL}),s:AssessmentScope={actor:randomUUID(),school:randomUUID(),classId:randomUUID(),learnerIds:[]},id=randomUUID(),asset=randomUUID();
+ const bytes=Buffer.from('%PDF-1.4\nsynthetic\n%%EOF'),file={bytes,hash:createHash('sha256').update(bytes).digest('hex')};const objects=new Map<string,Buffer>();let fail=true;
+ const store:SourceStore={async put(k,b){if(fail)throw Error('interrupted');objects.set(k,b);},async get(k){return objects.get(k)!;}};
+ try{await configureWorkspace(pool,s.actor,s.school,[s.classId],{timezone:'Africa/Johannesburg',academicYearLabel:'2026'});await createAssessment(pool,s,{id,title:'Synthetic source test',subject:'Maths',instructions:'',rubric:[]});
+ await assert.rejects(mutateAssessment(pool,s,id,{action:'OPEN',revision:1}),/RUBRIC_REQUIRED/);
+ await assert.rejects(uploadSource(pool,s,id,asset,'QUESTION_PAPER','PDF',file,store,async()=>s),/interrupted/);assert.equal((await listSources(pool,s,id)).sources.length,0);
+ fail=false;await uploadSource(pool,s,id,asset,'QUESTION_PAPER','PDF',file,store,async()=>s);assert.equal((await listSources(pool,s,id)).sources.length,1);assert.equal((await uploadSource(pool,s,id,randomUUID(),'QUESTION_PAPER','PDF',file,store,async()=>s)).id,asset);
+ await assert.rejects(listSources(pool,{...s,actor:randomUUID()},id),/ASSESSMENT_UNAVAILABLE/);await assert.rejects(readSource(pool,{...s,school:randomUUID()},id,asset,store));
+ assert.deepEqual((await readSource(pool,s,id,asset,store)).bytes,bytes);await saveSourceText(pool,s,id,asset,{revision:1,text:'1. 2+2?',reviewed:true});await assert.rejects(saveSourceText(pool,s,id,asset,{revision:1,text:'stale',reviewed:true}),/WORK_CHANGED/);
+ await saveSourceText(pool,s,id,asset,{revision:2,text:'A checked correction',reviewed:false});assert.equal((await listSources(pool,s,id)).sources[0].transcriptReviewed,false);
+ assert.equal((await pool.query('SELECT id FROM assessment.pages WHERE assessment_id=$1',[id])).rowCount,0);assert.equal((await pool.query('SELECT id FROM assessment.submissions WHERE assessment_id=$1',[id])).rowCount,0);
+ const nextBytes=Buffer.from('another source'),nextFile={bytes:nextBytes,hash:createHash('sha256').update(nextBytes).digest('hex')};await assert.rejects(uploadSource(pool,s,id,randomUUID(),'SUPPORTING','DOC',nextFile,store,async()=>({...s,actor:randomUUID()})),/ASSESSMENT_UNAVAILABLE/);assert.equal((await listSources(pool,s,id)).sources.length,1);
+ await hideSource(pool,s,id,asset,3);assert.equal((await listSources(pool,s,id)).sources.length,0);await assert.rejects(readSource(pool,s,id,asset,store),/SOURCE_UNAVAILABLE/);
+ const log=JSON.stringify((await pool.query("SELECT metadata FROM audit.product_audit_events WHERE resource_id=$1 AND action LIKE 'assessment.source%'",[id])).rows);assert.equal(log.includes('checked correction'),false);
+ }finally{await pool.query('DELETE FROM assessment.source_materials WHERE assessment_id=$1',[id]);await pool.query('DELETE FROM assessment.assessments WHERE id=$1',[id]);await pool.query('DELETE FROM audit.product_audit_events WHERE school_id=$1',[s.school]);await pool.query('DELETE FROM school_ops.class_workspaces WHERE peos_school_id=$1',[s.school]);await pool.query('DELETE FROM school_ops.school_workspaces WHERE peos_school_id=$1',[s.school]);await pool.end();}
+});

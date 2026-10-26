@@ -1,4 +1,4 @@
-export type PhotoEdits={left:number;right:number;top:number;bottom:number;turns:number};
+export type PhotoEdits={left:number;right:number;top:number;bottom:number;turns:number;scan?:boolean};
 export const fullPhoto:PhotoEdits={left:0,right:0,top:0,bottom:0,turns:0};
 export function photoGeometry(width:number,height:number,edits:PhotoEdits=fullPhoto){
  if(!Number.isSafeInteger(width)||!Number.isSafeInteger(height)||width<100||height<100||width*height>24000000)throw Error('Use a clear photo between 100 pixels and 24 megapixels.');
@@ -14,6 +14,7 @@ export async function drawPhoto(file:Blob,canvas:HTMLCanvasElement,edits:PhotoEd
  try{
   const g=photoGeometry(bitmap.width,bitmap.height,edits);canvas.width=g.width;canvas.height=g.height;
   const context=canvas.getContext('2d');if(!context)throw Error('Your browser could not prepare this image.');
+  if(edits.scan)context.filter='grayscale(1) contrast(1.2) brightness(1.05)';
   context.fillStyle='white';context.fillRect(0,0,g.width,g.height);context.translate(g.width/2,g.height/2);context.rotate(g.turns*Math.PI/2);context.scale(g.ratio,g.ratio);context.drawImage(bitmap,g.x,g.y,g.w,g.h,-g.w/2,-g.h/2,g.w,g.h);
  }finally{bitmap.close();}
 }

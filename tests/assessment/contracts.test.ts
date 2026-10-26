@@ -5,7 +5,7 @@ import {assessmentInput,actionSchema,proposalSchema,validateProposal,validateSco
 const q={id:randomUUID(),label:"1",prompt:"Add 1 + 1",expectedAnswer:"2",maxMarks:2};
 test("assessment rubrics reject duplicate questions, unknown fields and excessive totals",()=>{
  const base={id:randomUUID(),title:"Maths",subject:"Maths",instructions:"",rubric:[q]};assert.equal(assessmentInput.safeParse(base).success,true);
- for(const v of [{...base,learnerNames:[]},{...base,rubric:[]},{...base,rubric:[q,q]},{...base,rubric:[{...q,maxMarks:0}]},{...base,rubric:[q,{...q,id:randomUUID(),label:"2",maxMarks:1000}]}])assert.equal(assessmentInput.safeParse(v).success,false);
+ for(const v of [{...base,learnerNames:[]},{...base,rubric:[q,q]},{...base,rubric:[{...q,maxMarks:0}]},{...base,rubric:[q,{...q,id:randomUUID(),label:"2",maxMarks:1000}]}])assert.equal(assessmentInput.safeParse(v).success,false);
 });
 test("only explicit complete teacher review can be approved; marks remain bounded",()=>{
  const scores=[{questionId:q.id,marks:1,feedback:"Check your sum",reviewed:true as const}];assert.equal(validateScores([q],scores),1);
@@ -20,3 +20,5 @@ test("assistant proposals must refer to actual questions and pages; uncertainty 
  for(const item of [{...p.items[0],marks:3},{...p.items[0],questionId:randomUUID()},{...p.items[0],evidencePageIds:[randomUUID()]},{...p.items[0],marks:null},{...p.items[0],evidencePageIds:[]}])assert.throws(()=>validateProposal([q],[page],{...p,items:[item]}),/INVALID_AI_RESPONSE/);
  assert.doesNotThrow(()=>validateProposal([q],[page],{...p,items:[{...p.items[0],marks:null,uncertain:true,evidencePageIds:[]}]}));
 });
+
+test("source-only drafts may have no rubric; opening and marking still require complete questions",()=>{assert.equal(assessmentInput.safeParse({id:randomUUID(),title:"Source draft",subject:"Maths",instructions:"",rubric:[]}).success,true);});
