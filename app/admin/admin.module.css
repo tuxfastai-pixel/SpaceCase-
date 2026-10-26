@@ -15,3 +15,10 @@
 .confirmation { display:flex; align-items:flex-start; gap:10px; margin:20px 0; line-height:1.5; }.actions a { display:inline-block; text-decoration:none; }.actions a:focus-visible { outline:3px solid #4e8b66; outline-offset:3px; }.tableWrap input[type=email],.tableWrap select { box-sizing:border-box; max-width:100%; min-height:40px; border:1px solid #bccdbd; border-radius:6px; padding:8px; font:inherit; }.tableWrap input[type=email] { min-width:220px; }
 
 .tableWrap input:not([type=checkbox]) { box-sizing:border-box; min-height:40px; max-width:100%; border:1px solid #bccdbd; border-radius:6px; padding:8px; font:inherit; }
+
+.familyAccepted,.familyConfirmed,.familyWaiting{display:inline-block;padding:.5rem .75rem;border-radius:.5rem;font-weight:650;line-height:1.5}
+.familyAccepted{color:#14532d;background:#dcfce7;border:1px solid #15803d}
+.familyConfirmed{color:#1e3a8a;background:#dbeafe;border:1px solid #2563eb}
+.familyWaiting{color:#334155;background:#f1f5f9;border:1px solid #64748b}
+
+.tableWrap input[type=checkbox]{width:24px;height:24px;cursor:pointer;accent-color:#234d35}.content a.primary{display:inline-block;text-decoration:none}.content textarea{box-sizing:border-box;max-width:100%;width:100%}
