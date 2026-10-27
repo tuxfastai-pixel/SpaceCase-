@@ -73,31 +73,30 @@ export default function AdminClient({initialSchool}:{initialSchool?:string}) {
     finally { setBusy(false); }
   }
 
+  function openSection(id:string) {
+    const target=document.getElementById(id);
+    if(target instanceof HTMLDetailsElement) target.open=true;
+  }
+
   return <main className={styles.page}>
     <header className={styles.topbar}><div><a className={styles.brand} href="/dashboard">SpaceCase</a><WorkspaceSwitcher current="ADMIN" schoolId={schoolId} principal={schools?.find(s=>s.id===schoolId)?.principal===true}/></div>
       <div className={styles.actions}><form action="/auth/google?choose_account=1" method="post"><button className={styles.secondary}>Use another Google account</button></form><form action="/auth/logout" method="post"><button className={styles.secondary}>Sign out</button></form></div></header>
     <div className={styles.content}>
       <section className={styles.hero}><p className={styles.eyebrow}>Your school, ready to grow</p>
       <h1>School workspace</h1><p className={styles.lead}>Welcome your community and keep your school organised, one step at a time.</p></section>
-      {schoolId ? <nav className={styles.quickNav} aria-label="School workspace sections"><a href={`/admin/families/${schoolId}`}><WorkspaceIcon name="family"/>Parents & learners</a><a href="#class-manager-heading"><WorkspaceIcon name="class"/>Classes & teachers</a><a href="#staff-invitations"><WorkspaceIcon name="people"/>Invite staff</a><a href="#school-billing"><WorkspaceIcon name="billing"/>Billing records</a><a href="/support"><WorkspaceIcon name="support"/>Support</a></nav> : null}
+      {schoolId ? <nav className={`${styles.quickNav} ${styles.compactNav}`} aria-label="School workspace sections"><a href={`/admin/families/${schoolId}`}><WorkspaceIcon name="family"/><span>Parents & learners</span></a><a href="#classes-section" onClick={()=>openSection("classes-section")}><WorkspaceIcon name="class"/><span>Classes & teachers</span></a><a href="#staff-section" onClick={()=>openSection("staff-section")}><WorkspaceIcon name="people"/><span>Invite staff</span></a><a href="#setup-section" onClick={()=>openSection("setup-section")}><WorkspaceIcon name="settings"/><span>School setup</span></a><a href="#billing-section" onClick={()=>openSection("billing-section")}><WorkspaceIcon name="billing"/><span>Billing records</span></a><a href="/support"><WorkspaceIcon name="support"/><span>Support</span></a></nav> : null}
       <AdministratorHelp/>
       {error ? <p className={styles.error} role="alert">{error}</p> : null}
       {message ? <p className={styles.notice} role="status">{message}</p> : null}
-      <section className={styles.card} aria-label="Invitation delivery"><p className={styles.eyebrow}>Pilot invitation delivery</p><h2>Share invitations manually</h2><p>Automatic email delivery is disabled. Creating an invitation does not send an email. Open a prefilled email draft or copy the link or message to share it with the invited person.</p><p className={styles.note}>Email delivery will become available after setup is complete.</p></section>
       {schools === null ? <p>Loading your workspace…</p> : schools.length === 0 ? <section className={styles.card}><h2>Administrator access required</h2><p>Your account is signed in, but it has no school administrator assignment.</p><a href="/dashboard">Back to workspace</a></section> : <>
         {schools.length > 1 ? <label className={styles.field}>School<select disabled={busy} value={schoolId} onChange={e => { setSchoolId(e.target.value); setName(schools.find(s => s.id === e.target.value)?.displayName ?? ""); }}>{schools.map(s => <option key={s.id} value={s.id}>{s.displayName}</option>)}</select></label> : null}
         <section className={`${styles.card} ${styles.featureCard}`}><WorkspaceIcon name="family"/><h2>Onboard learners & invite parents</h2><p>Choose the learner, create a private invitation and share it by email or WhatsApp. Track acceptance and school confirmation in one place.</p><a className={styles.primary} href={`/admin/families/${schoolId}`}>Invite a parent / view invitation progress</a></section>
-        <div className={styles.grid}>
-          <section className={styles.card}><WorkspaceIcon name="settings"/><p className={styles.eyebrow}>School setup</p><h2>Make it yours</h2>
-            <form onSubmit={e => { e.preventDefault(); void action(async () => {
-              const data = await api<{ school: School }>(base, "PATCH", { displayName: name });
-              setSchools(schools.map(s => s.id === schoolId ? data.school : s)); setName(data.school.displayName); setMessage("School name saved.");
-            }); }}>
-              <label className={styles.field}>School name<input required minLength={2} maxLength={120} value={name} onChange={e => setName(e.target.value)} /></label>
-              <button className={styles.primary} disabled={busy}>Save school name</button>
-            </form><p className={styles.note}>Your administrator access applies to this school.</p>
-          </section>
-          <section className={styles.card} id="staff-invitations"><WorkspaceIcon name="people"/><p className={styles.eyebrow}>Invite your team</p><h2>Bring someone aboard</h2><AdministratorGuide topic="invitations"/>
+        {link ? <section className={styles.card}><h2>Your new invitation link</h2><p>Email not sent. Copy this link now; it cannot be retrieved later. You can create a replacement below if needed.</p>{shareMessage ? <InvitationShare recipient={shareMessage.recipient} message={shareMessage}/> : null}</section> : null}
+        <div className={styles.sectionList} aria-label="School management tools">
+          <details className={styles.disclosure} id="classes-section"><summary><WorkspaceIcon name="class"/><span><strong>Classes & teachers</strong><small>Create classes, assign teachers and manage learners</small></span><span className={styles.chevron} aria-hidden="true">⌄</span></summary><div className={styles.sectionBody}><ClassManager key={schoolId} schoolId={schoolId}/></div></details>
+          <details className={styles.disclosure} id="staff-section"><summary><WorkspaceIcon name="people"/><span><strong>Staff invitations</strong><small>Invite one person or a group, and review invitations</small></span><span className={styles.chevron} aria-hidden="true">⌄</span></summary><div className={styles.sectionBody}>
+            <p className={styles.deliveryNotice}>Invitations are shared manually for now. Creating a link does not send an email; use a prepared email, copy the message or share the link.</p>
+            <section className={styles.card} id="staff-invitations"><WorkspaceIcon name="people"/><p className={styles.eyebrow}>Invite your team</p><h2>Bring someone aboard</h2><AdministratorGuide topic="invitations"/>
             <form onSubmit={e => { e.preventDefault(); void action(async () => {
               setLink(""); setShareMessage(null);
               const data = await api<{ token: string; expiresAt: string }>(`${base}/invitations`, "POST", { email, roleCode: role });
@@ -108,14 +107,20 @@ export default function AdminClient({initialSchool}:{initialSchool?:string}) {
               <button className={styles.primary} disabled={busy}>Create invitation link</button>
             </form><p className={styles.note}>Links expire in seven days and require the invited email address. Teacher class access is assigned separately.</p>
           </section>
+            <BulkInvitations key={`bulk-${schoolId}`} schoolId={schoolId} schoolName={schools.find(s=>s.id===schoolId)?.displayName??"Your school"} disabled={busy} onBusyChange={setBusy} onComplete={refreshInvites}/>
+            <section className={styles.card}><h2>Invitations</h2>{invitations.length === 0 ? <p>No invitations yet. Add your first pilot participant above.</p> : <div className={styles.tableWrap}><table><thead><tr><th>Email</th><th>Access</th><th>Status</th><th>Email delivery</th><th>Expires</th><th><span className={styles.srOnly}>Action</span></th></tr></thead><tbody>{invitations.map(i => <tr key={i.id}><td>{i.email}</td><td>{roleName(i.roleCode)}</td><td>{inviteStatus(i)}</td><td>Not sent</td><td>{new Date(i.expiresAt).toLocaleDateString()}</td><td>{inviteStatus(i) === "Pending" ? <div className={styles.actions}><button className={styles.secondary} disabled={busy} onClick={() => { if (!window.confirm("Create a replacement invitation link? The previous link will stop working. The expiry date stays the same.")) return; void action(async () => { setLink(""); setShareMessage(null); const data = await api<{ token: string; expiresAt: string }>(`${base}/invitations/${i.id}`, "POST"); showInvitation(data, i.roleCode, i.email); await refreshInvites(); setMessage("Replacement link created. The previous link no longer works. Email not sent."); }); }}>Replace link</button><button className={styles.secondary} disabled={busy} onClick={() => { void action(async () => { await api(`${base}/invitations/${i.id}`, "DELETE"); await refreshInvites(); setLink(""); setShareMessage(null); setMessage("Invitation revoked."); }); }}>Revoke</button></div> : null}</td></tr>)}</tbody></table></div>}</section>
+          </div></details>
+          <details className={styles.disclosure} id="setup-section"><summary><WorkspaceIcon name="settings"/><span><strong>School setup</strong><small>School name, academic year and learner references</small></span><span className={styles.chevron} aria-hidden="true">⌄</span></summary><div className={styles.sectionBody}><section className={styles.card}><WorkspaceIcon name="settings"/><p className={styles.eyebrow}>School setup</p><h2>Make it yours</h2>
+            <form onSubmit={e => { e.preventDefault(); void action(async () => {
+              const data = await api<{ school: School }>(base, "PATCH", { displayName: name });
+              setSchools(schools.map(s => s.id === schoolId ? data.school : s)); setName(data.school.displayName); setMessage("School name saved.");
+            }); }}>
+              <label className={styles.field}>School name<input required minLength={2} maxLength={120} value={name} onChange={e => setName(e.target.value)} /></label>
+              <button className={styles.primary} disabled={busy}>Save school name</button>
+            </form><p className={styles.note}>Your administrator access applies to this school.</p>
+          </section><WorkspaceSetup key={`workspace-${schoolId}`} schoolId={schoolId}/></div></details>
+          <details className={styles.disclosure} id="billing-section"><summary><WorkspaceIcon name="billing"/><span><strong>Billing records</strong><small>View recorded invoices, payments and service terms</small></span><span className={styles.chevron} aria-hidden="true">⌄</span></summary><div className={styles.sectionBody}><p><a href="/billing-policy">Read how school billing and service terms will work</a></p><BillingPanel key={`billing-${schoolId}`} schoolId={schoolId}/></div></details>
         </div>
-        <p><a href="/billing-policy">Read how school billing and service terms will work</a></p>
-        <div id="school-billing"><BillingPanel key={`billing-${schoolId}`} schoolId={schoolId}/></div>
-        <WorkspaceSetup key={`workspace-${schoolId}`} schoolId={schoolId}/>
-        <ClassManager key={schoolId} schoolId={schoolId}/>
-        <BulkInvitations key={`bulk-${schoolId}`} schoolId={schoolId} schoolName={schools.find(s=>s.id===schoolId)?.displayName??"Your school"} disabled={busy} onBusyChange={setBusy} onComplete={refreshInvites}/>
-        {link ? <section className={styles.card}><h2>Your new invitation link</h2><p>Email not sent. Copy this link now; it cannot be retrieved later. You can create a replacement below if needed.</p>{shareMessage ? <InvitationShare recipient={shareMessage.recipient} message={shareMessage}/> : null}</section> : null}
-        <section className={styles.card}><h2>Invitations</h2>{invitations.length === 0 ? <p>No invitations yet. Add your first pilot participant above.</p> : <div className={styles.tableWrap}><table><thead><tr><th>Email</th><th>Access</th><th>Status</th><th>Email delivery</th><th>Expires</th><th><span className={styles.srOnly}>Action</span></th></tr></thead><tbody>{invitations.map(i => <tr key={i.id}><td>{i.email}</td><td>{roleName(i.roleCode)}</td><td>{inviteStatus(i)}</td><td>Not sent</td><td>{new Date(i.expiresAt).toLocaleDateString()}</td><td>{inviteStatus(i) === "Pending" ? <div className={styles.actions}><button className={styles.secondary} disabled={busy} onClick={() => { if (!window.confirm("Create a replacement invitation link? The previous link will stop working. The expiry date stays the same.")) return; void action(async () => { setLink(""); setShareMessage(null); const data = await api<{ token: string; expiresAt: string }>(`${base}/invitations/${i.id}`, "POST"); showInvitation(data, i.roleCode, i.email); await refreshInvites(); setMessage("Replacement link created. The previous link no longer works. Email not sent."); }); }}>Replace link</button><button className={styles.secondary} disabled={busy} onClick={() => { void action(async () => { await api(`${base}/invitations/${i.id}`, "DELETE"); await refreshInvites(); setLink(""); setShareMessage(null); setMessage("Invitation revoked."); }); }}>Revoke</button></div> : null}</td></tr>)}</tbody></table></div>}</section>
       </>}
     </div>
   </main>;
