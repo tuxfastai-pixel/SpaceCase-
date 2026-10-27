@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import AdministratorHelp, {AdministratorGuide} from "../help/AdministratorHelp";
 import styles from "./admin.module.css";
+import WorkspaceIcon from "../ui/WorkspaceIcon";
 import InvitationShare from "./InvitationShare";
 import { prepareInvitationMessage, type InvitationMessage } from "../../platform/invitations/message";
 import ClassManager from "./ClassManager";
@@ -76,17 +77,18 @@ export default function AdminClient({initialSchool}:{initialSchool?:string}) {
     <header className={styles.topbar}><div><a className={styles.brand} href="/dashboard">SpaceCase</a><WorkspaceSwitcher current="ADMIN" schoolId={schoolId} principal={schools?.find(s=>s.id===schoolId)?.principal===true}/></div>
       <div className={styles.actions}><form action="/auth/google?choose_account=1" method="post"><button className={styles.secondary}>Use another Google account</button></form><form action="/auth/logout" method="post"><button className={styles.secondary}>Sign out</button></form></div></header>
     <div className={styles.content}>
-      <p className={styles.eyebrow}>Your school, ready to grow</p>
-      <h1>School workspace</h1><p className={styles.lead}>Set up your school and welcome your pilot team.</p>
+      <section className={styles.hero}><p className={styles.eyebrow}>Your school, ready to grow</p>
+      <h1>School workspace</h1><p className={styles.lead}>Welcome your community and keep your school organised, one step at a time.</p></section>
+      {schoolId ? <nav className={styles.quickNav} aria-label="School workspace sections"><a href={`/admin/families/${schoolId}`}><WorkspaceIcon name="family"/>Parents & learners</a><a href="#class-manager-heading"><WorkspaceIcon name="class"/>Classes & teachers</a><a href="#staff-invitations"><WorkspaceIcon name="people"/>Invite staff</a><a href="#school-billing"><WorkspaceIcon name="billing"/>Billing records</a><a href="/support"><WorkspaceIcon name="support"/>Support</a></nav> : null}
       <AdministratorHelp/>
       {error ? <p className={styles.error} role="alert">{error}</p> : null}
       {message ? <p className={styles.notice} role="status">{message}</p> : null}
       <section className={styles.card} aria-label="Invitation delivery"><p className={styles.eyebrow}>Pilot invitation delivery</p><h2>Share invitations manually</h2><p>Automatic email delivery is disabled. Creating an invitation does not send an email. Open a prefilled email draft or copy the link or message to share it with the invited person.</p><p className={styles.note}>Email delivery will become available after setup is complete.</p></section>
       {schools === null ? <p>Loading your workspace…</p> : schools.length === 0 ? <section className={styles.card}><h2>Administrator access required</h2><p>Your account is signed in, but it has no school administrator assignment.</p><a href="/dashboard">Back to workspace</a></section> : <>
         {schools.length > 1 ? <label className={styles.field}>School<select disabled={busy} value={schoolId} onChange={e => { setSchoolId(e.target.value); setName(schools.find(s => s.id === e.target.value)?.displayName ?? ""); }}>{schools.map(s => <option key={s.id} value={s.id}>{s.displayName}</option>)}</select></label> : null}
-        <section className={styles.card}><h2>Onboard learners & invite parents</h2><p>Choose the learner, create a private invitation and share it by email or WhatsApp. Track acceptance and school confirmation in one place.</p><a className={styles.primary} href={`/admin/families/${schoolId}`}>Invite a parent / view invitation progress</a></section>
+        <section className={`${styles.card} ${styles.featureCard}`}><WorkspaceIcon name="family"/><h2>Onboard learners & invite parents</h2><p>Choose the learner, create a private invitation and share it by email or WhatsApp. Track acceptance and school confirmation in one place.</p><a className={styles.primary} href={`/admin/families/${schoolId}`}>Invite a parent / view invitation progress</a></section>
         <div className={styles.grid}>
-          <section className={styles.card}><p className={styles.eyebrow}>School setup</p><h2>Make it yours</h2>
+          <section className={styles.card}><WorkspaceIcon name="settings"/><p className={styles.eyebrow}>School setup</p><h2>Make it yours</h2>
             <form onSubmit={e => { e.preventDefault(); void action(async () => {
               const data = await api<{ school: School }>(base, "PATCH", { displayName: name });
               setSchools(schools.map(s => s.id === schoolId ? data.school : s)); setName(data.school.displayName); setMessage("School name saved.");
@@ -95,7 +97,7 @@ export default function AdminClient({initialSchool}:{initialSchool?:string}) {
               <button className={styles.primary} disabled={busy}>Save school name</button>
             </form><p className={styles.note}>Your administrator access applies to this school.</p>
           </section>
-          <section className={styles.card}><p className={styles.eyebrow}>Invite your team</p><h2>Bring someone aboard</h2><AdministratorGuide topic="invitations"/>
+          <section className={styles.card} id="staff-invitations"><WorkspaceIcon name="people"/><p className={styles.eyebrow}>Invite your team</p><h2>Bring someone aboard</h2><AdministratorGuide topic="invitations"/>
             <form onSubmit={e => { e.preventDefault(); void action(async () => {
               setLink(""); setShareMessage(null);
               const data = await api<{ token: string; expiresAt: string }>(`${base}/invitations`, "POST", { email, roleCode: role });
@@ -108,7 +110,7 @@ export default function AdminClient({initialSchool}:{initialSchool?:string}) {
           </section>
         </div>
         <p><a href="/billing-policy">Read how school billing and service terms will work</a></p>
-        <BillingPanel key={`billing-${schoolId}`} schoolId={schoolId}/>
+        <div id="school-billing"><BillingPanel key={`billing-${schoolId}`} schoolId={schoolId}/></div>
         <WorkspaceSetup key={`workspace-${schoolId}`} schoolId={schoolId}/>
         <ClassManager key={schoolId} schoolId={schoolId}/>
         <BulkInvitations key={`bulk-${schoolId}`} schoolId={schoolId} schoolName={schools.find(s=>s.id===schoolId)?.displayName??"Your school"} disabled={busy} onBusyChange={setBusy} onComplete={refreshInvites}/>
