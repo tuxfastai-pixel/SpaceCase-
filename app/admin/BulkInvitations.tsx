@@ -11,10 +11,10 @@ function download(name:string,content:string){
   const anchor=document.createElement("a");anchor.href=url;anchor.download=name;document.body.append(anchor);anchor.click();anchor.remove();
   window.setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
-const reasonText:Record<string,string>={INVITATION_ALREADY_PENDING:"Skipped: invitation already pending",ALREADY_SCHOOL_MEMBER:"Skipped: already a school staff member",SCHOOL_ADMIN_REQUIRED:"Not created: administrator access ended",SERVICE_UNAVAILABLE:"Result unavailable: check Invitations before retrying"};
+const reasonText:Record<string,string>={INVITATION_ALREADY_PENDING:"Skipped: invitation already pending",ALREADY_SCHOOL_MEMBER:"Skipped: already a school staff member",SCHOOL_ADMIN_REQUIRED:"Not created: administrator access ended",SCHOOL_PRINCIPAL_REQUIRED:"Not created: only the principal can appoint administrators",SERVICE_UNAVAILABLE:"Result unavailable: check Invitations before retrying"};
 
-export default function BulkInvitations({schoolId,schoolName,disabled,onBusyChange,onComplete}:{
-  schoolId:string;schoolName:string;disabled:boolean;onBusyChange:(busy:boolean)=>void;onComplete:()=>Promise<void>;
+export default function BulkInvitations({schoolId,schoolName,canInviteAdministrators=false,disabled,onBusyChange,onComplete}:{
+  schoolId:string;schoolName:string;canInviteAdministrators?:boolean;disabled:boolean;onBusyChange:(busy:boolean)=>void;onComplete:()=>Promise<void>;
 }){
   const [source,setSource]=useState("");const [format,setFormat]=useState<"list"|"csv">("list");
   const [rows,setRows]=useState<ReviewRow[]|null>(null);const [results,setResults]=useState<BulkResult[]|null>(null);
@@ -25,6 +25,7 @@ export default function BulkInvitations({schoolId,schoolName,disabled,onBusyChan
   function edit(index:number,update:Partial<ReviewRow>){setRows(current=>current?.map((row,i)=>i===index?{...row,...update}:row)??null);setConfirmAdmin(false);}
   function preview(){setError("");setNotice("");try{setRows(parseInvitationImport(source,format));setConfirmAdmin(false);}catch(e){setError(e instanceof Error?e.message:"Check your list.");}}
   async function create(){
+    if(adminCount>0&&!canInviteAdministrators){setError("Only the principal can appoint administrators. Change or deselect those rows before creating teacher invitations.");return;}
     if(locked||!selected.length||(adminCount>0&&!confirmAdmin))return;
     setBusy(true);onBusyChange(true);setError("");setNotice("");
     try{
@@ -44,7 +45,7 @@ export default function BulkInvitations({schoolId,schoolName,disabled,onBusyChan
 
   return <section className={styles.card} aria-labelledby="bulk-invite-heading">
     <p className={styles.eyebrow}>Invite your team</p><h2 id="bulk-invite-heading">Bulk invitations</h2><AdministratorGuide topic="bulk"/>
-    <p>Paste email addresses or upload a CSV, then review access before creating up to {BULK_LIMIT} invitations. A separate link is created for each person. SpaceCase does not email the batch.</p>
+    <p>Only the principal can create administrator invitations. Paste email addresses or upload a CSV, then review access before creating up to {BULK_LIMIT} invitations. A separate link is created for each person. SpaceCase does not email the batch.</p>
     {error?<p className={styles.error} role="alert">{error}</p>:null}{notice?<p className={styles.notice} role="status">{notice}</p>:null}
     {results===null?<>
       {rows===null?<>
@@ -63,7 +64,7 @@ export default function BulkInvitations({schoolId,schoolName,disabled,onBusyChan
         <div className={styles.tableWrap}><table><thead><tr><th>Include</th><th>Email</th><th>Access</th><th>Review</th></tr></thead><tbody>{review.map((row,index)=><tr key={index}>
           <td><input type="checkbox" aria-label={`Include row ${index+1}`} checked={row.selected&&!row.issue} disabled={locked||Boolean(row.issue)} onChange={e=>edit(index,{selected:e.target.checked})}/></td>
           <td><input aria-label={`Email for row ${index+1}`} type="email" maxLength={254} value={rows[index].email} disabled={locked} onChange={e=>edit(index,{email:e.target.value})}/></td>
-          <td><select aria-label={`Access for row ${index+1}`} value={["TEACHER","SCHOOL_ADMINISTRATOR"].includes(row.roleCode)?row.roleCode:""} disabled={locked} onChange={e=>edit(index,{roleCode:e.target.value})}><option value="">Choose role</option><option value="TEACHER">Teacher</option><option value="SCHOOL_ADMINISTRATOR">School administrator</option></select></td>
+          <td><select aria-label={`Access for row ${index+1}`} value={["TEACHER","SCHOOL_ADMINISTRATOR"].includes(row.roleCode)?row.roleCode:""} disabled={locked} onChange={e=>edit(index,{roleCode:e.target.value})}><option value="">Choose role</option><option value="TEACHER">Teacher</option><option value="SCHOOL_ADMINISTRATOR" disabled={!canInviteAdministrators}>School administrator (principal only)</option></select></td>
           <td>{row.issue??(row.selected?"Ready":"Excluded")}</td></tr>)}</tbody></table></div>
         {adminCount>0?<label className={styles.confirmation}><input type="checkbox" checked={confirmAdmin} disabled={locked} onChange={e=>setConfirmAdmin(e.target.checked)}/>I intend to invite {adminCount} school administrator{adminCount===1?"":"s"} with school administration access.</label>:null}
         <div className={styles.actions}><button className={styles.primary} disabled={locked||!selected.length||(adminCount>0&&!confirmAdmin)} onClick={()=>void create()}>{busy?"Creating invitations…":`Create ${selected.length} invitation links`}</button><button className={styles.secondary} disabled={locked} onClick={()=>{setRows(null);setError("");}}>Back to input</button></div>
