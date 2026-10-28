@@ -5,7 +5,7 @@
 export const MAX_MINOR_UNITS=9223372036854775807n;
 export class SchoolFinanceError extends Error {}
 export function minorUnits(value:string):bigint{
- if(!/^(0|[1-9][0-9]{0,18})$/.test(value))throw new SchoolFinanceError('INVALID_MINOR_UNITS');
+ if(typeof value!=='string'||!/^(0|[1-9][0-9]{0,18})$/.test(value))throw new SchoolFinanceError('INVALID_MINOR_UNITS');
  const amount=BigInt(value);if(amount>MAX_MINOR_UNITS)throw new SchoolFinanceError('AMOUNT_OVERFLOW');return amount;
 }
 function checked(value:bigint):string{if(value<0n||value>MAX_MINOR_UNITS)throw new SchoolFinanceError('AMOUNT_OVERFLOW');return value.toString();}

@@ -3,6 +3,7 @@ test('school invoices use exact integer cents and reject malformed/overflowing v
  assert.equal(invoiceTotal([{quantity:3,unitPriceMinor:'10'},{quantity:1,unitPriceMinor:'20'}]),'50');
  assert.equal(invoiceTotal([{quantity:1,unitPriceMinor:'9007199254740993'}]),'9007199254740993');
  for(const value of ['-1','0.01','1e3','01',' 10','Infinity',(MAX_MINOR_UNITS+1n).toString()])assert.throws(()=>minorUnits(value));
+ assert.throws(()=>minorUnits(100 as unknown as string),/INVALID_MINOR_UNITS/);
  assert.throws(()=>invoiceTotal([{quantity:2,unitPriceMinor:MAX_MINOR_UNITS.toString()}]),/AMOUNT_OVERFLOW/);
  assert.throws(()=>invoiceTotal([{quantity:1.5,unitPriceMinor:'100'}]),/INVALID_QUANTITY/);
 });
