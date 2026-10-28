@@ -1,0 +1,1 @@
+import {peosProxy} from '@/platform/admin/peosProxy';export async function GET(request:Request,{params}:{params:Promise<{schoolId:string}>}){return peosProxy(request,'/v1/spacecase/finance/schools/'+encodeURIComponent((await params).schoolId)+'/learners'+new URL(request.url).search);}
