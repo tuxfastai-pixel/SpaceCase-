@@ -1,0 +1,16 @@
+import {z} from 'zod';
+export const requestSummary=z.object({id:z.string().uuid(),schoolName:z.string(),applicantRole:z.enum(['PRINCIPAL','ADMINISTRATOR']),status:z.enum(['SUBMITTED','IN_REVIEW','MORE_INFORMATION_REQUIRED','DECLINED','WITHDRAWN']),revision:z.number().int().positive(),reviewMessage:z.string(),createdAt:z.string(),updatedAt:z.string()});
+export type RegistrationRequest=z.infer<typeof requestSummary>;
+export const requestList=z.object({requests:z.array(requestSummary).max(50),nextOffset:z.number().int().nonnegative().nullable()});
+export const profileSchema=z.object({emisNumber:z.string(),centreNumber:z.string(),address:z.string(),country:z.string(),province:z.string(),district:z.string(),postalCode:z.string(),phone:z.string(),email:z.string(),schoolType:z.string()});
+export type RegistrationProfile=z.infer<typeof profileSchema>;
+export const blankProfile:RegistrationProfile={emisNumber:'',centreNumber:'',address:'',country:'',province:'',district:'',postalCode:'',phone:'',email:'',schoolType:''};
+export const detailSchema=z.object({request:requestSummary.extend({principalEmail:z.string().email(),profile:profileSchema,requesterPersonId:z.string().uuid()}),possibleExistingSchools:z.array(z.object({id:z.string().uuid(),displayName:z.string()})).max(10),grantsAuthority:z.literal(false)});
+export const requestResult=z.object({request:requestSummary});
+export const labels:Record<RegistrationRequest['status'],string>={SUBMITTED:'Submitted — awaiting review',IN_REVIEW:'Under review',MORE_INFORMATION_REQUIRED:'More information needed',DECLINED:'Declined',WITHDRAWN:'Withdrawn'};
+const messages:Record<string,string>={UNAUTHENTICATED:'Your session has ended. Sign in again.',FOUNDER_REQUIRED:'Founder access is required.',ACTIVE_PERSON_REQUIRED:'Your current account cannot submit requests.',INVALID_INPUT:'Check the required fields and email addresses.',REGISTRATION_ALREADY_PENDING:'You already have an open request for this school. Check your requests below.',REGISTRATION_LIMIT:'You have reached the request limit. Review your open requests or contact support.',SUBMISSION_KEY_CONFLICT:'This submission changed after an earlier attempt. Reload your requests before submitting again.',REGISTRATION_CHANGED_OR_UNAVAILABLE:'This request changed elsewhere or is no longer available. Refresh the list.',REGISTRATION_STATE_CONFLICT:'This action is no longer available. Refresh the request.',INDEPENDENT_REVIEW_REQUIRED:'A different authorised reviewer must review your own request.'};
+export async function registrationApi<T>(path:string,schema:z.ZodType<T>,method='GET',body?:unknown,signal?:AbortSignal):Promise<T>{
+ const response=await fetch(path,{method,headers:{'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),cache:'no-store',signal:signal??AbortSignal.timeout(15000)});
+ const data=await response.json();if(!response.ok)throw new Error(messages[data.error]??'This action is unavailable. Your changes have not been confirmed; try again or contact support.');
+ const parsed=schema.safeParse(data);if(!parsed.success)throw new Error('The service returned an unexpected response. Refresh before trying again.');return parsed.data;
+}
