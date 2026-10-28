@@ -64,7 +64,8 @@ CREATE POLICY finance_scope ON school_finance.allocations USING(school_id=NULLIF
 CREATE POLICY finance_scope ON school_finance.events USING(school_id=NULLIF(current_setting('spacecase.finance_school',true),'')::uuid) WITH CHECK(school_id=NULLIF(current_setting('spacecase.finance_school',true),'')::uuid);
 REVOKE ALL ON ALL TABLES IN SCHEMA school_finance FROM PUBLIC;
 DO U&'BEGIN IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname=''spacecase_runtime'') THEN
- GRANT USAGE ON SCHEMA school_finance TO spacecase_runtime\003B
+ GRANT USAGE ON SCHEMA school_finance,school_ops TO spacecase_runtime\003B
+ GRANT SELECT(peos_school_id,status,timezone) ON school_ops.school_workspaces TO spacecase_runtime\003B
  GRANT SELECT,INSERT ON ALL TABLES IN SCHEMA school_finance TO spacecase_runtime\003B
  GRANT UPDATE(next_invoice) ON school_finance.counters TO spacecase_runtime\003B
  GRANT UPDATE(status,issued_by,issued_at,voided_by,void_reason,revision) ON school_finance.invoices TO spacecase_runtime\003B
