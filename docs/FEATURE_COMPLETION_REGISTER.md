@@ -133,6 +133,8 @@ ROLE-01 release evidence: SpaceCase PR58 and PEOS PR17 deployed; both CI suites 
 
 ENTRY-01 — **IMPLEMENTED / release verification pending**: sign-in journey choices with fixed destinations and short-lived HttpOnly OAuth intent; /parent owner-only workspace entry; teacher/school invitation guides; unassigned dashboard choices. No school/guardian permissions from selection. Sprint 056. First actual parent account sign-in, correct callback, pending-invite precedence and intended-email checks remain to verify. An email not yet registered is not pre-created or pre-linked.
 
+SCHOOL-02 — **IN DEVELOPMENT / NOT RELEASED**: school identification, address, location and contact details under School setup. CLI-generated migration `20261027062535_school_profile.sql` is prepared locally. PEOS persistence still requires database permission and isolation checks, and deployment before the SpaceCase form can be released. Fields are optional; saving does not submit information to education authorities.
+
 SCHOOL-01 — **PLANNED**: verified new-school self-service registration/request process for a school with no inviter. Requires verification ownership, duplicate-school handling, authorized signatory/staff checks, review/rejection/recovery and scoped initial principal provisioning. Current pilot coordination is manual; selecting the school onboarding path creates no school or role. Stage A/B; no native app publication or access grant is implied by installation.
 
 Parent entry remembers no permanent account role preference. Parent users can choose Parent / caregiver at sign-in or use /parent; a later canonical product preference may improve returning-user routing without affecting permissions. Full parent record access remains FAM-01/02, not ENTRY-01.

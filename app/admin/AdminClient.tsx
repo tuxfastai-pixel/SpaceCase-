@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AdministratorHelp, {AdministratorGuide} from "../help/AdministratorHelp";
 import styles from "./admin.module.css";
 import WorkspaceIcon from "../ui/WorkspaceIcon";
@@ -9,6 +9,7 @@ import ClassManager from "./ClassManager";
 import BulkInvitations from "./BulkInvitations";
 import BillingPanel from "../billing/BillingPanel";
 import WorkspaceSetup from "./WorkspaceSetup";
+import SchoolDetails from "./SchoolDetails";
 import WorkspaceSwitcher from "../workspace/WorkspaceSwitcher";
 
 type School = { id: string; displayName: string; principal?:boolean };
@@ -33,6 +34,8 @@ const inviteStatus = (i: Invite) => i.acceptedAt ? "Accepted" : i.revokedAt ? "R
 export default function AdminClient({initialSchool}:{initialSchool?:string}) {
   const [schools, setSchools] = useState<School[] | null>(null);
   const [schoolId, setSchoolId] = useState("");
+  const [schoolDetailsDirty, setSchoolDetailsDirty] = useState(false);
+  const onSchoolDetailsDirty = useCallback((dirty: boolean) => setSchoolDetailsDirty(dirty), []);
   const [name, setName] = useState("");
   const [invitations, setInvitations] = useState<Invite[]>([]);
   const [email, setEmail] = useState("");
@@ -89,7 +92,7 @@ export default function AdminClient({initialSchool}:{initialSchool?:string}) {
       {error ? <p className={styles.error} role="alert">{error}</p> : null}
       {message ? <p className={styles.notice} role="status">{message}</p> : null}
       {schools === null ? <p>Loading your workspace…</p> : schools.length === 0 ? <section className={styles.card}><h2>Administrator access required</h2><p>Your account is signed in, but it has no school administrator assignment.</p><a href="/dashboard">Back to workspace</a></section> : <>
-        {schools.length > 1 ? <label className={styles.field}>School<select disabled={busy} value={schoolId} onChange={e => { setSchoolId(e.target.value); setName(schools.find(s => s.id === e.target.value)?.displayName ?? ""); }}>{schools.map(s => <option key={s.id} value={s.id}>{s.displayName}</option>)}</select></label> : null}
+        {schools.length > 1 ? <label className={styles.field}>School<select disabled={busy} value={schoolId} onChange={e => { if (schoolDetailsDirty && !window.confirm("Discard unsaved school details and switch schools?")) return; setSchoolDetailsDirty(false); setSchoolId(e.target.value); setName(schools.find(s => s.id === e.target.value)?.displayName ?? ""); }}>{schools.map(s => <option key={s.id} value={s.id}>{s.displayName}</option>)}</select></label> : null}
         <section className={`${styles.card} ${styles.featureCard}`}><WorkspaceIcon name="family"/><h2>Onboard learners & invite parents</h2><p>Choose the learner, create a private invitation and share it by email or WhatsApp. Track acceptance and school confirmation in one place.</p><a className={styles.primary} href={`/admin/families/${schoolId}`}>Invite a parent / view invitation progress</a></section>
         {link ? <section className={styles.card}><h2>Your new invitation link</h2><p>Email not sent. Copy this link now; it cannot be retrieved later. You can create a replacement below if needed.</p>{shareMessage ? <InvitationShare recipient={shareMessage.recipient} message={shareMessage}/> : null}</section> : null}
         <div className={styles.sectionList} aria-label="School management tools">
@@ -110,7 +113,7 @@ export default function AdminClient({initialSchool}:{initialSchool?:string}) {
             <BulkInvitations key={`bulk-${schoolId}`} schoolId={schoolId} schoolName={schools.find(s=>s.id===schoolId)?.displayName??"Your school"} disabled={busy} onBusyChange={setBusy} onComplete={refreshInvites}/>
             <section className={styles.card}><h2>Invitations</h2>{invitations.length === 0 ? <p>No invitations yet. Add your first pilot participant above.</p> : <div className={styles.tableWrap}><table><thead><tr><th>Email</th><th>Access</th><th>Status</th><th>Email delivery</th><th>Expires</th><th><span className={styles.srOnly}>Action</span></th></tr></thead><tbody>{invitations.map(i => <tr key={i.id}><td>{i.email}</td><td>{roleName(i.roleCode)}</td><td>{inviteStatus(i)}</td><td>Not sent</td><td>{new Date(i.expiresAt).toLocaleDateString()}</td><td>{inviteStatus(i) === "Pending" ? <div className={styles.actions}><button className={styles.secondary} disabled={busy} onClick={() => { if (!window.confirm("Create a replacement invitation link? The previous link will stop working. The expiry date stays the same.")) return; void action(async () => { setLink(""); setShareMessage(null); const data = await api<{ token: string; expiresAt: string }>(`${base}/invitations/${i.id}`, "POST"); showInvitation(data, i.roleCode, i.email); await refreshInvites(); setMessage("Replacement link created. The previous link no longer works. Email not sent."); }); }}>Replace link</button><button className={styles.secondary} disabled={busy} onClick={() => { void action(async () => { await api(`${base}/invitations/${i.id}`, "DELETE"); await refreshInvites(); setLink(""); setShareMessage(null); setMessage("Invitation revoked."); }); }}>Revoke</button></div> : null}</td></tr>)}</tbody></table></div>}</section>
           </div></details>
-          <details className={styles.disclosure} id="setup-section"><summary><WorkspaceIcon name="settings"/><span><strong>School setup</strong><small>School name, academic year and learner references</small></span><span className={styles.chevron} aria-hidden="true">⌄</span></summary><div className={styles.sectionBody}><section className={styles.card}><WorkspaceIcon name="settings"/><p className={styles.eyebrow}>School setup</p><h2>Make it yours</h2>
+          <details className={styles.disclosure} id="setup-section"><summary><WorkspaceIcon name="settings"/><span><strong>School setup</strong><small>School details, academic year and learner references</small></span><span className={styles.chevron} aria-hidden="true">⌄</span></summary><div className={styles.sectionBody}><section className={styles.card}><WorkspaceIcon name="settings"/><p className={styles.eyebrow}>School setup</p><h2>Make it yours</h2>
             <form onSubmit={e => { e.preventDefault(); void action(async () => {
               const data = await api<{ school: School }>(base, "PATCH", { displayName: name });
               setSchools(schools.map(s => s.id === schoolId ? data.school : s)); setName(data.school.displayName); setMessage("School name saved.");
@@ -118,7 +121,7 @@ export default function AdminClient({initialSchool}:{initialSchool?:string}) {
               <label className={styles.field}>School name<input required minLength={2} maxLength={120} value={name} onChange={e => setName(e.target.value)} /></label>
               <button className={styles.primary} disabled={busy}>Save school name</button>
             </form><p className={styles.note}>Your administrator access applies to this school.</p>
-          </section><WorkspaceSetup key={`workspace-${schoolId}`} schoolId={schoolId}/></div></details>
+          </section><SchoolDetails key={`details-${schoolId}`} schoolId={schoolId} onDirty={onSchoolDetailsDirty}/><WorkspaceSetup key={`workspace-${schoolId}`} schoolId={schoolId}/></div></details>
           <details className={styles.disclosure} id="billing-section"><summary><WorkspaceIcon name="billing"/><span><strong>Billing records</strong><small>View recorded invoices, payments and service terms</small></span><span className={styles.chevron} aria-hidden="true">⌄</span></summary><div className={styles.sectionBody}><p><a href="/billing-policy">Read how school billing and service terms will work</a></p><BillingPanel key={`billing-${schoolId}`} schoolId={schoolId}/></div></details>
         </div>
       </>}
