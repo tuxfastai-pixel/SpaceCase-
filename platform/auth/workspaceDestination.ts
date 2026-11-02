@@ -8,6 +8,10 @@ export async function workspaceDestination(
   const available=await schools();
   if(available.some(s=>s.principal===true))return "/principal";
   if (available.length) return "/admin";
-  if ((await finance()).length) return "/finance";
+  try {
+    if ((await finance()).length) return "/finance";
+  } catch {
+    // Finance discovery is optional; never block the existing teacher dashboard.
+  }
   return null;
 }
