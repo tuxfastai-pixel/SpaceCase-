@@ -77,14 +77,14 @@ export async function financeSchools(authorization:string,fetchImpl:typeof fetch
   throw new FinanceAuthorizationError(503,"PEOS_INVALID_AUTHORITY_RESPONSE");
  }
 }
-export async function requireFinanceLearner(request:Request,schoolId:string,reference:string){
+export async function requireFinanceLearner(request:Request,schoolId:string,reference:string,fetchImpl:typeof fetch=fetch){
  const env=readServerEnvironment(),authorization=resolvePeosAuthorization(request);
  if(!authorization)throw new FinanceAuthorizationError(401,"UNAUTHENTICATED");
  if(!env.PEOS_BASE_URL)throw new FinanceAuthorizationError(503,"PEOS_UNAVAILABLE");
  const url=new URL(`/v1/finance/schools/${encodeURIComponent(schoolId)}/learner`,env.PEOS_BASE_URL);url.searchParams.set("reference",reference);
  let response:Response;
  try {
-  response=await fetch(url,{headers:{authorization},cache:"no-store",signal:AbortSignal.timeout(10000)});
+  response=await fetchImpl(url,{headers:{authorization},cache:"no-store",signal:AbortSignal.timeout(10000)});
  } catch {
   throw new FinanceAuthorizationError(503,"PEOS_UNAVAILABLE");
  }
