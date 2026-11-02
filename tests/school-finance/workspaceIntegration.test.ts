@@ -19,6 +19,7 @@ import {
   reviewSchoolReconciliation,
 } from "../../domains/school-finance/reconciliationService";
 import { FinanceAuthorizationError } from "../../platform/finance/peosAuthorization";
+import { SchoolFinanceError } from "../../domains/school-finance/money";
 
 test(
   "school finance lifecycle preserves precision, independent review, tenant boundaries and snapshot history",
@@ -334,6 +335,15 @@ test(
       );
       assert.equal(restricted.totals, null);
       assert.equal(restricted.audit, null);
+      // Domain-level denial is equivalent to HTTP 403 for optional projections.
+      const domainDenied: FinanceAuthority = async (school, action) => {
+        if (action === "finance.summary.read" || action === "finance.audit.read")
+          throw new SchoolFinanceError("FINANCE_FORBIDDEN");
+        return { schoolId: school, personId: actor };
+      };
+      const domainRestricted = await readFinanceWorkspace(pool, schoolId, actor, domainDenied);
+      assert.equal(domainRestricted.totals, null);
+      assert.equal(domainRestricted.audit, null);
       await assert.rejects(
         readFinanceWorkspace(pool, schoolId, principal, officer),
         /FINANCE_FORBIDDEN/,
