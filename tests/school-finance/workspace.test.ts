@@ -11,7 +11,7 @@ import {
   financeWorkspaceGet,
   financeWorkspacePost,
 } from "../../platform/finance/workspaceHttp";
-import { FinanceAuthorizationError } from "../../platform/finance/peosAuthorization";
+import { FinanceAuthorizationError, financeSchools } from "../../platform/finance/peosAuthorization";
 import { splitInstalmentsForForm } from "../../app/finance/forms";
 const schoolId = randomUUID(),
   accountId = randomUUID(),
@@ -170,5 +170,33 @@ test("finance remains disabled in authority-only mode even with the finance flag
     else process.env.SPACECASE_FINANCE_WORKSPACE_ENABLED = previousFlag;
     if (previousMode === undefined) delete process.env.SPACECASE_WORKSPACE_MODE;
     else process.env.SPACECASE_WORKSPACE_MODE = previousMode;
+  }
+});
+
+test("PEOS finance directory fails closed on denial, outage and malformed authority data", async () => {
+  const previous = process.env.PEOS_BASE_URL;
+  process.env.PEOS_BASE_URL = "https://peos.example";
+  const respond = (status: number, body: unknown) =>
+    (async () => Response.json(body, { status })) as typeof fetch;
+  try {
+    for (const [status, expected] of [[401, 401], [403, 403], [500, 503]] as const) {
+      await assert.rejects(
+        financeSchools("Bearer synthetic", respond(status, { error: "denied" })),
+        (error: unknown) => error instanceof FinanceAuthorizationError && error.status === expected,
+      );
+    }
+    await assert.rejects(
+      financeSchools("Bearer synthetic", (async () => { throw new Error("network down"); }) as typeof fetch),
+      (error: unknown) => error instanceof FinanceAuthorizationError && error.status === 503,
+    );
+    await assert.rejects(
+      financeSchools("Bearer synthetic", respond(200, { schools: [{ id: schoolId, displayName: "School", actions: ["finance.unknown"] }], truncated: false })),
+      (error: unknown) => error instanceof FinanceAuthorizationError && error.message === "PEOS_INVALID_AUTHORITY_RESPONSE",
+    );
+    const valid = await financeSchools("Bearer synthetic", respond(200, { schools: [{ id: schoolId, displayName: "School", actions: ["finance.transactions.read"] }], truncated: false }));
+    assert.equal(valid.schools[0].id, schoolId);
+  } finally {
+    if (previous === undefined) delete process.env.PEOS_BASE_URL;
+    else process.env.PEOS_BASE_URL = previous;
   }
 });
