@@ -344,6 +344,16 @@ test(
       const domainRestricted = await readFinanceWorkspace(pool, schoolId, actor, domainDenied);
       assert.equal(domainRestricted.totals, null);
       assert.equal(domainRestricted.audit, null);
+      // A PEOS outage or unexpected authorization error must fail closed,
+      // never masquerade as a permitted transaction-only view.
+      const brokenAuthority: FinanceAuthority = async (school, action) => {
+        if (action === "finance.summary.read") throw new Error("PEOS_UNAVAILABLE");
+        return { schoolId: school, personId: actor };
+      };
+      await assert.rejects(
+        readFinanceWorkspace(pool, schoolId, actor, brokenAuthority),
+        /PEOS_UNAVAILABLE/,
+      );
       await assert.rejects(
         readFinanceWorkspace(pool, schoolId, principal, officer),
         /FINANCE_FORBIDDEN/,
