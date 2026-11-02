@@ -29,3 +29,23 @@ Use an isolated preview database and synthetic school, principal, finance office
 7. Rehearse migration and rollback against a disposable production-shaped database with the restricted runtime role. Record the migration SHA, database role grants, test results, screenshots and reviewer sign-off before preview activation.
 
 **Preview activation rule:** Set `SPACECASE_FINANCE_WORKSPACE_ENABLED=true` only in an isolated preview environment after the preceding gates pass. Keep production false; never enable real financial processing from a successful CI run alone. Principal step-up/recovery, evidence retention and human sign-off remain mandatory production gates.
+
+
+## Cross-system preview evidence record (release blocker)
+
+Do not mark this gate passed using mocked PEOS decisions or independent repository CI. Run both feature heads against disposable, isolated databases with synthetic identities. Record the exact SpaceCase and PEOS commit SHAs, database migration checksums, environment name, tester, UTC timestamp, and test evidence links. Never store tokens, passwords, actual learner records or banking information in this document.
+
+| Scenario | Required observable result | Evidence / reviewer | Status |
+| --- | --- | --- | --- |
+| Principal login and school discovery | Only currently authorized schools listed; principal can enter finance | Pending | NOT RUN |
+| School administrator / teacher login | No finance directory access or finance record reads | Pending | NOT RUN |
+| Finance officer login | Can record and prepare; cannot verify payments or approve expenditure/reconciliation | Pending | NOT RUN |
+| Finance manager login | Can independently verify payments; cannot approve principal-only decisions | Pending | NOT RUN |
+| Principal review | Can independently approve eligible expenditure and reconciliation; self-review denied | Pending | NOT RUN |
+| Revoked / expired finance role | Existing session immediately loses access on next PEOS authority check | Pending | NOT RUN |
+| Second school isolation | No cross-school directory entries, learner lookup or finance record access | Pending | NOT RUN |
+| PEOS unavailable / invalid response | All protected finance actions fail closed; no partial record created | Pending | NOT RUN |
+| Teacher dashboard and account switching | Remain usable without finance; no private finance data persists after sign-out | Pending | NOT RUN |
+| Migration and rollback rehearsal | Disposable production-shaped DB; restricted grants verified; restore procedure timed and reviewed | Pending | NOT RUN |
+
+**Required execution order:** deploy isolated PEOS authority branch; apply PEOS migration and seed synthetic roles; deploy isolated SpaceCase branch; apply finance migration with restricted runtime; run the signed-in scenarios above; record failures and rerun after fixes; rehearse database restore; obtain independent review. Keep the finance feature flag off in production throughout. Do not treat a green CI build as approval to merge or enable real finance processing.
