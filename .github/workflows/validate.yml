@@ -104,6 +104,9 @@ jobs:
         run: |
           test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT count(*) FROM audit.schema_migrations WHERE migration_name='20261102090000_finance_workspace.sql'")" = "1"
           test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT to_regclass('school_finance.reconciliation_versions') IS NOT NULL AND NOT has_column_privilege('spacecase_runtime','school_finance.payments','amount_minor','UPDATE') AND NOT has_table_privilege('spacecase_runtime','school_finance.audit_events','DELETE')")" = "t"
+      - name: Verify restricted finance runtime boundaries
+        run: |
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT NOT has_schema_privilege('spacecase_runtime','school_ops','USAGE') AND NOT has_schema_privilege('spacecase_runtime','school_ops','CREATE') AND NOT has_table_privilege('spacecase_runtime','school_finance.audit_events','UPDATE') AND NOT has_table_privilege('spacecase_runtime','school_finance.audit_events','DELETE') AND NOT has_table_privilege('spacecase_runtime','school_finance.reconciliation_versions','UPDATE') AND NOT has_table_privilege('spacecase_runtime','school_finance.reconciliation_versions','DELETE')")" = "t"
       - name: Typecheck
         run: npm run typecheck
 
