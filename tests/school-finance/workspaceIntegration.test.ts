@@ -71,6 +71,8 @@ test(
         learner,
       );
     try {
+      // The school bootstrap owns workspace provisioning; finance must not bypass it.
+      await pool.query("INSERT INTO school_ops.school_workspaces(peos_school_id) VALUES($1) ON CONFLICT DO NOTHING", [schoolId]);
       accountId = (
         await initializeFinance(pool, schoolId, principal, authorize)
       ).accountId;
