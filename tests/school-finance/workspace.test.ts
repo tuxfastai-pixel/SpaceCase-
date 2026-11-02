@@ -11,7 +11,7 @@ import {
   financeWorkspaceGet,
   financeWorkspacePost,
 } from "../../platform/finance/workspaceHttp";
-import { FinanceAuthorizationError, financeSchools } from "../../platform/finance/peosAuthorization";
+import { FinanceAuthorizationError, financeSchools, requireFinanceLearner } from "../../platform/finance/peosAuthorization";
 import { splitInstalmentsForForm } from "../../app/finance/forms";
 const schoolId = randomUUID(),
   accountId = randomUUID(),
@@ -195,6 +195,47 @@ test("PEOS finance directory fails closed on denial, outage and malformed author
     );
     const valid = await financeSchools("Bearer synthetic", respond(200, { schools: [{ id: schoolId, displayName: "School", actions: ["finance.transactions.read"] }], truncated: false }));
     assert.equal(valid.schools[0].id, schoolId);
+  } finally {
+    if (previous === undefined) delete process.env.PEOS_BASE_URL;
+    else process.env.PEOS_BASE_URL = previous;
+  }
+});
+
+test("PEOS learner lookup fails closed on authentication, transport, malformed response and denied scope", async () => {
+  const previous = process.env.PEOS_BASE_URL;
+  process.env.PEOS_BASE_URL = "https://peos.example";
+  const request = new Request(endpoint, { headers: { authorization: "Bearer synthetic" } });
+  const respond = (status: number, body: unknown) =>
+    (async () => Response.json(body, { status })) as typeof fetch;
+  const expectError = (status: number, message?: string) =>
+    (error: unknown) => error instanceof FinanceAuthorizationError &&
+      error.status === status && (!message || error.message === message);
+  try {
+    await assert.rejects(
+      requireFinanceLearner(new Request(endpoint), schoolId, "L-1", respond(200, {})),
+      expectError(401),
+    );
+    for (const [status, expected] of [[401, 401], [403, 403], [500, 503]] as const)
+      await assert.rejects(
+        requireFinanceLearner(request, schoolId, "L-1", respond(status, { error: "denied" })),
+        expectError(expected),
+      );
+    await assert.rejects(
+      requireFinanceLearner(request, schoolId, "L-1", (async () => { throw Error("offline"); }) as typeof fetch),
+      expectError(503, "PEOS_UNAVAILABLE"),
+    );
+    await assert.rejects(
+      requireFinanceLearner(request, schoolId, "L-1", respond(200, { personId: randomUUID(), admissionNumber: "L-1", givenName: "Test" })),
+      expectError(503, "PEOS_INVALID_LEARNER_RESPONSE"),
+    );
+    const learnerId = randomUUID();
+    const transport = (async (url: string | URL | Request, init?: RequestInit) => {
+      assert.equal(new URL(String(url)).searchParams.get("reference"), "L-1");
+      assert.equal(init?.headers && (init.headers as Record<string, string>).authorization, "Bearer synthetic");
+      return Response.json({ personId: learnerId, admissionNumber: "L-1", givenName: "Synthetic", familyName: "Learner" });
+    }) as typeof fetch;
+    const learner = await requireFinanceLearner(request, schoolId, "L-1", transport);
+    assert.equal(learner.personId, learnerId);
   } finally {
     if (previous === undefined) delete process.env.PEOS_BASE_URL;
     else process.env.PEOS_BASE_URL = previous;
