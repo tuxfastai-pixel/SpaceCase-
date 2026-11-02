@@ -77,7 +77,18 @@ export async function requireFinanceLearner(request:Request,schoolId:string,refe
  if(!authorization)throw new FinanceAuthorizationError(401,"UNAUTHENTICATED");
  if(!env.PEOS_BASE_URL)throw new FinanceAuthorizationError(503,"PEOS_UNAVAILABLE");
  const url=new URL(`/v1/finance/schools/${encodeURIComponent(schoolId)}/learner`,env.PEOS_BASE_URL);url.searchParams.set("reference",reference);
- const response=await fetch(url,{headers:{authorization},cache:"no-store",signal:AbortSignal.timeout(10000)});
- if(!response.ok)throw new FinanceAuthorizationError(response.status===403?403:503,"FINANCE_LEARNER_UNAVAILABLE");
- return z.object({personId:z.string().uuid(),admissionNumber:z.string(),givenName:z.string(),familyName:z.string()}).strict().parse(await response.json());
+ let response:Response;
+ try {
+  response=await fetch(url,{headers:{authorization},cache:"no-store",signal:AbortSignal.timeout(10000)});
+ } catch {
+  throw new FinanceAuthorizationError(503,"PEOS_UNAVAILABLE");
+ }
+ if(response.status===401)throw new FinanceAuthorizationError(401,"UNAUTHENTICATED");
+ if(response.status===403)throw new FinanceAuthorizationError(403,"FINANCE_FORBIDDEN");
+ if(!response.ok)throw new FinanceAuthorizationError(503,"FINANCE_LEARNER_UNAVAILABLE");
+ try {
+  return z.object({personId:z.string().uuid(),admissionNumber:z.string(),givenName:z.string(),familyName:z.string()}).strict().parse(await response.json());
+ } catch {
+  throw new FinanceAuthorizationError(503,"PEOS_INVALID_LEARNER_RESPONSE");
+ }
 }
