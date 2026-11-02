@@ -381,9 +381,9 @@ test(
         try {
           await runtime.query("SET ROLE spacecase_runtime");
           const runtimeRights = await runtime.query(
-            "SELECT has_schema_privilege(current_user,'school_ops','USAGE') AS schema_usage, has_table_privilege(current_user,'school_ops.school_workspaces','INSERT') AS workspace_insert",
+            "SELECT has_schema_privilege(current_user,'school_ops','USAGE') AS schema_usage",
           );
-          assert.equal(runtimeRights.rows[0].workspace_insert, false);
+          assert.equal(runtimeRights.rows[0].schema_usage, false);
           const initialized = await initializeFinance(
             { connect: async () => ({
               query: (sql: string, params?: unknown[]) => runtime.query(sql, params),
