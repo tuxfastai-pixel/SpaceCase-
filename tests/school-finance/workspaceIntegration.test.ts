@@ -420,6 +420,14 @@ test(
             "SELECT has_schema_privilege(current_user,'school_ops','USAGE') AS schema_usage",
           );
           assert.equal(runtimeRights.rows[0].schema_usage, false);
+          // Restricted runtime must not create school records even if it knows a PEOS ID.
+          await assert.rejects(
+            runtime.query(
+              "INSERT INTO school_ops.school_workspaces(peos_school_id) VALUES($1)",
+              [randomUUID()],
+            ),
+            /permission denied/,
+          );
           const initialized = await initializeFinance(
             { connect: async () => ({
               query: (sql: string, params?: unknown[]) => runtime.query(sql, params),
