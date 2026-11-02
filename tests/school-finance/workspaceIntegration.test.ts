@@ -379,8 +379,7 @@ test(
         // A pre-provisioned school must not require INSERT access to school_ops.
         const runtime = await pool.connect();
         try {
-          await runtime.query("BEGIN");
-          await runtime.query("SET LOCAL ROLE spacecase_runtime");
+          await runtime.query("SET ROLE spacecase_runtime");
           const runtimeRights = await runtime.query(
             "SELECT has_schema_privilege(current_user,'school_ops','USAGE') AS schema_usage, has_table_privilege(current_user,'school_ops.school_workspaces','INSERT') AS workspace_insert",
           );
@@ -395,8 +394,8 @@ test(
             authorize,
           );
           assert.equal(initialized.accountId, accountId);
-          await runtime.query("ROLLBACK");
         } finally {
+          await runtime.query("RESET ROLE");
           runtime.release();
         }
         const rights = await pool.query(
