@@ -72,6 +72,22 @@ test(
         learner,
       );
     try {
+      // A valid finance authority alone cannot create a school workspace.
+      const unprovisionedSchool = randomUUID();
+      const principalAuthority: FinanceAuthority = async (school) => ({
+        schoolId: school,
+        personId: principal,
+      });
+      await assert.rejects(
+        initializeFinance(pool, unprovisionedSchool, principal, principalAuthority),
+      );
+      assert.equal(
+        (await pool.query(
+          "SELECT count(*)::int AS n FROM school_finance.accounts WHERE peos_school_id=$1",
+          [unprovisionedSchool],
+        )).rows[0].n,
+        0,
+      );
       // The school bootstrap owns workspace provisioning; finance must not bypass it.
       await pool.query("INSERT INTO school_ops.school_workspaces(peos_school_id) VALUES($1) ON CONFLICT DO NOTHING", [schoolId]);
       accountId = (
