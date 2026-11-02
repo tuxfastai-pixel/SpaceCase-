@@ -12,3 +12,5 @@ playwright-report/
 
 services/psg-ai/.next/
 services/psg-ai/tsconfig.tsbuildinfo
+
+*.tsbuildinfo

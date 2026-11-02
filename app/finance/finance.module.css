@@ -1,0 +1,259 @@
+.page {
+  min-height: 100vh;
+  background: #f4f7f9;
+  color: #18313d;
+  font-family: Arial, sans-serif;
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.2rem 4%;
+  background: white;
+  border-bottom: 1px solid #dce4e9;
+}
+.header > a {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #174f60;
+  text-decoration: none;
+}
+.header nav {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.content {
+  max-width: 1200px;
+  margin: auto;
+  padding: 2rem 1rem 5rem;
+}
+.eyebrow {
+  color: #526d78;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.8rem;
+}
+.toolbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin: 1rem 0;
+}
+.page label {
+  display: grid;
+  gap: 0.5rem;
+  font-size: 0.92rem;
+}
+.page input,
+.page select,
+.page textarea {
+  padding: 0.7rem;
+  border: 1px solid #8099a4;
+  border-radius: 0.5rem;
+  background: white;
+  color: #18313d;
+  font: inherit;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.page button {
+  padding: 0.7rem 1rem;
+  background: #155b68;
+  color: white;
+  border: 0;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font: inherit;
+}
+.page button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+.page a {
+  color: #175968;
+}
+.page button:focus-visible,
+.page input:focus-visible,
+.page select:focus-visible,
+.page textarea:focus-visible,
+.page summary:focus-visible {
+  outline: 3px solid #d18a16;
+  outline-offset: 3px;
+}
+.card {
+  background: white;
+  border: 1px solid #dce4e9;
+  border-radius: 1rem;
+  padding: 1.4rem;
+  margin: 1rem 0;
+  min-width: 0;
+}
+.card h2 {
+  margin-top: 0;
+}
+.card summary {
+  font-weight: 700;
+  cursor: pointer;
+}
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.8rem;
+  margin: 1.5rem 0;
+}
+.metrics > div {
+  display: grid;
+  gap: 0.6rem;
+  background: #e3eff0;
+  padding: 1.2rem;
+  border-radius: 0.8rem;
+}
+.metrics strong {
+  font-size: 1.3rem;
+}
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 1.5rem 0;
+}
+.tabs button {
+  background: white;
+  border: 1px solid #9aafb6;
+  color: #244652;
+}
+.tabs button[aria-pressed="true"] {
+  background: #155b68;
+  color: white;
+}
+.note {
+  color: #47636f;
+  line-height: 1.5;
+}
+.error {
+  padding: 1rem;
+  border: 1px solid #a33c31;
+  background: #fff1ee;
+  color: #842b23;
+  border-radius: 0.5rem;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+.form fieldset,
+.review fieldset {
+  border: 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+  min-width: 0;
+}
+.form {
+  max-width: 600px;
+}
+.tableWrap {
+  overflow: auto;
+}
+.page table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+  text-align: left;
+}
+.page caption {
+  text-align: left;
+  color: #526d78;
+  padding: 0.5rem 0;
+}
+.page th,
+.page td {
+  padding: 0.8rem;
+  border-bottom: 1px solid #dce4e9;
+  vertical-align: top;
+}
+.page small {
+  display: block;
+  font-size: 0.75rem;
+  color: #526d78;
+  overflow-wrap: anywhere;
+  margin-top: 0.3rem;
+}
+.row {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 1rem 0;
+  border-bottom: 1px solid #dce4e9;
+  flex-wrap: wrap;
+}
+.review {
+  padding: 1rem 0;
+  border-bottom: 1px solid #dce4e9;
+  max-width: 700px;
+}
+.review legend {
+  font-weight: bold;
+}
+.page li {
+  margin: 0.8rem 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .header {
+    align-items: start;
+    flex-wrap: wrap;
+  }
+  .header nav {
+    width: 100%;
+    order: 3;
+  }
+  .content {
+    padding-top: 1rem;
+  }
+  .metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .card {
+    padding: 1rem;
+  }
+  .toolbar > * {
+    width: 100%;
+  }
+  .tabs button {
+    flex: 1 1 40%;
+  }
+}
+@media print {
+  .header,
+  .tabs,
+  .toolbar,
+  .form,
+  .card:has(> summary) {
+    display: none;
+  }
+  .page {
+    background: white;
+  }
+  .content {
+    max-width: none;
+    padding: 0;
+  }
+  .tableWrap {
+    overflow: visible;
+  }
+  .card {
+    border: 0;
+    padding: 0;
+    break-inside: avoid;
+  }
+  .page table {
+    font-size: 9pt;
+  }
+}

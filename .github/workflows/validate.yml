@@ -100,6 +100,10 @@ jobs:
         run: |
           test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT count(*) FROM audit.schema_migrations WHERE migration_name='0015_classroom_observations.sql'")" = "1"
           test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT has_column_privilege('spacecase_runtime','learning.classroom_observations','evidence','UPDATE') AND NOT has_column_privilege('spacecase_runtime','learning.classroom_observations','teacher_person_id','UPDATE') AND has_table_privilege('spacecase_runtime','learning.observation_revisions','INSERT') AND NOT has_table_privilege('spacecase_runtime','learning.observation_revisions','UPDATE') AND NOT has_table_privilege('spacecase_runtime','learning.observation_revisions','DELETE') AND NOT has_table_privilege('spacecase_runtime','learning.classroom_observations','DELETE')")" = "t"
+      - name: Verify school finance workspace migration
+        run: |
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT count(*) FROM audit.schema_migrations WHERE migration_name='20261102090000_finance_workspace.sql'")" = "1"
+          test "$(PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -Atc "SELECT to_regclass('school_finance.reconciliation_versions') IS NOT NULL AND NOT has_column_privilege('spacecase_runtime','school_finance.payments','amount_minor','UPDATE') AND NOT has_table_privilege('spacecase_runtime','school_finance.audit_events','DELETE')")" = "t"
       - name: Typecheck
         run: npm run typecheck
 

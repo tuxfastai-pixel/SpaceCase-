@@ -29,7 +29,7 @@ async function api<T>(path: string, method = "GET", body?: unknown, signal?: Abo
   if (!response.ok) throw new Error(Object.hasOwn(errors, data.error) ? errors[data.error] : "We couldn’t complete that action. Please try again.");
   return data as T;
 }
-const roleName = (role: string) => role === "SCHOOL_ADMINISTRATOR" ? "School administrator" : "Teacher";
+const roleName = (role: string) => ({SCHOOL_ADMINISTRATOR:"School administrator",TEACHER:"Teacher",FINANCE_MANAGER:"Finance manager",FINANCE_OFFICER:"Finance officer"} as Record<string,string>)[role]??"School staff";
 const inviteStatus = (i: Invite) => i.acceptedAt ? "Accepted" : i.revokedAt ? "Revoked" : Date.parse(i.expiresAt) <= Date.now() ? "Expired" : "Pending";
 
 export default function AdminClient({initialSchool}:{initialSchool?:string}) {

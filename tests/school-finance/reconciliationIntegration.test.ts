@@ -15,19 +15,20 @@ test("reconciliation workflow enforces scoped approval, one-time transitions and
   await pool.query("INSERT INTO school_finance.accounts(id,peos_school_id,status) VALUES($1,$2,'ACTIVE')",[accountId,schoolId]);
   const created=await createSchoolReconciliation(pool,{...base,actorPersonId:preparer,periodStart:"2026-09-01",periodEnd:"2026-09-30"},authorize);
   assert.equal(created.status,"DRAFT");
-  await assert.rejects(reviewSchoolReconciliation(pool,{...base,actorPersonId:principal,reconciliationId:created.reconciliationId,decision:"APPROVED"},authorize),/RECONCILIATION_NOT_REVIEWABLE/);
-  const submitted=await submitSchoolReconciliation(pool,{...base,actorPersonId:preparer,reconciliationId:created.reconciliationId},authorize);
+  await assert.rejects(reviewSchoolReconciliation(pool,{...base,actorPersonId:principal,reconciliationId:created.reconciliationId,reason:"Independent review",decision:"APPROVED"},authorize),/RECONCILIATION_NOT_REVIEWABLE/);
+  const submitted=await submitSchoolReconciliation(pool,{...base,actorPersonId:preparer,reconciliationId:created.reconciliationId,evidenceReference:"private-register-1"},authorize);
   assert.equal(submitted.status,"SUBMITTED");
-  await assert.rejects(submitSchoolReconciliation(pool,{...base,actorPersonId:preparer,reconciliationId:created.reconciliationId},authorize),/RECONCILIATION_NOT_SUBMITTABLE/);
-  await assert.rejects(reviewSchoolReconciliation(pool,{...base,actorPersonId:preparer,reconciliationId:created.reconciliationId,decision:"APPROVED"},authorize),/FINANCE_FORBIDDEN/);
-  await assert.rejects(reviewSchoolReconciliation(pool,{...base,schoolId:randomUUID(),actorPersonId:principal,reconciliationId:created.reconciliationId,decision:"APPROVED"},authorize),/FINANCE_ACCOUNT_UNAVAILABLE/);
-  const approved=await reviewSchoolReconciliation(pool,{...base,actorPersonId:principal,reconciliationId:created.reconciliationId,decision:"APPROVED"},authorize);
+  await assert.rejects(submitSchoolReconciliation(pool,{...base,actorPersonId:preparer,reconciliationId:created.reconciliationId,evidenceReference:"private-register-1"},authorize),/RECONCILIATION_NOT_SUBMITTABLE/);
+  await assert.rejects(reviewSchoolReconciliation(pool,{...base,actorPersonId:preparer,reconciliationId:created.reconciliationId,reason:"Independent review",decision:"APPROVED"},authorize),/FINANCE_FORBIDDEN/);
+  await assert.rejects(reviewSchoolReconciliation(pool,{...base,schoolId:randomUUID(),actorPersonId:principal,reconciliationId:created.reconciliationId,reason:"Independent review",decision:"APPROVED"},authorize),/FINANCE_ACCOUNT_UNAVAILABLE/);
+  const approved=await reviewSchoolReconciliation(pool,{...base,actorPersonId:principal,reconciliationId:created.reconciliationId,reason:"Independent review",decision:"APPROVED"},authorize);
   assert.equal(approved.status,"APPROVED");
-  await assert.rejects(reviewSchoolReconciliation(pool,{...base,actorPersonId:principal,reconciliationId:created.reconciliationId,decision:"REJECTED"},authorize),/RECONCILIATION_NOT_REVIEWABLE/);
+  await assert.rejects(reviewSchoolReconciliation(pool,{...base,actorPersonId:principal,reconciliationId:created.reconciliationId,reason:"Independent review",decision:"REJECTED"},authorize),/RECONCILIATION_NOT_REVIEWABLE/);
   const audit=await pool.query<{action:string}>("SELECT action FROM school_finance.audit_events WHERE account_id=$1 ORDER BY occurred_at",[accountId]);
   assert.deepEqual(audit.rows.map(r=>r.action),["FINANCE_RECONCILIATION_CREATED","FINANCE_RECONCILIATION_SUBMITTED","FINANCE_RECONCILIATION_REVIEWED"]);
  }finally{
   await pool.query("DELETE FROM school_finance.audit_events WHERE account_id=$1",[accountId]).catch(()=>{});
+  await pool.query("DELETE FROM school_finance.reconciliation_versions WHERE account_id=$1",[accountId]).catch(()=>{});
   await pool.query("DELETE FROM school_finance.reconciliations WHERE account_id=$1",[accountId]).catch(()=>{});
   await pool.query("DELETE FROM school_finance.accounts WHERE id=$1",[accountId]).catch(()=>{});
   await pool.query("DELETE FROM school_ops.school_workspaces WHERE peos_school_id=$1",[schoolId]).catch(()=>{});

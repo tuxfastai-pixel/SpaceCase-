@@ -2,10 +2,12 @@
 export async function workspaceDestination(
   authority: () => Promise<{ founder: boolean }>,
   schools: () => Promise<Array<{principal?:boolean}>>,
-): Promise<"/founder" | "/principal" | "/admin" | null> {
+  finance: () => Promise<Array<unknown>> = async () => [],
+): Promise<"/founder" | "/principal" | "/admin" | "/finance" | null> {
   if ((await authority()).founder) return "/founder";
   const available=await schools();
   if(available.some(s=>s.principal===true))return "/principal";
   if (available.length) return "/admin";
+  if ((await finance()).length) return "/finance";
   return null;
 }

@@ -1,5 +1,6 @@
 import { supportAuthority } from "../../platform/support/authority";
 import { workspaceDestination } from "../../platform/auth/workspaceDestination";
+import {financeSchools} from "../../platform/finance/peosAuthorization";
 import DashboardClient from "./DashboardClient";
 import { currentSession } from "../../platform/auth/currentSession";
 import { redirect } from "next/navigation";
@@ -19,6 +20,7 @@ export default async function DashboardPage() {
     try{destination = await workspaceDestination(
       () => supportAuthority(new Request("https://spacecase.invalid", { headers: { authorization } })),
       () => adminSchools(authorization),
+      async () => (await financeSchools(authorization)).schools,
     );
     }catch{return <main><h1>Your workspace could not be checked</h1><p>We could not confirm your current role. Refresh or choose your intended Google account.</p><a href="/dashboard">Try again</a><form action="/auth/google?choose_account=1" method="post"><button>Use another Google account</button></form></main>;}
     if (destination) redirect(destination);
