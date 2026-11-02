@@ -334,7 +334,13 @@ export async function readFinanceWorkspace(
       if (permission === "finance.summary.read") summaryAllowed = true;
       else auditAllowed = true;
     } catch (error) {
-      if ((error as { status?: number }).status !== 403) throw error;
+      // financeAuthority rejects mismatched or denied PEOS identities with
+      // SchoolFinanceError("FINANCE_FORBIDDEN"), which has no HTTP status.
+      // Only suppress an explicit permission denial for optional projections.
+      if (
+        !(error instanceof SchoolFinanceError && error.message === "FINANCE_FORBIDDEN") &&
+        (error as { status?: number }).status !== 403
+      ) throw error;
     }
   }
   return financeTransaction(pool, async (db) => {
