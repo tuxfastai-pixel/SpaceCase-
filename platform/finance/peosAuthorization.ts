@@ -62,7 +62,12 @@ export async function requireSchoolFinancePermission(
 export const financeSchoolSchema=z.object({id:z.string().uuid(),displayName:z.string().max(200),actions:z.array(z.enum(financeActions)).max(20)}).strict();
 export async function financeSchools(authorization:string,fetchImpl:typeof fetch=fetch){
  const env=readServerEnvironment();if(!env.PEOS_BASE_URL)throw new FinanceAuthorizationError(503,"PEOS_UNAVAILABLE");
- const response=await fetchImpl(new URL("/v1/finance/schools",env.PEOS_BASE_URL),{headers:{authorization},cache:"no-store",signal:AbortSignal.timeout(10000)});
+ let response:Response;
+ try {
+  response=await fetchImpl(new URL("/v1/finance/schools",env.PEOS_BASE_URL),{headers:{authorization},cache:"no-store",signal:AbortSignal.timeout(10000)});
+ } catch {
+  throw new FinanceAuthorizationError(503,"PEOS_UNAVAILABLE");
+ }
  if(response.status===401)throw new FinanceAuthorizationError(401,"UNAUTHENTICATED");
  if(response.status===403)throw new FinanceAuthorizationError(403,"FINANCE_FORBIDDEN");
  if(!response.ok)throw new FinanceAuthorizationError(503,"FINANCE_AUTHORITY_UNAVAILABLE");
