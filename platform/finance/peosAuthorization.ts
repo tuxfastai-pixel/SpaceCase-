@@ -63,8 +63,14 @@ export const financeSchoolSchema=z.object({id:z.string().uuid(),displayName:z.st
 export async function financeSchools(authorization:string,fetchImpl:typeof fetch=fetch){
  const env=readServerEnvironment();if(!env.PEOS_BASE_URL)throw new FinanceAuthorizationError(503,"PEOS_UNAVAILABLE");
  const response=await fetchImpl(new URL("/v1/finance/schools",env.PEOS_BASE_URL),{headers:{authorization},cache:"no-store",signal:AbortSignal.timeout(10000)});
- if(!response.ok)throw new FinanceAuthorizationError(response.status===401?401:503,"FINANCE_AUTHORITY_UNAVAILABLE");
- return z.object({schools:z.array(financeSchoolSchema).max(100),truncated:z.boolean()}).parse(await response.json());
+ if(response.status===401)throw new FinanceAuthorizationError(401,"UNAUTHENTICATED");
+ if(response.status===403)throw new FinanceAuthorizationError(403,"FINANCE_FORBIDDEN");
+ if(!response.ok)throw new FinanceAuthorizationError(503,"FINANCE_AUTHORITY_UNAVAILABLE");
+ try {
+  return z.object({schools:z.array(financeSchoolSchema).max(100),truncated:z.boolean()}).parse(await response.json());
+ } catch {
+  throw new FinanceAuthorizationError(503,"PEOS_INVALID_AUTHORITY_RESPONSE");
+ }
 }
 export async function requireFinanceLearner(request:Request,schoolId:string,reference:string){
  const env=readServerEnvironment(),authorization=resolvePeosAuthorization(request);
