@@ -140,3 +140,35 @@ test("school UUID normalization prevents duplicate text-scoped finance accounts"
   });
   assert.equal(parsed.schoolId, uppercase.toLowerCase());
 });
+
+
+test("finance remains disabled in authority-only mode even with the finance flag set", async () => {
+  const previousFlag = process.env.SPACECASE_FINANCE_WORKSPACE_ENABLED;
+  const previousMode = process.env.SPACECASE_WORKSPACE_MODE;
+  const deps = {
+    pool: () => { throw Error("Disabled finance must not access database"); },
+    permission: async () => { throw Error("Disabled finance must not query authority"); },
+    learner: async () => { throw Error("Disabled finance must not query learners"); },
+  };
+  try {
+    process.env.SPACECASE_FINANCE_WORKSPACE_ENABLED = "true";
+    process.env.SPACECASE_WORKSPACE_MODE = "authority_only";
+    const get = await financeWorkspaceGet(new Request(endpoint + "?schoolId=" + schoolId), deps);
+    const post = await financeWorkspacePost(new Request(endpoint, {
+      method: "POST",
+      headers: { origin: "https://spacecase.example", "content-type": "application/json" },
+      body: JSON.stringify({ command: "INITIALIZE", schoolId }),
+    }), deps);
+    assert.equal(get.status, 503);
+    assert.equal(post.status, 503);
+    assert.equal((await get.json()).error, "FINANCE_NOT_ENABLED");
+    assert.equal((await post.json()).error, "FINANCE_NOT_ENABLED");
+    assert.equal(get.headers.get("cache-control"), "no-store");
+    assert.equal(post.headers.get("cache-control"), "no-store");
+  } finally {
+    if (previousFlag === undefined) delete process.env.SPACECASE_FINANCE_WORKSPACE_ENABLED;
+    else process.env.SPACECASE_FINANCE_WORKSPACE_ENABLED = previousFlag;
+    if (previousMode === undefined) delete process.env.SPACECASE_WORKSPACE_MODE;
+    else process.env.SPACECASE_WORKSPACE_MODE = previousMode;
+  }
+});
