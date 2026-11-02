@@ -93,10 +93,8 @@ export async function initializeFinance(
         throw new SchoolFinanceError("FINANCE_ACCOUNT_UNAVAILABLE");
       return { accountId: existing.rows[0].id };
     }
-    await db.query(
-      "INSERT INTO school_ops.school_workspaces(peos_school_id) VALUES($1) ON CONFLICT DO NOTHING",
-      [schoolId],
-    );
+    // Finance initialization must not write to school_ops with the restricted runtime role.
+    // The school workspace is provisioned through the existing privileged school setup path.
     const id = randomUUID(),
       scope = { schoolId, accountId: id, actorPersonId };
     await db.query(
