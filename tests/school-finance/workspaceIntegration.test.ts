@@ -375,6 +375,30 @@ test(
         "SELECT 1 FROM pg_roles WHERE rolname='spacecase_runtime'",
       );
       if (role.rowCount) {
+        // Exercise actual finance initialization using the restricted application role.
+        // A pre-provisioned school must not require INSERT access to school_ops.
+        const runtime = await pool.connect();
+        try {
+          await runtime.query("BEGIN");
+          await runtime.query("SET LOCAL ROLE spacecase_runtime");
+          const runtimeRights = await runtime.query(
+            "SELECT has_schema_privilege(current_user,'school_ops','USAGE') AS schema_usage, has_table_privilege(current_user,'school_ops.school_workspaces','INSERT') AS workspace_insert",
+          );
+          assert.equal(runtimeRights.rows[0].workspace_insert, false);
+          const initialized = await initializeFinance(
+            { connect: async () => ({
+              query: (sql: string, params?: unknown[]) => runtime.query(sql, params),
+              release: () => {},
+            }) } as unknown as Pool,
+            schoolId,
+            principal,
+            authorize,
+          );
+          assert.equal(initialized.accountId, accountId);
+          await runtime.query("ROLLBACK");
+        } finally {
+          runtime.release();
+        }
         const rights = await pool.query(
           "SELECT has_column_privilege('spacecase_runtime','school_finance.payments','amount_minor','UPDATE') amount,has_table_privilege('spacecase_runtime','school_finance.audit_events','DELETE') deletion,has_table_privilege('spacecase_runtime','school_finance.reconciliation_versions','UPDATE') versions",
         );
