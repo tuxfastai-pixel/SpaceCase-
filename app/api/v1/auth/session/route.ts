@@ -75,7 +75,9 @@ export async function POST(request: Request): Promise<Response> {
     console.error("SPACECASE_PEOS_EXCHANGE", {
       outcome: "upstream_rejected",
       status: response.status,
-      responseType: response.headers.get("content-type")?.startsWith("text/html") ? "html" : "other",
+      responseType: response.headers.get("content-type")?.includes("application/json") ? "json" : response.headers.get("content-type")?.startsWith("text/html") ? "html" : "other",
+      vercelMitigation: response.headers.has("x-vercel-mitigated"),
+      upstreamErrorCode: response.headers.get("x-vercel-error") ? "vercel_error" : "none",
     });
     if (response.status === 401 || response.status === 403) {
       return Response.json({ error: response.status === 403 ? "IDENTITY_NOT_PROVISIONED" : "UNAUTHENTICATED" }, { status: response.status });
