@@ -52,19 +52,34 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: "UNAUTHENTICATED" }, { status: 401 });
   }
 
-  const response = await fetch(new URL("/v1/sessions/exchange", environment.PEOS_BASE_URL), {
-    method: "POST",
-    headers: {
-      authorization: externalAuthorization,
-      accept: "application/json",
-    },
-    cache: "no-store", signal:AbortSignal.timeout(10000),
-  });
-
-  if (response.status === 401 || response.status === 403) {
-    return Response.json({ error: response.status === 403 ? "IDENTITY_NOT_PROVISIONED" : "UNAUTHENTICATED" }, { status: response.status });
+  // Log only bounded diagnostic categories; never log tokens, cookies or response bodies.
+  let response: Response;
+  try {
+    response = await fetch(new URL("/v1/sessions/exchange", environment.PEOS_BASE_URL), {
+      method: "POST",
+      headers: {
+        authorization: externalAuthorization,
+        accept: "application/json",
+      },
+      cache: "no-store", signal: AbortSignal.timeout(10000),
+    });
+  } catch (error) {
+    console.error("SPACECASE_PEOS_EXCHANGE", {
+      outcome: "network_failure",
+      category: error instanceof Error && error.name === "TimeoutError" ? "timeout" : "fetch_failed",
+    });
+    return Response.json({ error: "PEOS_UNAVAILABLE" }, { status: 503 });
   }
+
   if (!response.ok) {
+    console.error("SPACECASE_PEOS_EXCHANGE", {
+      outcome: "upstream_rejected",
+      status: response.status,
+      responseType: response.headers.get("content-type")?.startsWith("text/html") ? "html" : "other",
+    });
+    if (response.status === 401 || response.status === 403) {
+      return Response.json({ error: response.status === 403 ? "IDENTITY_NOT_PROVISIONED" : "UNAUTHENTICATED" }, { status: response.status });
+    }
     return Response.json({ error: "PEOS_UNAVAILABLE" }, { status: 503 });
   }
 
