@@ -15,7 +15,7 @@ test("verified allocations serialize competing requests and roll back failures",
     await pool.query("INSERT INTO school_finance.accounts(id,peos_school_id,status) VALUES($1,$2,'ACTIVE')",[accountId,schoolId]);
     await pool.query(`INSERT INTO school_finance.payments
       (id,account_id,external_reference,amount_minor,verification,verification_evidence_ref,verified_by_peos_person_id,verified_at,recorded_by_peos_person_id)
-      VALUES($1,$2,'test-payment',100,'VERIFIED','test-evidence',$3,now(),$3)`,[paymentId,accountId,actorId]);
+      VALUES($1,$2,'test-payment',100,'VERIFIED','test-evidence',$4,now(),$3)`,[paymentId,accountId,actorId,randomUUID()]);
     for(const [id,number] of [[invoiceA,"A"],[invoiceB,"B"]]){
       await pool.query(`INSERT INTO school_finance.invoices
         (id,account_id,peos_learner_id,invoice_number,amount_minor,due_date,created_by_peos_person_id)

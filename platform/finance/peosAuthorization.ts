@@ -5,7 +5,7 @@ import { resolvePeosAuthorization } from "../session/peosAuthorization";
 export const financeActions = [
   "finance.summary.read", "finance.transactions.read", "finance.transactions.record",
   "finance.reconciliation.prepare", "finance.reconciliation.approve",
-  "finance.policy.manage", "finance.expenditure.approve", "finance.audit.read",
+  "finance.policy.manage", "finance.expenditure.approve", "finance.audit.read", "finance.payments.verify",
 ] as const;
 export type FinanceAction = (typeof financeActions)[number];
 const decisionSchema = z.object({
@@ -57,4 +57,43 @@ export async function requireSchoolFinancePermission(
   if (!decision.success || decision.data.schoolId !== schoolId || decision.data.action !== action)
     throw new FinanceAuthorizationError(403, "FINANCE_FORBIDDEN");
   return decision.data;
+}
+
+export const financeSchoolSchema=z.object({id:z.string().uuid(),displayName:z.string().max(200),actions:z.array(z.enum(financeActions)).max(20)}).strict();
+export async function financeSchools(authorization:string,fetchImpl:typeof fetch=fetch){
+ const env=readServerEnvironment();if(!env.PEOS_BASE_URL)throw new FinanceAuthorizationError(503,"PEOS_UNAVAILABLE");
+ let response:Response;
+ try {
+  response=await fetchImpl(new URL("/v1/finance/schools",env.PEOS_BASE_URL),{headers:{authorization},cache:"no-store",signal:AbortSignal.timeout(10000)});
+ } catch {
+  throw new FinanceAuthorizationError(503,"PEOS_UNAVAILABLE");
+ }
+ if(response.status===401)throw new FinanceAuthorizationError(401,"UNAUTHENTICATED");
+ if(response.status===403)throw new FinanceAuthorizationError(403,"FINANCE_FORBIDDEN");
+ if(!response.ok)throw new FinanceAuthorizationError(503,"FINANCE_AUTHORITY_UNAVAILABLE");
+ try {
+  return z.object({schools:z.array(financeSchoolSchema).max(100),truncated:z.boolean()}).parse(await response.json());
+ } catch {
+  throw new FinanceAuthorizationError(503,"PEOS_INVALID_AUTHORITY_RESPONSE");
+ }
+}
+export async function requireFinanceLearner(request:Request,schoolId:string,reference:string,fetchImpl:typeof fetch=fetch){
+ const env=readServerEnvironment(),authorization=resolvePeosAuthorization(request);
+ if(!authorization)throw new FinanceAuthorizationError(401,"UNAUTHENTICATED");
+ if(!env.PEOS_BASE_URL)throw new FinanceAuthorizationError(503,"PEOS_UNAVAILABLE");
+ const url=new URL(`/v1/finance/schools/${encodeURIComponent(schoolId)}/learner`,env.PEOS_BASE_URL);url.searchParams.set("reference",reference);
+ let response:Response;
+ try {
+  response=await fetchImpl(url,{headers:{authorization},cache:"no-store",signal:AbortSignal.timeout(10000)});
+ } catch {
+  throw new FinanceAuthorizationError(503,"PEOS_UNAVAILABLE");
+ }
+ if(response.status===401)throw new FinanceAuthorizationError(401,"UNAUTHENTICATED");
+ if(response.status===403)throw new FinanceAuthorizationError(403,"FINANCE_FORBIDDEN");
+ if(!response.ok)throw new FinanceAuthorizationError(503,"FINANCE_LEARNER_UNAVAILABLE");
+ try {
+  return z.object({personId:z.string().uuid(),admissionNumber:z.string(),givenName:z.string(),familyName:z.string()}).strict().parse(await response.json());
+ } catch {
+  throw new FinanceAuthorizationError(503,"PEOS_INVALID_LEARNER_RESPONSE");
+ }
 }

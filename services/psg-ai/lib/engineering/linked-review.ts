@@ -11,9 +11,15 @@ const scopeSchema=z.object({taskId:z.string().uuid(),sourceReference:z.string().
 type Scope=z.infer<typeof scopeSchema>;
 const json=(value:unknown)=>JSON.parse(JSON.stringify(value));
 async function selectLinked(db:Pool|PoolClient,input:Scope,lock=false):Promise<LinkedTask>{
+ if(lock) {
+  // Acquire the task lock in a separate statement. A concurrent linker can
+  // commit while we wait; the following SELECT must use a fresh snapshot so
+  // its lateral PR-link lookup sees that committed row.
+  await db.query('SELECT id FROM engineering.tasks WHERE id=$1 AND project=\'SPACECASE\' AND source_reference=$2 FOR UPDATE',[input.taskId,input.sourceReference]);
+ }
  const selected=await db.query(`SELECT t.id AS "taskId",t.source_reference AS "sourceReference",t.revision AS "taskRevision",t.source_revision AS "sourceRevision",t.state,t.base_commit AS "baseCommit",(t.handoff IS NOT NULL AND t.brief_expires_at>clock_timestamp()) AS "briefAvailable",l.pull_request AS "pullRequest",l.head_commit AS "headCommit",l.base_commit AS "linkBaseCommit",l.revision AS "linkedRevision",l.linked_at AS "linkedAt"
  FROM engineering.tasks t LEFT JOIN LATERAL (SELECT pull_request,head_commit,base_commit,revision,linked_at FROM engineering.pull_request_links WHERE task_id=t.id ORDER BY revision DESC LIMIT 1) l ON true
- WHERE t.id=$1 AND t.project='SPACECASE' AND t.source_reference=$2 ${lock?'FOR UPDATE OF t':''}`,[input.taskId,input.sourceReference]);
+ WHERE t.id=$1 AND t.project='SPACECASE' AND t.source_reference=$2 `,[input.taskId,input.sourceReference]);
  if(!selected.rowCount)throw new LedgerError('TASK_UNAVAILABLE');const row=selected.rows[0];
  return linkedTaskSchema.parse(json({taskId:row.taskId,sourceReference:row.sourceReference,taskRevision:row.taskRevision,sourceRevision:row.sourceRevision,state:row.state,briefAvailable:row.briefAvailable,baseCommit:row.baseCommit,link:row.pullRequest===null?null:{pullRequest:row.pullRequest,headCommit:row.headCommit,baseCommit:row.linkBaseCommit,linkedRevision:row.linkedRevision,linkedAt:row.linkedAt},executionStarted:false}));
 }
