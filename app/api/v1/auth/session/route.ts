@@ -83,7 +83,22 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: "PEOS_UNAVAILABLE" }, { status: 503 });
   }
 
-  const exchanged = exchangeSchema.parse(await response.json());
+  // A protected upstream can return an HTML sign-in page with HTTP 200.
+  if (!response.headers.get("content-type")?.includes("application/json")) {
+    console.error("SPACECASE_PEOS_EXCHANGE", {
+      outcome: "unexpected_content_type",
+      status: response.status,
+      responseType: response.headers.get("content-type")?.startsWith("text/html") ? "html" : "other",
+    });
+    return Response.json({ error: "PEOS_UNAVAILABLE" }, { status: 503 });
+  }
+  let exchanged: z.infer<typeof exchangeSchema>;
+  try {
+    exchanged = exchangeSchema.parse(await response.json());
+  } catch {
+    console.error("SPACECASE_PEOS_EXCHANGE", { outcome: "invalid_session_payload", status: response.status });
+    return Response.json({ error: "PEOS_UNAVAILABLE" }, { status: 503 });
+  }
   const headers = new Headers({ "cache-control": "no-store" });
   headers.append(
     "set-cookie",
