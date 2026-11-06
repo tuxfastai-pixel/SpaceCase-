@@ -72,9 +72,24 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   if (!response.ok) {
+    // Log only a fixed allowlist of upstream error codes, never response bodies or identity data.
+    let upstreamCode = "unknown";
+    if (response.headers.get("content-type")?.includes("application/json")) {
+      try {
+        const payload: unknown = await response.clone().json();
+        if (payload && typeof payload === "object" && "error" in payload) {
+          const code = (payload as { error?: unknown }).error;
+          if (typeof code === "string" && [
+            "UNAUTHENTICATED", "IDENTITY_NOT_PROVISIONED", "PEOS_UNAVAILABLE",
+            "DEPLOYMENT_NOT_FOUND", "NOT_AUTHORIZED", "UNAUTHORIZED",
+          ].includes(code)) upstreamCode = code;
+        }
+      } catch { /* Do not log upstream response content. */ }
+    }
     console.error("SPACECASE_PEOS_EXCHANGE", {
       outcome: "upstream_rejected",
       status: response.status,
+      upstreamCode,
       responseType: response.headers.get("content-type")?.includes("application/json") ? "json" : response.headers.get("content-type")?.startsWith("text/html") ? "html" : "other",
       vercelMitigation: response.headers.has("x-vercel-mitigated"),
       upstreamErrorCode: response.headers.get("x-vercel-error") ? "vercel_error" : "none",
