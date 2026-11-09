@@ -52,6 +52,12 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: "UNAUTHENTICATED" }, { status: 401 });
   }
 
+  // Vercel Trusted Sources uses a short-lived deployment token, not the user's token.
+  const trustedOidcToken = process.env.VERCEL_OIDC_TOKEN;
+  if (process.env.VERCEL_ENV === "preview" && !trustedOidcToken) {
+    console.error("SPACECASE_PEOS_EXCHANGE", { outcome: "missing_vercel_oidc_token" });
+  }
+
   // Log only bounded diagnostic categories; never log tokens, cookies or response bodies.
   let response: Response;
   try {
@@ -60,6 +66,9 @@ export async function POST(request: Request): Promise<Response> {
       headers: {
         authorization: externalAuthorization,
         accept: "application/json",
+        ...(process.env.VERCEL_ENV === "preview" && trustedOidcToken
+          ? { "x-vercel-trusted-oidc-idp-token": trustedOidcToken }
+          : {}),
       },
       cache: "no-store", signal: AbortSignal.timeout(10000),
     });
