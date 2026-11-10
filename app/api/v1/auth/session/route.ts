@@ -53,7 +53,9 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   // Vercel Trusted Sources uses a short-lived deployment token, not the user's token.
-  const trustedOidcToken = process.env.VERCEL_OIDC_TOKEN;
+  const trustedOidcToken = process.env.VERCEL_ENV === "preview"
+    ? request.headers.get("x-vercel-oidc-token")
+    : null;
   if (process.env.VERCEL_ENV === "preview" && !trustedOidcToken) {
     console.error("SPACECASE_PEOS_EXCHANGE", { outcome: "missing_vercel_oidc_token" });
   }
