@@ -19,7 +19,13 @@ export async function GET(request: Request) {
     const result = await completeSignIn(code,
       (value) => client.auth.exchangeCodeForSession(value),
       (token) => exchangeSession(new Request(`${origin}/api/v1/auth/session`, {
-        method: "POST", headers: { authorization: `Bearer ${token}` },
+        method: "POST", headers: {
+          authorization: `Bearer ${token}`,
+          // Vercel supplies this on the server-side callback request at runtime.
+          ...(process.env.VERCEL_ENV === "preview" && request.headers.get("x-vercel-oidc-token")
+            ? { "x-vercel-oidc-token": request.headers.get("x-vercel-oidc-token")! }
+            : {}),
+        },
       })));
     if ("cookie" in result) {
       const jar=await cookies();
