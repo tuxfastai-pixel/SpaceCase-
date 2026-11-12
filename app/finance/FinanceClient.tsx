@@ -93,6 +93,9 @@ const workspace = z.object({
         resourceType: z.string(),
         resourceId: z.string(),
         occurredAt: z.string(),
+        actorPersonId: z.string(),
+        decision: z.string().nullable(),
+        reason: z.string().nullable(),
       }),
     )
     .nullable()
@@ -108,6 +111,7 @@ const errorMessages: Record<string, string> = {
     "That reference already exists. Check the existing record before retrying.",
   PAYMENT_NOT_REVIEWABLE:
     "This payment needs a different authorized reviewer and must still be awaiting review.",
+  FINANCE_REVIEW_REASON_REQUIRED: "Enter a review reason of up to 500 characters.",
   BUDGET_EXCEEDED: "This expense exceeds the remaining approved budget.",
   FINANCE_RECORD_NOT_REVIEWABLE:
     "This record needs a different authorized reviewer and must still be awaiting review.",
@@ -856,32 +860,32 @@ export default function FinanceClient({
                               <strong>
                                 {row.label} · {formatZar(row.amountMinor)}
                               </strong>
-                              <div className={s.toolbar}>
-                                <button
-                                  disabled={busy}
-                                  onClick={() =>
-                                    void save({
-                                      command: row.command,
-                                      resourceId: row.id,
-                                      decision: "APPROVED",
-                                    })
-                                  }
-                                >
-                                  Approve
-                                </button>
-                                <button
-                                  disabled={busy}
-                                  onClick={() =>
-                                    void save({
-                                      command: row.command,
-                                      resourceId: row.id,
-                                      decision: "REJECTED",
-                                    })
-                                  }
-                                >
-                                  Reject
-                                </button>
-                              </div>
+                              {"evidenceReference" in row && (
+                                <p>Supporting evidence: {row.evidenceReference}</p>
+                              )}
+                              <form className={s.form} onSubmit={(e) =>
+                                void submit(e, (f) => ({
+                                  command: row.command,
+                                  resourceId: row.id,
+                                  decision: f.get("decision"),
+                                  reason: f.get("reason"),
+                                }))
+                              }>
+                                <fieldset disabled={busy}>
+                                  <label>
+                                    Review reason
+                                    <input name="reason" required maxLength={500} />
+                                  </label>
+                                  <label>
+                                    Decision
+                                    <select name="decision">
+                                      <option value="REJECTED">Reject</option>
+                                      <option value="APPROVED">Approve</option>
+                                    </select>
+                                  </label>
+                                  <button>Save independent review</button>
+                                </fieldset>
+                              </form>
                             </div>
                           ))}
                     </section>
@@ -1016,6 +1020,9 @@ export default function FinanceClient({
                       {data.audit.map((row, i) => (
                         <li key={`${row.occurredAt}-${i}`}>
                           {row.action} · {row.resourceType} · {row.occurredAt}
+                          <div>Record: {row.resourceId} · Reviewer/actor ID: {row.actorPersonId}</div>
+                          {row.decision && <div>Decision: {row.decision}</div>}
+                          {row.reason && <div>Reason: {row.reason}</div>}
                         </li>
                       ))}
                     </ol>

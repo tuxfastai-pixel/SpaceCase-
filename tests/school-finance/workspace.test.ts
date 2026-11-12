@@ -241,3 +241,15 @@ test("PEOS learner lookup fails closed on authentication, transport, malformed r
     else process.env.PEOS_BASE_URL = previous;
   }
 });
+
+
+test("expenditure decisions require a bounded review reason", () => {
+  for (const command of ["REVIEW_BUDGET", "REVIEW_EXPENSE"] as const) {
+    const review = {command, schoolId, accountId, resourceId: randomUUID(), decision: "APPROVED"};
+    for (const reason of [undefined, "", "   ", "x".repeat(501), "hidden\u0000text"])
+      assert.equal(financeCommand.safeParse({...review, reason}).success, false);
+    const parsed = financeCommand.parse({...review, reason: "  Evidence checked  "});
+    assert.ok(parsed.command === "REVIEW_BUDGET" || parsed.command === "REVIEW_EXPENSE");
+    assert.equal(parsed.reason, "Evidence checked");
+  }
+});

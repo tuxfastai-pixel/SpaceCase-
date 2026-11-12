@@ -207,6 +207,7 @@ test(
           pool,
           cmd({
             command: "REVIEW_BUDGET",
+            reason: "Checked annual budget",
             resourceId: budget.id,
             decision: "APPROVED",
           }) as Extract<FinanceCommand, { command: "REVIEW_BUDGET" }>,
@@ -218,6 +219,7 @@ test(
       await record(
         {
           command: "REVIEW_BUDGET",
+            reason: "Checked annual budget",
           resourceId: budget.id,
           decision: "APPROVED",
         },
@@ -235,11 +237,16 @@ test(
           }),
         ),
       );
+      await assert.rejects(recordFinance(pool, cmd({
+        command: "REVIEW_EXPENSE", resourceId: expenses[0].id,
+        decision: "APPROVED", reason: "Dual permission self-review",
+      }) as Extract<FinanceCommand, {command: "REVIEW_EXPENSE"}>, actor, selfAuthority), /FINANCE_RECORD_NOT_REVIEWABLE/);
       const reviews = await Promise.allSettled(
         expenses.map((expense) =>
           record(
             {
               command: "REVIEW_EXPENSE",
+              reason: "Checked supporting bill",
               resourceId: expense.id,
               decision: "APPROVED",
             },
@@ -249,6 +256,11 @@ test(
       );
       assert.equal(reviews.filter((r) => r.status === "fulfilled").length, 1);
       assert.equal(reviews.filter((r) => r.status === "rejected").length, 1);
+      const expenseAudit = await pool.query(
+        "SELECT actor_peos_person_id,metadata FROM school_finance.audit_events WHERE account_id=$1 AND action='FINANCE_EXPENSE_REVIEWED'", [accountId]);
+      assert.equal(expenseAudit.rowCount, 1);
+      assert.equal(expenseAudit.rows[0].actor_peos_person_id, principal);
+      assert.deepEqual(expenseAudit.rows[0].metadata, {decision: "APPROVED", reason: "Checked supporting bill"});
       const period = {
         ...scope,
         periodStart: "2020-01-01",
@@ -335,6 +347,10 @@ test(
       assert.equal(read.totals?.allocatedMinor, "10001");
       assert.equal(read.totals?.approvedExpensesMinor, "7000");
       assert.equal(read.invoices?.[0].instalments.length, 2);
+      const visibleReview = read.audit?.find(row => row.action === "FINANCE_EXPENSE_REVIEWED");
+      assert.equal(visibleReview?.actorPersonId, principal);
+      assert.equal(visibleReview?.decision, "APPROVED");
+      assert.equal(visibleReview?.reason, "Checked supporting bill");
       const officer: FinanceAuthority = async (school, action) => {
         if (
           action === "finance.audit.read" ||
@@ -377,12 +393,21 @@ test(
       const failureTrigger =
         "finance_audit_" + randomUUID().replaceAll("-", "");
       await pool.query(
-        `CREATE FUNCTION public.${failureTrigger}() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.account_id='${accountId}'::uuid AND NEW.action='FINANCE_PAYMENT_REPORTED' THEN RAISE EXCEPTION 'synthetic audit outage'; END IF; RETURN NEW; END $$`,
+        `CREATE FUNCTION public.${failureTrigger}() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.account_id='${accountId}'::uuid AND NEW.action IN ('FINANCE_PAYMENT_REPORTED','FINANCE_EXPENSE_REVIEWED') THEN RAISE EXCEPTION 'synthetic audit outage'; END IF; RETURN NEW; END $$`,
       );
       try {
         await pool.query(
           `CREATE TRIGGER ${failureTrigger} BEFORE INSERT ON school_finance.audit_events FOR EACH ROW EXECUTE FUNCTION public.${failureTrigger}()`,
         );
+        const pendingExpense = (await pool.query(
+          "SELECT id FROM school_finance.expenses WHERE account_id=$1 AND status='SUBMITTED'", [accountId])).rows[0].id;
+        await assert.rejects(record({command: "REVIEW_EXPENSE", resourceId: pendingExpense,
+          decision: "REJECTED", reason: "Evidence requires correction"}, principal), /synthetic audit outage/);
+        assert.deepEqual((await pool.query(
+          "SELECT status,reviewed_by_peos_person_id,reviewed_at FROM school_finance.expenses WHERE id=$1", [pendingExpense])).rows[0],
+          {status: "SUBMITTED", reviewed_by_peos_person_id: null, reviewed_at: null});
+        assert.equal((await pool.query(
+          "SELECT count(*)::int n FROM school_finance.audit_events WHERE account_id=$1 AND resource_id=$2 AND action='FINANCE_EXPENSE_REVIEWED'", [accountId, pendingExpense])).rows[0].n, 0);
         await assert.rejects(
           record({
             command: "PAYMENT",

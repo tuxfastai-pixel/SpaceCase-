@@ -2,6 +2,7 @@ import type { Pool, PoolClient } from "pg";
 import { randomUUID } from "node:crypto";
 import { SchoolFinanceError, invoiceTotal, minorUnits } from "./money";
 import type { FinanceAction } from "../../platform/finance/peosAuthorization";
+import { financeReviewReason } from "./workspaceContracts";
 import type { FinanceCommand } from "./workspaceContracts";
 export type FinanceAuthority = (
   schoolId: string,
@@ -133,6 +134,10 @@ export async function recordFinance(
         ? "finance.expenditure.approve"
         : "finance.transactions.record";
   await financeAuthority(scope, action, authorize);
+  if (input.command === "REVIEW_BUDGET" || input.command === "REVIEW_EXPENSE") {
+    if (!financeReviewReason.safeParse(input.reason).success)
+      throw new SchoolFinanceError("FINANCE_REVIEW_REASON_REQUIRED");
+  }
   return financeTransaction(pool, async (db) => {
     await lockFinanceAccount(db, scope);
     const id = randomUUID();
@@ -300,7 +305,7 @@ export async function recordFinance(
         budgetReview ? "FINANCE_BUDGET_REVIEWED" : "FINANCE_EXPENSE_REVIEWED",
         budgetReview ? "BUDGET" : "EXPENSE",
         input.resourceId,
-        { decision: input.decision },
+        { decision: input.decision, reason: input.reason.trim() },
       );
       return { id: input.resourceId };
     }
@@ -393,7 +398,7 @@ export async function readFinanceWorkspace(
     );
     const audit = auditAllowed
       ? await db.query(
-          `SELECT action,resource_type AS "resourceType",resource_id AS "resourceId",occurred_at::text AS "occurredAt" FROM school_finance.audit_events WHERE account_id=$1 ORDER BY occurred_at DESC,id DESC LIMIT 100`,
+          `SELECT action,resource_type AS "resourceType",resource_id AS "resourceId",actor_peos_person_id AS "actorPersonId",metadata->>'decision' AS decision,metadata->>'reason' AS reason,occurred_at::text AS "occurredAt" FROM school_finance.audit_events WHERE account_id=$1 ORDER BY occurred_at DESC,id DESC LIMIT 100`,
           params,
         )
       : null;

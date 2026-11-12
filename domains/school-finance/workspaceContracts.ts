@@ -7,6 +7,7 @@ const text = (max: number) =>
     .min(1)
     .max(max)
     .regex(/^[^\u0000-\u001f\u007f]+$/);
+export const financeReviewReason = text(500);
 export const financeDate = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -139,6 +140,7 @@ export const financeCommand = z.discriminatedUnion("command", [
   z
     .object({
       command: z.literal("REVIEW_BUDGET"),
+      reason: financeReviewReason,
       ...scope,
       resourceId: z.string().uuid(),
       decision: z.enum(["APPROVED", "REJECTED"]),
@@ -147,6 +149,7 @@ export const financeCommand = z.discriminatedUnion("command", [
   z
     .object({
       command: z.literal("REVIEW_EXPENSE"),
+      reason: financeReviewReason,
       ...scope,
       resourceId: z.string().uuid(),
       decision: z.enum(["APPROVED", "REJECTED"]),
