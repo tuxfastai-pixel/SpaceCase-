@@ -61,6 +61,7 @@ export async function requireSchoolFinancePermission(
 
 export const financeSchoolSchema=z.object({id:z.string().uuid(),displayName:z.string().max(200),actions:z.array(z.enum(financeActions)).max(20)}).strict();
 export async function financeSchools(authorization:string,fetchImpl:typeof fetch=fetch){
+ if (!/^Bearer [^\s]+$/.test(authorization)) throw new FinanceAuthorizationError(401,"UNAUTHENTICATED");
  const env=readServerEnvironment();if(!env.PEOS_BASE_URL)throw new FinanceAuthorizationError(503,"PEOS_UNAVAILABLE");
  let response:Response;
  try {
