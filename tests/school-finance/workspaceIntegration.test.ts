@@ -463,6 +463,13 @@ test(
             authorize,
           );
           assert.equal(initialized.accountId, accountId);
+          // Exercise allocation's real read path with the restricted runtime role.
+          // This invoice is already fully allocated, so the domain denial must be
+          // reached without requiring any invoice UPDATE privilege for row locks.
+          await assert.rejects(allocateVerifiedSchoolPayment(
+            {connect: async () => ({query: (sql: string, params?: unknown[]) => runtime.query(sql, params), release: () => {}})} as unknown as Pool,
+            {...allocation, amountMinor: "1"}, authorize,
+          ), /INVALID_ALLOCATION_AMOUNT/);
         } finally {
           await runtime.query("RESET ROLE");
           runtime.release();
