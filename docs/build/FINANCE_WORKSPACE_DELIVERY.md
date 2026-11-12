@@ -100,3 +100,17 @@ Read-only preview configuration observation — 12 November 2026: `spacecase-pil
 - Google sign-in remains a separate gate: this test pair does not yet have a verified isolated Supabase/OIDC issuer, callback allowlist and synthetic credential mappings. Synthetic-session API verification does not establish real Google login, invitation/email delivery or physical-phone acceptance.
 
 Deployment/API gate evidence is now available in `docs/finance/FINANCE_PREVIEW_EVIDENCE_20261112.md`: 40 deployed synthetic checks passed; the runtime allocation lock issue was fixed and verified without broadening grants. The test pair is engineering-preview verified, while the signed-in Google/phone acceptance table above remains NOT RUN for human/browser scenarios. Synthetic-session HTTP evidence must not overwrite those statuses. Next is isolated OIDC/callback/credential mapping followed by that walkthrough. Test sessions and temporary engineering access were revoked after the run.
+
+## Google callback blocker and required handoff — 12 November 2026
+
+The existing `spacecase-preview-auth` provider is healthy, Google is enabled and public ES256 signing keys are available. Preview-only frontend/PEOS OIDC configuration is saved on the new Finance test pair. The provider's own Google callback remains `https://oqatswkzwtdqtrsacenz.supabase.co/auth/v1/callback`; this is distinct from the application callback below.
+
+Required application redirect allowlist addition, in the preview Auth project only:
+
+`https://spacecase-finance-test-git-feat-1e5700-tuxfastai-3244s-projects.vercel.app/auth/callback`
+
+Preserve the existing Site URL and all existing redirect entries; do not repoint the current pilot or Production. An authorization request reaching Google does not prove this callback is allowed: recent Auth flow rows retained the older feature-preview referrer, not the requested Finance callback. The connector cannot edit this setting, and the connected browser timed out. Open the preview Auth URL configuration in the connected, signed-in browser to finish this action:
+
+https://supabase.com/dashboard/project/oqatswkzwtdqtrsacenz/auth/url-configuration
+
+The new Finance Preview is explicitly paused via `SPACECASE_GOOGLE_SIGNIN_ENABLED=false` until that setting and intended Google identity mapping are verified. The login page must show temporary unavailability, and direct Google starts must return 503 without redirect. Other deployments keep their existing default behavior. User input still needed: the exact Google email for the principal and finance officer (and a distinct manager if that role will be tested). Resolve each against confirmed provider identity before creating only isolated test-database credential mappings; never infer authority from email alone. Keep real addresses and provider subjects out of this public register/report. Re-enable and redeploy only the new preview after these gates, then run Google login, account switching, sign-out/back navigation and phone checks.
