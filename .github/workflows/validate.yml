@@ -111,9 +111,10 @@ jobs:
         run: |
           set -euo pipefail
           export PGPASSWORD=spacecase
-          pg_dump -h 127.0.0.1 -U spacecase -d spacecase_test -Fc -f /tmp/finance-rehearsal.dump
+          # Use the server image's matching client tools, independent of runner upgrades.
+          docker exec ${{ job.services.postgres.id }} pg_dump -U spacecase -d spacecase_test -Fc > /tmp/finance-rehearsal.dump
           psql -h 127.0.0.1 -U spacecase -d spacecase_test -v ON_ERROR_STOP=1 -c 'CREATE DATABASE finance_restore_test'
-          pg_restore -h 127.0.0.1 -U spacecase -d finance_restore_test --exit-on-error --no-owner --no-acl /tmp/finance-rehearsal.dump
+          docker exec -i ${{ job.services.postgres.id }} pg_restore -U spacecase -d finance_restore_test --exit-on-error --no-owner --no-acl < /tmp/finance-rehearsal.dump
           original=$(psql -h 127.0.0.1 -U spacecase -d spacecase_test -Atc "SELECT checksum FROM audit.schema_migrations WHERE migration_name='20261102090000_finance_workspace.sql'")
           restored=$(psql -h 127.0.0.1 -U spacecase -d finance_restore_test -Atc "SELECT checksum FROM audit.schema_migrations WHERE migration_name='20261102090000_finance_workspace.sql'")
           test -n "$original" && test "$original" = "$restored"

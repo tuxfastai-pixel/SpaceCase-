@@ -21,11 +21,25 @@ test("reconciliation workflow enforces scoped approval, one-time transitions and
   await assert.rejects(submitSchoolReconciliation(pool,{...base,actorPersonId:preparer,reconciliationId:created.reconciliationId,evidenceReference:"private-register-1"},authorize),/RECONCILIATION_NOT_SUBMITTABLE/);
   await assert.rejects(reviewSchoolReconciliation(pool,{...base,actorPersonId:preparer,reconciliationId:created.reconciliationId,reason:"Independent review",decision:"APPROVED"},authorize),/FINANCE_FORBIDDEN/);
   // Even if PEOS grants this person both prepare and approve actions, self-approval is forbidden.
-  const dualPermissionAuthorize=async(school:string,_action:string)=>({schoolId:school,personId:preparer});
+  const dualPermissionAuthorize=async(school:string)=>({schoolId:school,personId:preparer});
   await assert.rejects(reviewSchoolReconciliation(pool,{...base,actorPersonId:preparer,reconciliationId:created.reconciliationId,reason:"Attempted self approval",decision:"APPROVED"},dualPermissionAuthorize),/RECONCILIATION_NOT_REVIEWABLE/);
   await assert.rejects(reviewSchoolReconciliation(pool,{...base,schoolId:randomUUID(),actorPersonId:principal,reconciliationId:created.reconciliationId,reason:"Independent review",decision:"APPROVED"},authorize),/FINANCE_ACCOUNT_UNAVAILABLE/);
-  const approved=await reviewSchoolReconciliation(pool,{...base,actorPersonId:principal,reconciliationId:created.reconciliationId,reason:"Independent review",decision:"APPROVED"},authorize);
-  assert.equal(approved.status,"APPROVED");
+  // Competing independent reviewers may produce only one committed decision and audit event.
+  const secondReviewer=randomUUID();
+  const reviews=await Promise.allSettled([
+   reviewSchoolReconciliation(pool,{...base,actorPersonId:principal,reconciliationId:created.reconciliationId,reason:"Independent review",decision:"APPROVED"},authorize),
+   reviewSchoolReconciliation(pool,{...base,actorPersonId:secondReviewer,reconciliationId:created.reconciliationId,reason:"Evidence rejected",decision:"REJECTED"},async school=>({schoolId:school,personId:secondReviewer})),
+  ]);
+  assert.equal(reviews.filter(r=>r.status==="fulfilled").length,1);
+  const failed=reviews.find(r=>r.status==="rejected") as PromiseRejectedResult;
+  assert.match(failed.reason.message,/RECONCILIATION_NOT_REVIEWABLE/);
+  const winner=reviews.find(r=>r.status==="fulfilled") as PromiseFulfilledResult<{status:string}>;
+  const stored=await pool.query("SELECT status,reviewed_by_peos_person_id,review_reason FROM school_finance.reconciliations WHERE id=$1",[created.reconciliationId]);
+  assert.equal(stored.rows[0].status,winner.value.status);
+  const reviewAudit=await pool.query("SELECT actor_peos_person_id,metadata FROM school_finance.audit_events WHERE account_id=$1 AND action='FINANCE_RECONCILIATION_REVIEWED'",[accountId]);
+  assert.equal(reviewAudit.rowCount,1);
+  assert.equal(reviewAudit.rows[0].actor_peos_person_id,stored.rows[0].reviewed_by_peos_person_id);
+  assert.deepEqual(reviewAudit.rows[0].metadata,{decision:stored.rows[0].status,reason:stored.rows[0].review_reason});
   await assert.rejects(reviewSchoolReconciliation(pool,{...base,actorPersonId:principal,reconciliationId:created.reconciliationId,reason:"Independent review",decision:"REJECTED"},authorize),/RECONCILIATION_NOT_REVIEWABLE/);
   const audit=await pool.query<{action:string}>("SELECT action FROM school_finance.audit_events WHERE account_id=$1 ORDER BY occurred_at",[accountId]);
   assert.deepEqual(audit.rows.map(r=>r.action),["FINANCE_RECONCILIATION_CREATED","FINANCE_RECONCILIATION_SUBMITTED","FINANCE_RECONCILIATION_REVIEWED"]);
