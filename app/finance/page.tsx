@@ -13,6 +13,15 @@ export default async function Page({
 }) {
   if (!(await currentSession())) redirect("/login");
   const token = (await cookies()).get(PEOS_SESSION_COOKIE)?.value;
+  if (!token) {
+    return (
+      <main>
+        <h1>Finance session required</h1>
+        <p>Your school session is missing. Sign in again before accessing financial information.</p>
+        <a href="/login">Sign in</a>
+      </main>
+    );
+  }
   let directory;
   try {
     directory = await financeSchools(`Bearer ${token}`);
