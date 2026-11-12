@@ -74,7 +74,7 @@ export async function reviewSchoolReconciliation(pool:Pool,input:ReviewInput,aut
  return withFinanceTransaction(pool,async db=>{
   await scopedAccount(db,input);
   if(!input.reason.trim()||input.reason.length>500)throw new SchoolFinanceError("RECONCILIATION_REVIEW_REASON_REQUIRED");
-  const record=await db.query<{period_start:string;period_end:string;status:string;prepared_by_peos_person_id:string;ledger_snapshot:{fingerprint:string}|null}>("SELECT period_start::text,period_end::text,status,prepared_by_peos_person_id,ledger_snapshot FROM school_finance.reconciliations WHERE id=$1 AND account_id=$2",[input.reconciliationId,input.accountId]);
+  const record=await db.query<{period_start:string;period_end:string;status:string;prepared_by_peos_person_id:string;ledger_snapshot:{fingerprint:string}|null}>("SELECT period_start::text,period_end::text,status,prepared_by_peos_person_id,ledger_snapshot FROM school_finance.reconciliations WHERE id=$1 AND account_id=$2 FOR UPDATE",[input.reconciliationId,input.accountId]);
   if(!record.rows[0]||record.rows[0].status!=='SUBMITTED'||record.rows[0].prepared_by_peos_person_id===input.actorPersonId)throw new SchoolFinanceError('RECONCILIATION_NOT_REVIEWABLE');
   if(input.decision==='APPROVED'){
    const current=await ledgerSnapshot(db,input.accountId,record.rows[0].period_start,record.rows[0].period_end);
