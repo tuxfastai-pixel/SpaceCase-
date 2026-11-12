@@ -68,9 +68,18 @@ test("PostgreSQL audit history pages tied timestamps without loss and enforces s
     const reads=await pool.query("SELECT count(*)::int n FROM school_finance.audit_events WHERE account_id=$1 AND action='FINANCE_AUDIT_HISTORY_READ'",[account]);
     assert.equal(reads.rows[0].n,5);
     const query=new URLSearchParams({...input,format:"csv"});
-    const exported=await financeAuditHistoryGet(new Request(`https://spacecase.example/api/finance/audit?${query}`),{
-      pool:()=>pool, permission:async(request, id, action)=>{void request; return {...await authorize(id,action),action};}, learner:async()=>{throw Error("Unused");},
-    });
+    const previousFlag=process.env.SPACECASE_FINANCE_WORKSPACE_ENABLED, previousMode=process.env.SPACECASE_WORKSPACE_MODE;
+    let exported: Response;
+    try {
+      process.env.SPACECASE_FINANCE_WORKSPACE_ENABLED="true";
+      process.env.SPACECASE_WORKSPACE_MODE="full";
+      exported=await financeAuditHistoryGet(new Request(`https://spacecase.example/api/finance/audit?${query}`),{
+        pool:()=>pool, permission:async(request, id, action)=>{void request; return {...await authorize(id,action),action};}, learner:async()=>{throw Error("Unused");},
+      });
+    } finally {
+      if(previousFlag===undefined)delete process.env.SPACECASE_FINANCE_WORKSPACE_ENABLED;else process.env.SPACECASE_FINANCE_WORKSPACE_ENABLED=previousFlag;
+      if(previousMode===undefined)delete process.env.SPACECASE_WORKSPACE_MODE;else process.env.SPACECASE_WORKSPACE_MODE=previousMode;
+    }
     assert.equal(exported.status,200);
     assert.equal(exported.headers.get("cache-control"),"no-store");
     assert.match(exported.headers.get("content-type") ?? "",/text\/csv/);
