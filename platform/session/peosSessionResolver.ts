@@ -1,3 +1,4 @@
+import { peosPreviewHeaders } from "../peos/previewHeaders";
 import { z } from "zod";
 
 import type { AuthenticatedSession, SessionResolver } from "./contracts";
@@ -34,7 +35,7 @@ export class PeosSessionResolver implements SessionResolver {
         headers: {
           authorization,
           accept: "application/json",
-          ...(deploymentToken ? { "x-vercel-trusted-oidc-idp-token": deploymentToken } : {}),
+          ...peosPreviewHeaders(deploymentToken),
         },
       },
     );

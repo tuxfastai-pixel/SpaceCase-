@@ -1,3 +1,4 @@
+import { peosPreviewHeaders } from "../../../../../platform/peos/previewHeaders";
 import { z } from "zod";
 
 import { readServerEnvironment } from "../../../../../platform/config/env";
@@ -68,9 +69,7 @@ export async function POST(request: Request): Promise<Response> {
       headers: {
         authorization: externalAuthorization,
         accept: "application/json",
-        ...(process.env.VERCEL_ENV === "preview" && trustedOidcToken
-          ? { "x-vercel-trusted-oidc-idp-token": trustedOidcToken }
-          : {}),
+        ...peosPreviewHeaders(trustedOidcToken),
       },
       cache: "no-store", signal: AbortSignal.timeout(10000),
     });
@@ -144,7 +143,7 @@ export async function DELETE(request: Request): Promise<Response> {
     try {
       await fetch(new URL("/v1/sessions/revoke", environment.PEOS_BASE_URL), {
         method: "POST",
-        headers: { authorization, accept: "application/json" },
+        headers: { authorization, accept: "application/json", ...peosPreviewHeaders(request.headers.get("x-vercel-oidc-token")) },
         cache: "no-store", signal:AbortSignal.timeout(5000),
       });
     } catch {

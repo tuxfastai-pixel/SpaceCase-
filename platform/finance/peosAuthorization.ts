@@ -1,3 +1,4 @@
+import { peosPreviewHeaders } from "../peos/previewHeaders";
 import { z } from "zod";
 import { readServerEnvironment } from "../config/env";
 import { resolvePeosAuthorization } from "../session/peosAuthorization";
@@ -24,7 +25,7 @@ function financeRequestHeaders(request: Request, authorization: string) {
   const headers: Record<string, string> = { authorization, accept: "application/json" };
   const deploymentToken = process.env.VERCEL_ENV === "preview"
     ? request.headers.get("x-vercel-oidc-token") : null;
-  if (deploymentToken) headers["x-vercel-trusted-oidc-idp-token"] = deploymentToken;
+  Object.assign(headers, peosPreviewHeaders(deploymentToken));
   return headers;
 }
 

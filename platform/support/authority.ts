@@ -1,3 +1,4 @@
+import { peosPreviewHeaders } from "../peos/previewHeaders";
 import {z} from "zod";
 import {SupportError,type SupportContext} from "../../domains/support/contracts";
 import {resolvePeosAuthorization} from "../session/peosAuthorization";
@@ -12,7 +13,7 @@ export async function peosRead<T>(request:Request,path:string,schema:z.ZodType<T
  const env=readServerEnvironment();if(!env.PEOS_BASE_URL)throw new SupportError("PEOS_UNAVAILABLE",503);
  try{
  const trustedToken = process.env.VERCEL_ENV === "preview" ? request.headers.get("x-vercel-oidc-token") : null;
- const r=await fetchImpl(new URL(path,env.PEOS_BASE_URL),{headers:{authorization,...(trustedToken ? {"x-vercel-trusted-oidc-idp-token":trustedToken} : {})},cache:"no-store",signal:AbortSignal.timeout(10000)});
+ const r=await fetchImpl(new URL(path,env.PEOS_BASE_URL),{headers:{authorization,...peosPreviewHeaders(trustedToken)},cache:"no-store",signal:AbortSignal.timeout(10000)});
  if(r.status===401)throw new SupportError("UNAUTHENTICATED",401);if(r.status===403)throw new SupportError("ACCESS_REQUIRED");if(r.status===404)throw new SupportError("SCHOOL_UNAVAILABLE",404);
  if(!r.ok)throw new SupportError("PEOS_UNAVAILABLE",503);
  const parsed=schema.safeParse(await r.json());if(!parsed.success)throw new SupportError("PEOS_UNAVAILABLE",503);return parsed.data;

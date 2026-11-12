@@ -1,3 +1,4 @@
+import { peosPreviewHeaders } from "../../../../../platform/peos/previewHeaders";
 import { handleSchoolContextRequest } from "../../../../../domains/school-context/http";
 import { PostgresSchoolContextRepository } from "../../../../../domains/school-context/postgresRepository";
 import { readServerEnvironment } from "../../../../../platform/config/env";
@@ -29,7 +30,7 @@ export async function GET(request: Request): Promise<Response> {
     ...init,
     headers: {
       ...Object.fromEntries(new Headers(init?.headers).entries()),
-      ...(deploymentToken ? { "x-vercel-trusted-oidc-idp-token": deploymentToken } : {}),
+      ...peosPreviewHeaders(deploymentToken),
     },
   });
   const sessionResolver = new PeosSessionResolver(environment.PEOS_BASE_URL, trustedFetch);

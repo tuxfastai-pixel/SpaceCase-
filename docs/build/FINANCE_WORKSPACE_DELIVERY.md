@@ -89,3 +89,12 @@ Known follow-up: the current team list retains historical invitation acceptance 
 
 
 Read-only preview configuration observation — 12 November 2026: `spacecase-pilot` project-level preview configuration has `SPACECASE_WORKSPACE_MODE=authority_only`; no `SPACECASE_FINANCE_WORKSPACE_ENABLED` entry is listed. That mode blocks Finance API access regardless of a READY build. No project-level PEOS/database entries were listed; inherited/shared resource configuration was not independently verified, so no database isolation conclusion is claimed. The next deployment gate is a separately isolated Finance test environment with reviewed PEOS/SpaceCase heads, restricted database migrations and synthetic identities, followed by controlled preview-only activation and the walkthrough above. No configuration was changed by this review.
+
+## Dedicated synthetic Finance test resources — 12 November 2026
+
+- Vercel: `spacecase-finance-test` (`prj_H20d8jYzF5zN80bAuARJUA5i8uKR`) and `peos-finance-test` (`prj_pOSAxbOrZATecuUUN9aHymvsd5VK`), both with all-deployment Vercel Authentication.
+- Data: new empty databases in the existing separate Finance preview Neon projects; no Production data or existing preview identities copied. SpaceCase migration count 20; PEOS count 10. Runtime credentials are restricted and saved only as Preview secrets.
+- PEOS source: `eec230d1aaddfd949ad08f4b2bfce101aac309cb`. SpaceCase source is pinned per test deployment/evidence. Five short-lived synthetic PEOS sessions are for engineering checks only; there is no new login bypass or public test-account selector.
+- Vercel's cross-project Trusted Sources update returned 404. Use the supported test-project automation credential through the optional server-only `PEOS_PREVIEW_PROTECTION_BYPASS` fallback, evaluated only in Preview. Keep Vercel Authentication and all application permission checks. Revoke it when test verification is finished or the environment is retired.
+- Existing pilot and product Production configuration remain unchanged. Initial deployments in newly created projects are automatically labelled Production by Vercel; they had no Production environment credentials. Run actual tests only against explicit staging/Preview deployments.
+- Google sign-in remains a separate gate: this test pair does not yet have a verified isolated Supabase/OIDC issuer, callback allowlist and synthetic credential mappings. Synthetic-session API verification does not establish real Google login, invitation/email delivery or physical-phone acceptance.

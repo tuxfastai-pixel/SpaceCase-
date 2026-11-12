@@ -1,3 +1,4 @@
+import { peosPreviewHeaders } from "../../platform/peos/previewHeaders";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { currentSession } from "../../platform/auth/currentSession";
@@ -31,7 +32,7 @@ export default async function Page({
       ...init,
       headers: {
         ...Object.fromEntries(new Headers(init?.headers).entries()),
-        ...(deploymentToken ? { "x-vercel-trusted-oidc-idp-token": deploymentToken } : {}),
+        ...peosPreviewHeaders(deploymentToken),
       },
     });
     directory = await financeSchools(`Bearer ${token}`, trustedFetch);

@@ -1,3 +1,4 @@
+import { peosPreviewHeaders } from "../peos/previewHeaders";
 import {z} from "zod";
 import {headers as nextHeaders} from "next/headers";
 import { readServerEnvironment } from "../config/env";
@@ -18,7 +19,7 @@ export async function peosProxy(request: Request, path: string, body?: unknown, 
   try {
     const deploymentToken = process.env.VERCEL_ENV === "preview" ? (await nextHeaders()).get("x-vercel-oidc-token") : null;
     const response = await fetch(new URL(path, env.PEOS_BASE_URL), {
-      method: request.method, headers: { authorization, accept: "application/json", "content-type": "application/json", ...extraHeaders, ...(deploymentToken ? { "x-vercel-trusted-oidc-idp-token": deploymentToken } : {}) },
+      method: request.method, headers: { authorization, accept: "application/json", "content-type": "application/json", ...extraHeaders, ...peosPreviewHeaders(deploymentToken) },
       body: body === undefined ? undefined : JSON.stringify(body), cache: "no-store", signal: AbortSignal.timeout(timeoutMs),
     });
     return Response.json(await response.json(), { status: response.status, headers: { "cache-control": "no-store" } });
