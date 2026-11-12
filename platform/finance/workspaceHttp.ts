@@ -21,6 +21,8 @@ import {
   requireFinanceLearner,
   FinanceAuthorizationError,
 } from "./peosAuthorization";
+import { readFinanceAuditHistory } from "../../domains/school-finance/auditHistory";
+import { auditHistoryQuery, financeAuditCsv, type AuditHistoryInput } from "../../domains/school-finance/auditHistoryContracts";
 const headers = { "cache-control": "no-store" };
 export function financeFailure(error: unknown) {
   if (error instanceof FinanceAuthorizationError)
@@ -190,4 +192,24 @@ export async function financeWorkspacePost(
   } catch (error) {
     return financeFailure(error);
   }
+}
+
+
+export async function financeAuditHistoryGet(request: Request, deps: Dependencies = defaults) {
+  if (!enabled()) return Response.json({error: "FINANCE_NOT_ENABLED"}, {status: 503, headers});
+  try {
+    const params = new URL(request.url).searchParams;
+    // Reject repeated parameters rather than silently selecting an ambiguous scope.
+    for (const key of params.keys()) if (params.getAll(key).length !== 1) throw new SyntaxError("Duplicate parameter");
+    const raw = Object.fromEntries(params);
+    auditHistoryQuery.parse(raw);
+    const decision = await deps.permission(request, raw.schoolId.toLowerCase(), "finance.audit.read");
+    const page = await readFinanceAuditHistory(deps.pool(), raw as AuditHistoryInput,
+      decision.personId, (school, action) => deps.permission(request, school, action));
+    if (raw.format === "csv") return new Response(financeAuditCsv(page.rows), {headers: {
+      ...headers, "content-type": "text/csv; charset=utf-8", "content-disposition": 'attachment; filename="spacecase-audit-page.csv"',
+      "x-content-type-options": "nosniff",
+    }});
+    return Response.json(page, {headers});
+  } catch (error) { return financeFailure(error); }
 }

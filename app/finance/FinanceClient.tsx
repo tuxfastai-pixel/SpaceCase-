@@ -6,6 +6,7 @@ import type { FinanceAction } from "../../platform/finance/peosAuthorization";
 import s from "./finance.module.css";
 import InvoiceForm from "./InvoiceForm";
 import FinanceStaff from "./FinanceStaff";
+import AuditHistory from "./AuditHistory";
 type School = { id: string; displayName: string; actions: FinanceAction[] };
 const amount = z.string().regex(/^\d+$/),
   record = z.object({ id: z.string().uuid(), amountMinor: amount });
@@ -1013,20 +1014,7 @@ export default function FinanceClient({
                   </>
                 )}
                 {tab === "audit" && data.audit && (
-                  <section className={s.card}>
-                    <h2>Recent financial activity</h2>
-                    <p>Latest 100 audited actions for this school account.</p>
-                    <ol>
-                      {data.audit.map((row, i) => (
-                        <li key={`${row.occurredAt}-${i}`}>
-                          {row.action} · {row.resourceType} · {row.occurredAt}
-                          <div>Record: {row.resourceId} · Reviewer/actor ID: {row.actorPersonId}</div>
-                          {row.decision && <div>Decision: {row.decision}</div>}
-                          {row.reason && <div>Reason: {row.reason}</div>}
-                        </li>
-                      ))}
-                    </ol>
-                  </section>
+                  <AuditHistory key={`${schoolId}-${data.account.id}`} schoolId={schoolId} accountId={data.account.id} />
                 )}
               </>
             )}
