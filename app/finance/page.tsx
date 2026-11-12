@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { currentSession } from "../../platform/auth/currentSession";
 import { PEOS_SESSION_COOKIE } from "../../platform/session/peosAuthorization";
@@ -24,7 +24,17 @@ export default async function Page({
   }
   let directory;
   try {
-    directory = await financeSchools(`Bearer ${token}`);
+    const deploymentToken = process.env.VERCEL_ENV === "preview"
+      ? (await headers()).get("x-vercel-oidc-token")
+      : null;
+    const trustedFetch: typeof fetch = (input, init) => fetch(input, {
+      ...init,
+      headers: {
+        ...Object.fromEntries(new Headers(init?.headers).entries()),
+        ...(deploymentToken ? { "x-vercel-trusted-oidc-idp-token": deploymentToken } : {}),
+      },
+    });
+    directory = await financeSchools(`Bearer ${token}`, trustedFetch);
   } catch {
     return (
       <main>
