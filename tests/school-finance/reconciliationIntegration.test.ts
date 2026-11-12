@@ -20,6 +20,9 @@ test("reconciliation workflow enforces scoped approval, one-time transitions and
   assert.equal(submitted.status,"SUBMITTED");
   await assert.rejects(submitSchoolReconciliation(pool,{...base,actorPersonId:preparer,reconciliationId:created.reconciliationId,evidenceReference:"private-register-1"},authorize),/RECONCILIATION_NOT_SUBMITTABLE/);
   await assert.rejects(reviewSchoolReconciliation(pool,{...base,actorPersonId:preparer,reconciliationId:created.reconciliationId,reason:"Independent review",decision:"APPROVED"},authorize),/FINANCE_FORBIDDEN/);
+  // Even if PEOS grants this person both prepare and approve actions, self-approval is forbidden.
+  const dualPermissionAuthorize=async(school:string,_action:string)=>({schoolId:school,personId:preparer});
+  await assert.rejects(reviewSchoolReconciliation(pool,{...base,actorPersonId:preparer,reconciliationId:created.reconciliationId,reason:"Attempted self approval",decision:"APPROVED"},dualPermissionAuthorize),/RECONCILIATION_NOT_REVIEWABLE/);
   await assert.rejects(reviewSchoolReconciliation(pool,{...base,schoolId:randomUUID(),actorPersonId:principal,reconciliationId:created.reconciliationId,reason:"Independent review",decision:"APPROVED"},authorize),/FINANCE_ACCOUNT_UNAVAILABLE/);
   const approved=await reviewSchoolReconciliation(pool,{...base,actorPersonId:principal,reconciliationId:created.reconciliationId,reason:"Independent review",decision:"APPROVED"},authorize);
   assert.equal(approved.status,"APPROVED");
