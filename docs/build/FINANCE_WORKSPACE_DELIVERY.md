@@ -49,3 +49,40 @@ Do not mark this gate passed using mocked PEOS decisions or independent reposito
 | Migration and rollback rehearsal | Disposable production-shaped DB; restricted grants verified; restore procedure timed and reviewed | Pending | NOT RUN |
 
 **Required execution order:** deploy isolated PEOS authority branch; apply PEOS migration and seed synthetic roles; deploy isolated SpaceCase branch; apply finance migration with restricted runtime; run the signed-in scenarios above; record failures and rerun after fixes; rehearse database restore; obtain independent review. Keep the finance feature flag off in production throughout. Do not treat a green CI build as approval to merge or enable real finance processing.
+
+## Integration review and walkthrough preparation — 12 November 2026
+
+Reviewed source pair: SpaceCase Finance workspace through `1bd0ccb29848cfd73c2c934ee56b2ae305f80cc7` and PEOS authority PR37 head `eec230d1aaddfd949ad08f4b2bfce101aac309cb`. PEOS CI `42190688891` passed for that head. This is source/contract evidence, not proof that either head is deployed together or that an intended-user walkthrough passed.
+
+A preview transport gap was found: the Finance directory page and admin proxy forwarded the platform's preview deployment identity, but Finance permission checks and exact learner lookup did not. The continuation aligns those adapter requests with the existing preview pattern. The user bearer remains the PEOS application identity; deployment identity only permits access through Vercel protection and never grants a Finance role. Production/development do not forward the preview token. Wrong school/action, negative decisions, missing session and PEOS/protection failures continue to deny access. Protected cross-project previews still require the existing permitted Trusted Sources relationship; this change does not alter platform access rules.
+
+### Role acceptance matrix
+
+These are current PEOS policy expectations, enforced again server-side on each request, not permissions granted by a role toggle.
+
+| Action | Principal | Finance manager | Finance officer | Administrator / teacher / parent / founder alone |
+| --- | --- | --- | --- | --- |
+| Finance directory / transaction reads | Allow | Allow | Allow | Deny |
+| Prepare invoices, reported payments, budgets, expenses and reconciliation | Only with a separate active Finance assignment | Allow | Allow | Deny |
+| Independent payment verification | Allow | Allow | Deny | Deny |
+| Independent expenditure / reconciliation approval | Allow | Deny | Deny | Deny |
+| Summary | Allow | Allow | Deny | Deny |
+| Audit history / CSV | Allow | Deny | Deny | Deny |
+| Account policy / Finance invitations / role termination | Allow | Deny | Deny | Deny |
+
+If a person holds multiple permitted roles, preparation still prevents that same person from verifying/approving their own record. A Finance manager's payment-verification permission does not authorize expenditure or reconciliation approval.
+
+### Synthetic signed-in exercise
+
+Use separate synthetic accounts for principal, officer, manager, ordinary administrator/teacher, and a second-school principal. Record account labels only, never credentials/tokens. Before starting, prove the actual preview's database isolation and record both deployed SHAs plus migration state. A READY deployment alone is insufficient. SpaceCase pilot metadata currently reports a READY preview of `1bd0ccb`; isolation, effective feature flags and the connected PEOS head have not been verified in this review.
+
+1. Principal opens Finance, initializes the already-provisioned school account, and checks the empty view. Ordinary administrator and teacher try the same path and direct API; both must be denied.
+2. Principal creates manual officer/manager invitations; the intended identity accepts. Wrong-email acceptance and issuer demotion must fail. These links are sent manually by the tester; automatic delivery remains off.
+3. Officer records a synthetic R100.01 invoice in R50.01/R50.00 instalments, reports a payment, prepares a R100 budget. Principal independently approves that budget with a reason; officer then submits a R70 expense with a synthetic evidence reference. Officer cannot verify or approve. Manager independently verifies the payment; officer allocates it.
+4. Principal checks the evidence reference and approves the expense with a reason. Review the same record as its preparer using a synthetic dual-role account: the server must deny self-approval. Submit a second R70 expense against the R100 budget: approval must fail because only R30 remains.
+5. Officer submits reconciliation; principal reviews it. Change the period ledger after submission and verify stale approval fails; reject, revise and resubmit with retained history.
+6. Principal searches audit history and exports a page. Manager/officer/administrator direct audit JSON and CSV requests must fail. Search a period with more than 100 synthetic events and confirm older/newer navigation and clear page export limits.
+7. Principal ends a Finance role; leave that person's session open and retry reads and writes. The next authority check must deny access. End the officer's membership or expire its role, then repeat. Test a second-school account/record identifier and PEOS outage without any partial ledger write.
+8. Repeat at desktop and phone widths: switch accounts, sign out, refresh and use browser back. Financial data must not remain visible under another identity. Record screenshots without personal information and log each expected/actual result in the evidence table above.
+
+Known follow-up: the current team list retains historical invitation acceptance after accepted-role termination; it does not yet expose a current role-assignment status. Do not interpret “Accepted” as active Finance authority. Verify effective access using fresh PEOS checks; explicit active/ended team status remains UI work. Principal verification/step-up/recovery and approved evidence retention remain production gates.

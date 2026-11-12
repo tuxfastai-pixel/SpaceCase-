@@ -19,6 +19,15 @@ export class FinanceAuthorizationError extends Error {
   constructor(public readonly status: 401 | 403 | 503, message: string) { super(message); }
 }
 
+/** Platform deployment identity is distinct from the user's PEOS bearer session. */
+function financeRequestHeaders(request: Request, authorization: string) {
+  const headers: Record<string, string> = { authorization, accept: "application/json" };
+  const deploymentToken = process.env.VERCEL_ENV === "preview"
+    ? request.headers.get("x-vercel-oidc-token") : null;
+  if (deploymentToken) headers["x-vercel-trusted-oidc-idp-token"] = deploymentToken;
+  return headers;
+}
+
 /**
  * Fail-closed PEOS authority adapter. The contract endpoint must be implemented and
  * authenticated by PEOS before any finance route uses this adapter.
@@ -41,7 +50,7 @@ export async function requireSchoolFinancePermission(
     const url = new URL(`/v1/finance/schools/${encodeURIComponent(schoolId)}/authorize`, env.PEOS_BASE_URL);
     response = await fetchImpl(url, {
       method: "POST",
-      headers: { authorization, "content-type": "application/json", accept: "application/json" },
+      headers: { ...financeRequestHeaders(request, authorization), "content-type": "application/json" },
       body: JSON.stringify({ action }),
       cache: "no-store",
       signal: AbortSignal.timeout(10_000),
@@ -85,7 +94,7 @@ export async function requireFinanceLearner(request:Request,schoolId:string,refe
  const url=new URL(`/v1/finance/schools/${encodeURIComponent(schoolId)}/learner`,env.PEOS_BASE_URL);url.searchParams.set("reference",reference);
  let response:Response;
  try {
-  response=await fetchImpl(url,{headers:{authorization},cache:"no-store",signal:AbortSignal.timeout(10000)});
+  response=await fetchImpl(url,{headers:financeRequestHeaders(request,authorization),cache:"no-store",signal:AbortSignal.timeout(10000)});
  } catch {
   throw new FinanceAuthorizationError(503,"PEOS_UNAVAILABLE");
  }
