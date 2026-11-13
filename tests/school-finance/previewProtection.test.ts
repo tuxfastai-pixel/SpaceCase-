@@ -19,6 +19,7 @@ test("PEOS deployment access credential is server configured, optional and Previ
 
 test("school directory preserves user authentication across protected Preview transport", async()=>{
   const {adminSchools}=await import('../../platform/admin/peosProxy');
+  const {financeSchools}=await import('../../platform/finance/peosAuthorization');
   const prior={...process.env};
   try{
     process.env.PEOS_BASE_URL='https://peos.example.test';
@@ -33,6 +34,14 @@ test("school directory preserves user authentication across protected Preview tr
         return Response.json({schools:[]});
       });
       assert.deepEqual(result,[]);
+      const directory=await financeSchools('Bearer synthetic-user',async(input,init)=>{
+        assert.equal(String(input),'https://peos.example.test/v1/finance/schools');
+        const h=new Headers(init?.headers);
+        assert.equal(h.get('authorization'),'Bearer synthetic-user');
+        assert.equal(h.get('x-vercel-protection-bypass'),environment==='preview'?'synthetic-preview-access':null);
+        return Response.json({schools:[{id:'d89a607b-b7d6-40b5-9b47-31e83d9b3dfd',displayName:'Synthetic school',actions:['finance.reconciliation.prepare']}],truncated:false});
+      });
+      assert.equal(directory.schools.length,1);
     }
     process.env.VERCEL_ENV='preview';
     await assert.rejects(()=>adminSchools('Bearer synthetic-user',async()=>new Response('Denied',{status:403})),/WORKSPACE_AUTHORITY_UNAVAILABLE/);

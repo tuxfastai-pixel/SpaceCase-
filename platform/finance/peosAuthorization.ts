@@ -75,7 +75,7 @@ export async function financeSchools(authorization:string,fetchImpl:typeof fetch
  const env=readServerEnvironment();if(!env.PEOS_BASE_URL)throw new FinanceAuthorizationError(503,"PEOS_UNAVAILABLE");
  let response:Response;
  try {
-  response=await fetchImpl(new URL("/v1/finance/schools",env.PEOS_BASE_URL),{headers:{authorization},cache:"no-store",signal:AbortSignal.timeout(10000)});
+  response=await fetchImpl(new URL("/v1/finance/schools",env.PEOS_BASE_URL),{headers:{authorization,...peosPreviewHeaders(null)},cache:"no-store",signal:AbortSignal.timeout(10000)});
  } catch {
   throw new FinanceAuthorizationError(503,"PEOS_UNAVAILABLE");
  }
