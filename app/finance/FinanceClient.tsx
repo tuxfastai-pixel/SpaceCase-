@@ -7,6 +7,7 @@ import s from "./finance.module.css";
 import InvoiceForm from "./InvoiceForm";
 import FinanceStaff from "./FinanceStaff";
 import AuditHistory from "./AuditHistory";
+import {csvDownloadName} from "../../platform/downloads/filename";
 import ReportDateInput from "../reports/ReportDateInput";
 type School = { id: string; displayName: string; actions: FinanceAction[] };
 const amount = z.string().regex(/^\d+$/),
@@ -302,7 +303,7 @@ export default function FinanceClient({
     );
     const link = document.createElement("a");
     link.href = url;
-    link.download = "school-fee-records.csv";
+    link.download = csvDownloadName({topic:"school-fee-records",school:school.displayName});
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -1020,7 +1021,7 @@ export default function FinanceClient({
                   </>
                 )}
                 {tab === "audit" && data.audit && (
-                  <AuditHistory key={`${schoolId}-${data.account.id}`} schoolId={schoolId} accountId={data.account.id} />
+                  <AuditHistory key={`${schoolId}-${data.account.id}`} schoolId={schoolId} accountId={data.account.id} schoolName={school.displayName} />
                 )}
               </>
             )}

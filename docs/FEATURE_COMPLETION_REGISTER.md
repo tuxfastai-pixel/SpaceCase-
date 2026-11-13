@@ -294,3 +294,10 @@ Follow-up discovery finding: the officer session is valid and the admin-director
 ## Finance date keyboard entry — 13 November 2026
 
 Finance reconciliation date inputs now reuse the existing segmented report-date control: completing four year digits focuses month; completing two month digits focuses day. Numeric entry, manual segment editing, ISO/slash date paste and the browser calendar picker remain available. Optional named ISO hidden values preserve the existing Finance form/server date contract. Source prepared; keyboard/browser confirmation remains pending Preview delivery. The human-created November 2025 reconciliation draft was observed; independent submission/approval is not yet verified.
+
+
+## Topic-based Finance download filenames — 13 November 2026
+
+Finance audit CSV and displayed fee-record CSV downloads now identify their topic, school and UTC export timestamp. Audit exports additionally include selected action/date filters and page number, so they remain labelled as a bounded page rather than a whole-account export. The direct audit HTTP response uses the same safe-name helper with the authorized school identifier; browser downloads use the already authorized school display name. Filenames normalize punctuation, remove path/header characters and cap free text. No learner/person names, tokens or private evidence references are added to filenames. Other product download types retain their existing topic labels; this slice covers current Finance CSV downloads. Next: checks, Preview deployment and user download confirmation.
+
+Human Preview evidence: supplied November audit export had 28 rows; December rejection export had 38; latest supplied export had 48. The latest December record retains creation/submission, rejection, revision creation/resubmission, and subsequent approval with distinct preparer/reviewer actors and both decision reasons. This verifies the zero-record browser correction flow and exported decision retention, not nonzero-money walkthroughs or phone/security gates. Expandable reconciliation revision history remains a UI gap; earlier decisions remain in audit history.

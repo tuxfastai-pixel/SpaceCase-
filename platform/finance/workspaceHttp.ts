@@ -1,3 +1,4 @@
+import {csvDownloadName} from "../downloads/filename";
 import { z } from "zod";
 import type { Pool } from "pg";
 import { getDatabasePool } from "../db/pool";
@@ -207,7 +208,7 @@ export async function financeAuditHistoryGet(request: Request, deps: Dependencie
     const page = await readFinanceAuditHistory(deps.pool(), raw as AuditHistoryInput,
       decision.personId, (school, action) => deps.permission(request, school, action));
     if (raw.format === "csv") return new Response(financeAuditCsv(page.rows), {headers: {
-      ...headers, "content-type": "text/csv; charset=utf-8", "content-disposition": 'attachment; filename="spacecase-audit-page.csv"',
+      ...headers, "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="${csvDownloadName({topic:raw.action?`${raw.action}-audit-history`:"financial-audit-history",school:raw.schoolId,start:raw.start,end:raw.end})}"`,
       "x-content-type-options": "nosniff",
     }});
     return Response.json(page, {headers});

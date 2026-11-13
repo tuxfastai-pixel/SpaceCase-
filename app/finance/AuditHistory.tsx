@@ -2,13 +2,14 @@
 import { useEffect, useState, useRef, type FormEvent } from "react";
 import { z } from "zod";
 import s from "./finance.module.css";
+import {csvDownloadName} from "../../platform/downloads/filename";
 const pageSchema = z.object({rows: z.array(z.object({
   id: z.string().uuid(), occurredAt: z.string(), actorPersonId: z.string(), action: z.string(),
   resourceType: z.string(), resourceId: z.string().uuid(), decision: z.string().nullable(), reason: z.string().nullable(),
 })), nextCursor: z.string().nullable()});
 type Filters = {start: string; end: string; action: string; resourceId: string};
 const empty: Filters = {start: "", end: "", action: "", resourceId: ""};
-export default function AuditHistory({schoolId, accountId}: {schoolId: string; accountId: string}) {
+export default function AuditHistory({schoolId, accountId, schoolName}: {schoolId: string; accountId: string; schoolName:string}) {
   const [filters, setFilters] = useState(empty), [cursor, setCursor] = useState<string | null>(null),
     [previous, setPrevious] = useState<(string | null)[]>([]), [page, setPage] = useState<z.infer<typeof pageSchema> | null>(null),
     [error, setError] = useState(""), [exporting, setExporting] = useState(false), [refresh, setRefresh] = useState(0);
@@ -46,7 +47,7 @@ export default function AuditHistory({schoolId, accountId}: {schoolId: string; a
       const blob = await response.blob();
       if (controller.signal.aborted) return;
       const url = URL.createObjectURL(blob);
-      const link = document.createElement("a"); link.href=url; link.download="spacecase-audit-page.csv"; link.click(); URL.revokeObjectURL(url);
+      const link = document.createElement("a"); link.href=url; link.download=csvDownloadName({topic:filters.action?`${filters.action}-audit-history`:"financial-audit-history",school:schoolName,start:filters.start,end:filters.end,page:previous.length+1}); link.click(); URL.revokeObjectURL(url);
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Export unavailable."); }
     finally { setExporting(false); }
   }
