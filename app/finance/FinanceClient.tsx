@@ -7,6 +7,7 @@ import s from "./finance.module.css";
 import InvoiceForm from "./InvoiceForm";
 import FinanceStaff from "./FinanceStaff";
 import AuditHistory from "./AuditHistory";
+import ReportDateInput from "../reports/ReportDateInput";
 type School = { id: string; displayName: string; actions: FinanceAction[] };
 const amount = z.string().regex(/^\d+$/),
   record = z.object({ id: z.string().uuid(), amountMinor: amount });
@@ -138,6 +139,7 @@ function Field({
   required?: boolean;
   defaultValue?: string;
 }) {
+  if(type === "date") return <FinanceDateField label={label} name={name} required={required} defaultValue={defaultValue}/>;
   return (
     <label>
       {label}
@@ -150,6 +152,10 @@ function Field({
       />
     </label>
   );
+}
+function FinanceDateField({label,name,required,defaultValue=""}:{label:string;name:string;required:boolean;defaultValue?:string}) {
+  const [value,setValue]=useState(defaultValue);
+  return <ReportDateInput label={label} name={name} value={value} onChange={setValue} required={required}/>;
 }
 function money(form: FormData, key = "amount") {
   return randToMinor(String(form.get(key) ?? ""));
