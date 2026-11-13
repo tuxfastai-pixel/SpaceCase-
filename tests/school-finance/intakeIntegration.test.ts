@@ -56,6 +56,12 @@ test('intake serializes replay/report, isolates school scope and preserves indep
   const stale=await previewIntake(pool,scope,fresh,authorize);
   await pool.query("UPDATE school_finance.invoices SET status='DISPUTED' WHERE id=$1",[invoiceId]);
   await assert.rejects(importIntake(pool,scope,fresh,stale.previewDigest,authorize),/PREVIEW_CHANGED/);
+  const bulk={...upload,source:'Bulk source',csv:'Date,Reference,Amount,ID\n'+Array.from({length:500},(_,i)=>`2025-11-05,BULK-${i},1.00,BULK-${i}`).join('\n')};
+  const bulkPreview=await previewIntake(pool,scope,bulk,authorize);assert.equal(bulkPreview.items.length,500);
+  assert.equal((await importIntake(pool,scope,bulk,bulkPreview.previewDigest,authorize)).imported,500);
+  const seen=new Set<string>();let cursor:string|undefined;
+  do {const page=await listIntake(pool,scope,cursor,authorize);for(const row of page.rows){assert.ok(!seen.has(row.id));seen.add(row.id);}cursor=page.nextCursor??undefined;}while(cursor);
+  assert.ok(seen.size>=500);
   if((await pool.query("SELECT 1 FROM pg_roles WHERE rolname='spacecase_runtime'")).rowCount){
    const runtime=await pool.connect();try{
     await runtime.query('SET ROLE spacecase_runtime');
