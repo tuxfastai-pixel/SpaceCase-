@@ -30,7 +30,7 @@ export async function adminSchools(authorization: string, fetchImpl:typeof fetch
   const env = readServerEnvironment();
   if (!env.PEOS_BASE_URL) throw new Error("PEOS_UNAVAILABLE");
   const response = await fetchImpl(new URL("/v1/admin/schools", env.PEOS_BASE_URL), {
-    headers: { authorization }, cache: "no-store", signal: AbortSignal.timeout(10_000),
+    headers: { authorization, ...peosPreviewHeaders(null) }, cache: "no-store", signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) throw new Error("WORKSPACE_AUTHORITY_UNAVAILABLE");
   const data = z.object({schools:z.array(z.object({id:z.string().uuid(),displayName:z.string(),principal:z.boolean().default(false)}))}).parse(await response.json());
