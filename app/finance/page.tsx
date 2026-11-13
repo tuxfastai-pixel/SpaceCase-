@@ -69,6 +69,7 @@ export default async function Page({
         process.env.SPACECASE_WORKSPACE_MODE !== "authority_only"
       }
       directoryTruncated={directory.truncated}
+      intakeEnabled={process.env.SPACECASE_FINANCE_INTAKE_ENABLED === "true"}
     />
   );
 }

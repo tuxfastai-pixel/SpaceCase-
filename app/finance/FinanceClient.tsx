@@ -6,6 +6,7 @@ import type { FinanceAction } from "../../platform/finance/peosAuthorization";
 import s from "./finance.module.css";
 import InvoiceForm from "./InvoiceForm";
 import FinanceStaff from "./FinanceStaff";
+import PaymentIntake from "./PaymentIntake";
 import AuditHistory from "./AuditHistory";
 import {csvDownloadName} from "../../platform/downloads/filename";
 import ReportDateInput from "../reports/ReportDateInput";
@@ -166,11 +167,13 @@ export default function FinanceClient({
   initialSchool,
   enabled,
   directoryTruncated,
+  intakeEnabled = false,
 }: {
   schools: School[];
   initialSchool: string;
   enabled: boolean;
   directoryTruncated: boolean;
+  intakeEnabled?: boolean;
 }) {
   const [schoolId, setSchoolId] = useState(initialSchool),
     [data, setData] = useState<Workspace | null>(null),
@@ -419,6 +422,7 @@ export default function FinanceClient({
                 <nav className={s.tabs} aria-label="Finance sections">
                   {[
                     ["accounts", "Fees & payments"],
+                    ...(intakeEnabled ? [["intake", "Incoming payments"]] : []),
                     ["budgets", "Budgets & expenses"],
                     ["review", "Reconciliation & review"],
                     ...(data.audit ? [["audit", "Audit history"]] : []),
@@ -439,6 +443,7 @@ export default function FinanceClient({
                     invoices only.
                   </p>
                 )}
+                {tab === "intake" && <PaymentIntake key={`${schoolId}-${data.account.id}`} schoolId={schoolId} accountId={data.account.id} canRecord={can("finance.transactions.record")} enabled={intakeEnabled} onReported={()=>setRefresh(v=>v+1)}/> }
                 {tab === "accounts" && (
                   <>
                     <section className={s.card}>
