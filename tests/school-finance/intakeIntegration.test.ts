@@ -73,6 +73,12 @@ test('intake serializes replay/report, isolates school scope and preserves indep
     assert.deepEqual(rights.rows[0],{money:false,deletion:false,audit_update:false});
    }finally{await runtime.query('RESET ROLE');runtime.release();}
   }
+  // Existing manually entered payments must also be included in duplicate review.
+  await pool.query("INSERT INTO school_finance.payments(account_id,external_reference,amount_minor,recorded_by_peos_person_id) VALUES($1,'MANUAL-REF',500,$2)",[accountId,actorPersonId]);
+  const manual={...upload,csv:'Date,Reference,Amount,ID\n2025-11-06,MANUAL-REF,5.00,NEW-ID\n2025-11-07,Another reference,6.00,MANUAL-REF'};
+  const manualPreview=await previewIntake(pool,scope,manual,authorize);
+  assert.equal(manualPreview.items[0].duplicateKind,'FINGERPRINT');
+  assert.equal(manualPreview.items[1].duplicateKind,'SOURCE_ID');
  }finally{
   if(accountId){for(const table of ['import_candidates','import_batches','import_profiles','audit_events','allocations','invoice_lines','instalments','invoices','payments'])await pool.query(`DELETE FROM school_finance.${table} WHERE account_id=$1`,[accountId]);await pool.query('DELETE FROM school_finance.accounts WHERE id=$1',[accountId]);await pool.query('DELETE FROM school_ops.school_workspaces WHERE peos_school_id=$1',[schoolId]);}
   await pool.end();

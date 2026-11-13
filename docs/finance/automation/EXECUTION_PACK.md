@@ -2,8 +2,8 @@
 
 | ID | Stage | Acceptance and dependency | Status |
 |---|---|---|---|
-| FIN-AUTO-01 | CSV intake | Bound parser, preview, saved mapping, idempotent imports, duplicate queue, tenant tests | Implementing |
-| FIN-AUTO-02 | Review and matching | Explain exact suggestions; reported-only conversion; independent verification; duplicate decisions/audit | Implementing initial slice |
+| FIN-AUTO-01 | CSV intake | Bound parser, preview, saved mapping, idempotent imports, duplicate queue, tenant tests | Engineering Preview verified; human import walkthrough pending |
+| FIN-AUTO-02 | Review and matching | Explain exact suggestions; reported-only conversion; independent verification; duplicate decisions/audit | Initial slice engineering Preview verified; wider matching planned |
 | FIN-AUTO-03 | Provider connector | Select pilot provider/account; sandbox webhook signature/replay/reversal tests; no live money | Planned, provider selection pending |
 | FIN-AUTO-04 | Statements/reminders | Approved fee schedule batch preparation, arrangements/disputes, preview and authorized delivery | Planned; delivery setup pending |
 | FIN-AUTO-05 | Expenses/approval pack | Evidence intake, extraction review, duplicate handling, scoped principal queue | Planned; evidence retention/storage gate |

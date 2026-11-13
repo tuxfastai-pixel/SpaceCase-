@@ -61,7 +61,7 @@ export default function PaymentIntake({schoolId,accountId,canRecord,enabled,onRe
  <h3>Review queue</h3>{!data&&!error&&<p role='status'>Loading incoming items…</p>}
  {data?.rows.map(row=><article key={row.id} className={s.card}><h4>{row.reference} · {formatZar(row.amountMinor)}</h4><p>{row.date} · {row.source} · {row.status.replaceAll('_',' ')}</p>{row.transactionId&&<p>Source transaction: {row.transactionId}</p>}
  {row.suggestion&&<p>Suggested invoice: {row.suggestion.invoiceNumber} (exact reference). Outstanding: {formatZar(row.suggestion.outstandingMinor)}. {row.suggestion.amountFits?'Staff must confirm the match before allocation.':'Payment exceeds the outstanding balance; review required.'}</p>}
- {row.status==='DUPLICATE_REVIEW'&&<p>Potential duplicate {row.duplicateKind==='SOURCE_ID'?'transaction ID':'date, reference and amount'}. No payment has been prepared from this item.</p>}
+ {row.status==='DUPLICATE_REVIEW'&&<p>Potential duplicate {row.duplicateKind==='SOURCE_ID'?'transaction ID':'matching payment details'}. No payment has been prepared from this item.</p>}
  {row.reviewReason&&<p>Review: {row.reviewReason}</p>}
  {row.paymentId&&<p>Reported payment reference: IMPORT-{row.id}. Use Fees &amp; payments for independent verification and allocation.</p>}
  {canRecord&&row.status==='READY'&&<button disabled={busy} onClick={()=>void send({command:'REPORT',candidateId:row.id})}>Prepare reported payment</button>}
