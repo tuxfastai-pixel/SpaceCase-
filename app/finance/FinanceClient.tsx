@@ -7,6 +7,8 @@ import s from "./finance.module.css";
 import InvoiceForm from "./InvoiceForm";
 import FinanceStaff from "./FinanceStaff";
 import PaymentIntake from "./PaymentIntake";
+import {FinanceIcon,FinanceStatus} from "./FinanceUi";
+import {financeSections,financeWords,financeDateLabel} from "./presentation";
 import AuditHistory from "./AuditHistory";
 import {csvDownloadName} from "../../platform/downloads/filename";
 import ReportDateInput from "../reports/ReportDateInput";
@@ -176,20 +178,24 @@ export default function FinanceClient({
   intakeEnabled?: boolean;
 }) {
   const [schoolId, setSchoolId] = useState(initialSchool),
-    [data, setData] = useState<Workspace | null>(null),
+    [storedData, setData] = useState<Workspace | null>(null),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(false),
     [refresh, setRefresh] = useState(0),
     [tab, setTab] = useState("accounts");
   const pending = useRef(false);
+  const loadedSchool = useRef(initialSchool);
+  const data = loadedSchool.current === schoolId ? storedData : null;
+  const [reloading,setReloading] = useState(false);
+  const [auditRecord,setAuditRecord] = useState("");
   const school = schools.find((row) => row.id === schoolId)!,
     can = (action: FinanceAction) => school.actions.includes(action);
   useEffect(() => {
-    setData(null);
+    if(loadedSchool.current !== schoolId) setData(null);
     setError("");
-    setNotice("");
-    if (!enabled) return;
+    setReloading(true);
+    if (!enabled) {setReloading(false);return;}
     const controller = new AbortController();
     void fetch(`/api/finance/workspace?schoolId=${schoolId}`, {
       cache: "no-store",
@@ -205,16 +211,13 @@ export default function FinanceClient({
         return workspace.parse(body);
       })
       .then((result) => {
-        if (!controller.signal.aborted) setData(result);
+        if (!controller.signal.aborted) {loadedSchool.current=schoolId;setData(result);}
       })
       .catch((reason) => {
-        if (!controller.signal.aborted)
-          setError(
-            reason instanceof Error
-              ? reason.message
-              : "Finance records could not be loaded.",
-          );
-      });
+        if (!controller.signal.aborted) {setData(null);
+          setError(reason instanceof Error ? reason.message : "Finance records could not be loaded.");
+        }
+      }).finally(()=>{if(!controller.signal.aborted)setReloading(false);});
     return () => controller.abort();
   }, [schoolId, enabled, refresh]);
   async function save(input: Record<string, unknown>) {
@@ -238,7 +241,7 @@ export default function FinanceClient({
       if (!response.ok)
         throw Error(
           errorMessages[body.error] ??
-            `The record could not be saved (${body.error ?? "service unavailable"}). Check the entries and current access.`,
+            "The record could not be saved. Check the entries and current access, then try again.",
         );
       setRefresh((v) => v + 1);
       return true;
@@ -310,26 +313,25 @@ export default function FinanceClient({
     link.click();
     URL.revokeObjectURL(url);
   }
-  const formsDisabled = busy || !data?.account;
+  const formsDisabled = busy || reloading || !data?.account;
   return (
     <main className={s.page}>
       <header className={s.header}>
         <a href="/dashboard">SpaceCase</a>
         <nav aria-label="Workspace">
-          <a href={`/principal?school=${schoolId}`}>Principal</a>
-          <a href={`/admin?school=${schoolId}`}>Administration</a>
-          <a href="/support">Help</a>
+          {can("finance.policy.manage")&&<a href={`/principal?school=${schoolId}`}><FinanceIcon name="review"/>Principal overview</a>}
+          {can("finance.policy.manage")&&<a href={`/admin?school=${schoolId}`}><FinanceIcon name="team"/>School administration</a>}
+          <a href="/support"><FinanceIcon name="help"/>Need help?</a>
         </nav>
         <form action="/auth/logout" method="post">
-          <button>Sign out</button>
+          <button><FinanceIcon name="exit"/>Sign out</button>
         </form>
       </header>
       <div className={s.content}>
         <p className={s.eyebrow}>School operations</p>
         <h1>School finance</h1>
         <p>
-          Manage school fees, recorded payments, budgets and approvals. Your
-          school’s SpaceCase subscription has its own billing records.
+          Invoices, receipts, budgets and approvals — one clear place for your school’s finances.
         </p>
         <div className={s.toolbar}>
           <label>
@@ -351,10 +353,10 @@ export default function FinanceClient({
             </select>
           </label>
           <button
-            disabled={busy || !enabled}
+            disabled={busy || reloading || !enabled}
             onClick={() => setRefresh((v) => v + 1)}
           >
-            Refresh records
+            <FinanceIcon name="refresh"/>{reloading?"Refreshing…":"Refresh records"}
           </button>
         </div>
         {directoryTruncated && <p>Showing the first 100 authorized schools.</p>}
@@ -398,16 +400,14 @@ export default function FinanceClient({
             {data?.account && (
               <>
                 <p className={s.note}>
-                  Amounts are in rand. A reported payment is not verified money.
-                  Evidence references identify your separately held private
-                  documents; this screen does not upload or validate those
-                  documents.
+                  Amounts are in rand. Captured receipts need independent verification before allocation.
+                  Keep supporting documents in your approved records; document references here do not upload or validate them.
                 </p>
                 {data.totals && (
                   <section className={s.metrics} aria-label="School totals">
                     {Object.entries({
                       Invoiced: data.totals.invoicedMinor,
-                      "Verified payments": data.totals.verifiedMinor,
+                      "Verified receipts": data.totals.verifiedMinor,
                       "Awaiting verification": data.totals.reportedMinor,
                       "Allocated to invoices": data.totals.allocatedMinor,
                       "Approved expenses": data.totals.approvedExpensesMinor,
@@ -419,20 +419,10 @@ export default function FinanceClient({
                     ))}
                   </section>
                 )}
-                <nav className={s.tabs} aria-label="Finance sections">
-                  {[
-                    ["accounts", "Fees & payments"],
-                    ...(intakeEnabled ? [["intake", "Incoming payments"]] : []),
-                    ["budgets", "Budgets & expenses"],
-                    ["review", "Reconciliation & review"],
-                    ...(data.audit ? [["audit", "Audit history"]] : []),
-                  ].map(([key, label]) => (
-                    <button
-                      key={key}
-                      aria-pressed={tab === key}
-                      onClick={() => setTab(key)}
-                    >
-                      {label}
+                <nav id="finance-sections" className={s.tabs} aria-label="Finance sections">
+                  {financeSections.filter(section=>section.key!=="intake"||intakeEnabled).filter(section=>section.key!=="audit"||Boolean(data.audit)).map(({key,label,hint,icon})=>(
+                    <button key={key} aria-pressed={tab===key} aria-controls={tab===key?`finance-panel-${key}`:undefined} onClick={()=>{setTab(key);if(key==="audit")setAuditRecord("");}}>
+                      <FinanceIcon name={icon}/><span>{label}<small>{hint}</small></span>
                     </button>
                   ))}
                 </nav>
@@ -443,17 +433,17 @@ export default function FinanceClient({
                     invoices only.
                   </p>
                 )}
-                {tab === "intake" && <PaymentIntake key={`${schoolId}-${data.account.id}`} schoolId={schoolId} accountId={data.account.id} canRecord={can("finance.transactions.record")} enabled={intakeEnabled} onReported={()=>setRefresh(v=>v+1)}/> }
+                <div id="finance-panel-intake" hidden={tab !== "intake"}>{intakeEnabled&&<PaymentIntake key={`${schoolId}-${data.account.id}`} schoolId={schoolId} accountId={data.account.id} canRecord={can("finance.transactions.record")} enabled={intakeEnabled} active={tab === "intake"} onReported={()=>setRefresh(v=>v+1)}/>}</div>
                 {tab === "accounts" && (
-                  <>
+                  <div id="finance-panel-accounts">
                     <section className={s.card}>
-                      <h2>Fee invoices</h2>
+                      <h2 className={s.sectionTitle}><FinanceIcon name="receipts"/>Fee invoices</h2>
                       <div className={s.toolbar}>
                         <button onClick={download}>
-                          Download displayed fee records
+                          <FinanceIcon name="download"/>Download fee records (CSV)
                         </button>
                         <button onClick={() => window.print()}>
-                          Print displayed records
+                          <FinanceIcon name="print"/>Print fee records
                         </button>
                       </div>
                       <div className={s.tableWrap}>
@@ -477,16 +467,16 @@ export default function FinanceClient({
                                   <small>{row.learnerId}</small>
                                 </td>
                                 <td>
-                                  {row.category}
+                                  {financeWords(row.category)}
                                   <small>{row.description}</small>
                                 </td>
                                 <td>
-                                  {row.dueDate}
+                                  {financeDateLabel(row.dueDate)}
                                   <details>
                                     <summary>Instalments</summary>
                                     {row.instalments.map((part) => (
                                       <small key={part.sequence}>
-                                        {part.dueDate} ·{" "}
+                                        {financeDateLabel(part.dueDate)} ·{" "}
                                         {formatZar(part.amountMinor)}
                                       </small>
                                     ))}
@@ -519,14 +509,14 @@ export default function FinanceClient({
                       />
                     )}
                     <section className={s.card}>
-                      <h2>Payments</h2>
+                      <h2 className={s.sectionTitle}><FinanceIcon name="receipts"/>Receipt register</h2>
                       <p>
                         Receipt references below are internal records. This
                         workspace does not collect money or issue tax invoices.
                       </p>
                       <div className={s.tableWrap}>
                         <table>
-                          <caption>Latest reported payments</caption>
+                          <caption>Latest captured receipts</caption>
                           <thead>
                             <tr>
                               <th>Reference</th>
@@ -543,9 +533,9 @@ export default function FinanceClient({
                                   {row.reference}
                                   <small>{row.evidenceReference}</small>
                                 </td>
-                                <td>{row.method}</td>
+                                <td>{row.method === "OTHER" ? "Other / not specified" : row.method}</td>
                                 <td>{formatZar(row.amountMinor)}</td>
-                                <td>{row.verification}</td>
+                                <td><FinanceStatus value={row.verification}/></td>
                                 <td>
                                   {row.verification === "VERIFIED"
                                     ? formatZar(
@@ -560,13 +550,13 @@ export default function FinanceClient({
                             ))}
                           </tbody>
                         </table>
-                        {!data.payments?.length && <p>No payments recorded.</p>}
+                        {!data.payments?.length && <p>No receipts captured yet.</p>}
                       </div>
                     </section>
                     {can("finance.transactions.record") && (
                       <div className={s.grid}>
                         <details className={s.card}>
-                          <summary>Record a reported payment</summary>
+                          <summary><FinanceIcon name="receipts"/> Capture a receipt manually</summary>
                           <form
                             className={s.form}
                             onSubmit={(e) =>
@@ -580,7 +570,7 @@ export default function FinanceClient({
                           >
                             <fieldset disabled={formsDisabled}>
                               <Field
-                                label="Unique payment reference"
+                                label="Receipt / payment reference"
                                 name="reference"
                               />
                               <Field label="Amount (R)" name="amount" />
@@ -589,20 +579,20 @@ export default function FinanceClient({
                                 <select name="method">
                                   {["EFT", "CASH", "CARD", "OTHER"].map(
                                     (value) => (
-                                      <option key={value}>{value}</option>
+                                      <option key={value} value={value}>{value === "OTHER"?"Other / not specified":financeWords(value)}</option>
                                     ),
                                   )}
                                 </select>
                               </label>
                               <button>
-                                Record for independent verification
+                                Capture for independent verification
                               </button>
                             </fieldset>
                           </form>
                         </details>
                         <details className={s.card}>
                           <summary>
-                            Allocate verified money to an invoice
+                            <FinanceIcon name="check"/> Allocate a verified receipt
                           </summary>
                           <form
                             className={s.form}
@@ -617,9 +607,9 @@ export default function FinanceClient({
                           >
                             <fieldset disabled={formsDisabled}>
                               <label>
-                                Verified payment
+                                Verified receipt
                                 <select name="paymentId" required>
-                                  <option value="">Choose payment</option>
+                                  <option value="">Choose a verified receipt</option>
                                   {data.payments
                                     ?.filter(
                                       (p) =>
@@ -667,18 +657,18 @@ export default function FinanceClient({
                                 Check the learner and payment evidence. Each
                                 payment/invoice pairing can be allocated once.
                               </p>
-                              <button>Allocate</button>
+                              <button><FinanceIcon name="check"/>Save allocation</button>
                             </fieldset>
                           </form>
                         </details>
                       </div>
                     )}
-                  </>
+                  </div>
                 )}
                 {tab === "budgets" && (
-                  <>
+                  <div id="finance-panel-budgets">
                     <section className={s.card}>
-                      <h2>Budgets and approved expenditure</h2>
+                      <h2 className={s.sectionTitle}><FinanceIcon name="budget"/>Budgets &amp; expenditure</h2>
                       <p>
                         Approved expenditure records are commitments recorded
                         here; approval does not execute a bank payment. Salary
@@ -687,12 +677,12 @@ export default function FinanceClient({
                       {data.budgets?.map((row) => (
                         <article className={s.row} key={row.id}>
                           <strong>
-                            {row.year} · {row.category}
+                            {row.year} · {financeWords(row.category)}
                           </strong>
                           <span>
                             {formatZar(row.amountMinor)} budget ·{" "}
                             {formatZar(row.approvedMinor)} approved expenditure
-                            · {row.status}
+                            · <FinanceStatus value={row.status}/>
                           </span>
                         </article>
                       ))}
@@ -703,8 +693,8 @@ export default function FinanceClient({
                             {row.reference} · {row.description}
                           </strong>
                           <span>
-                            {formatZar(row.amountMinor)} · {row.status} ·
-                            Evidence: {row.evidenceReference}
+                            {formatZar(row.amountMinor)} · <FinanceStatus value={row.status}/> ·
+                            Supporting reference: {row.evidenceReference}
                           </span>
                         </article>
                       ))}
@@ -712,7 +702,7 @@ export default function FinanceClient({
                     {can("finance.transactions.record") && (
                       <div className={s.grid}>
                         <details className={s.card}>
-                          <summary>Prepare a budget</summary>
+                          <summary><FinanceIcon name="budget"/> Prepare a budget</summary>
                           <form
                             className={s.form}
                             onSubmit={(e) =>
@@ -734,7 +724,7 @@ export default function FinanceClient({
                                 Category
                                 <select name="category">
                                   {expenseCategories.map((value) => (
-                                    <option key={value}>{value}</option>
+                                    <option key={value} value={value}>{value === "OTHER"?"Other / not specified":financeWords(value)}</option>
                                   ))}
                                 </select>
                               </label>
@@ -744,7 +734,7 @@ export default function FinanceClient({
                           </form>
                         </details>
                         <details className={s.card}>
-                          <summary>Submit an expense</summary>
+                          <summary><FinanceIcon name="file"/> Submit an expense</summary>
                           <form
                             className={s.form}
                             onSubmit={(e) =>
@@ -767,7 +757,7 @@ export default function FinanceClient({
                                     ?.filter((b) => b.status === "APPROVED")
                                     .map((b) => (
                                       <option key={b.id} value={b.id}>
-                                        {b.year} · {b.category}
+                                        {b.year} · {financeWords(b.category)}
                                       </option>
                                     ))}
                                 </select>
@@ -788,10 +778,10 @@ export default function FinanceClient({
                         </details>
                       </div>
                     )}
-                  </>
+                  </div>
                 )}
                 {tab === "review" && (
-                  <>
+                  <div id="finance-panel-review">
                     {can("finance.policy.manage") && (
                       <FinanceStaff
                         key={schoolId}
@@ -800,7 +790,7 @@ export default function FinanceClient({
                       />
                     )}
                     <section className={s.card}>
-                      <h2>Independent review queue</h2>
+                      <h2 className={s.sectionTitle}><FinanceIcon name="review"/>Independent checks &amp; approvals</h2>
                       <p>
                         You cannot verify or approve records you prepared.
                         Confirm the independently held evidence before making a
@@ -833,10 +823,10 @@ export default function FinanceClient({
                                   {formatZar(row.amountMinor)}
                                 </legend>
                                 <Field
-                                  label="Checked private evidence reference"
+                                  label="Supporting document checked"
                                   name="evidence"
                                 />
-                                <Field label="Review reason" name="reason" />
+                                <Field label="Reason for decision" name="reason" />
                                 <label>
                                   Decision
                                   <select name="decision">
@@ -846,7 +836,7 @@ export default function FinanceClient({
                                     </option>
                                   </select>
                                 </label>
-                                <button>Save payment review</button>
+                                <button>Save receipt verification</button>
                               </fieldset>
                             </form>
                           ))}
@@ -857,7 +847,7 @@ export default function FinanceClient({
                             .map((b) => ({
                               ...b,
                               command: "REVIEW_BUDGET",
-                              label: `Budget ${b.year} · ${b.category}`,
+                              label: `Budget ${b.year} · ${financeWords(b.category)}`,
                             })),
                           ...(data.expenses ?? [])
                             .filter((e) => e.status === "SUBMITTED")
@@ -886,7 +876,7 @@ export default function FinanceClient({
                               }>
                                 <fieldset disabled={busy}>
                                   <label>
-                                    Review reason
+                                    Reason for decision
                                     <input name="reason" required maxLength={500} />
                                   </label>
                                   <label>
@@ -903,20 +893,19 @@ export default function FinanceClient({
                           ))}
                     </section>
                     <section className={s.card}>
-                      <h2>Ledger reconciliation</h2>
+                      <h2 className={s.sectionTitle}><FinanceIcon name="audit"/>Ledger reconciliation</h2>
                       <p>
-                        Periods use UTC record timestamps. Submission stores a
-                        fingerprint and totals of the period records. Approval
-                        requires unchanged records and independent review. This
-                        is not a bank reconciliation or a period close.
+                        Check invoices, verified receipts, allocations and approved expenses for a period.
+                        A different authorised person reviews each submission. Bank statement reconciliation is separate.
                       </p>
+                      <details className={s.details}><summary>What does this reconciliation cover?</summary><p>Periods use UTC record timestamps. Submission saves the period totals and a record fingerprint. Approval requires unchanged records. This checks the SpaceCase ledger; it does not close a bank period or confirm bank settlement.</p></details>
                       {data.reconciliations?.map((row) => (
                         <article className={s.review} key={row.id}>
                           <h3>
-                            {row.periodStart} – {row.periodEnd}
+                            {financeDateLabel(row.periodStart)} – {financeDateLabel(row.periodEnd)}
                           </h3>
                           <p>
-                            {row.status} · Revision {row.revision}
+                            <FinanceStatus value={row.status}/> · Revision {row.revision}
                             {row.evidenceReference
                               ? ` · Evidence: ${row.evidenceReference}`
                               : ""}
@@ -931,9 +920,8 @@ export default function FinanceClient({
                               {formatZar(row.snapshot.approvedExpensesMinor)}
                             </p>
                           )}
-                          {row.reviewReason && (
-                            <p>Review: {row.reviewReason}</p>
-                          )}
+                          {row.reviewReason && <p><strong>Review note:</strong> {row.reviewReason}</p>}
+                          {row.revision>1&&data.audit&&<button className={s.secondary} onClick={()=>{setAuditRecord(row.id);setTab("audit");document.getElementById("finance-sections")?.scrollIntoView({block:"start"});}}><FinanceIcon name="audit"/>Earlier revisions &amp; decisions</button>}
                           {row.status === "DRAFT" &&
                             row.preparedBy === data.personId &&
                             can("finance.reconciliation.prepare") && (
@@ -949,11 +937,11 @@ export default function FinanceClient({
                               >
                                 <fieldset disabled={busy}>
                                   <Field
-                                    label="Supporting reconciliation document reference"
+                                    label="Supporting reconciliation reference"
                                     name="evidence"
                                   />
                                   <button>
-                                    Submit snapshot for independent review
+                                    Submit reconciliation for review
                                   </button>
                                 </fieldset>
                               </form>
@@ -973,13 +961,13 @@ export default function FinanceClient({
                                 }
                               >
                                 <fieldset disabled={busy}>
-                                  <Field label="Review reason" name="reason" />
+                                  <Field label="Reason for decision" name="reason" />
                                   <label>
                                     Decision
                                     <select name="decision">
                                       <option value="REJECTED">Reject</option>
                                       <option value="APPROVED">
-                                        Approve checked snapshot
+                                        Approve checked reconciliation
                                       </option>
                                     </select>
                                   </label>
@@ -995,7 +983,7 @@ export default function FinanceClient({
                     </section>
                     {can("finance.reconciliation.prepare") && (
                       <details className={s.card}>
-                        <summary>Prepare a reconciliation period</summary>
+                        <summary><FinanceIcon name="audit"/> Prepare a reconciliation period</summary>
                         <form
                           className={s.form}
                           onSubmit={(e) =>
@@ -1023,10 +1011,10 @@ export default function FinanceClient({
                         </form>
                       </details>
                     )}
-                  </>
+                  </div>
                 )}
                 {tab === "audit" && data.audit && (
-                  <AuditHistory key={`${schoolId}-${data.account.id}`} schoolId={schoolId} accountId={data.account.id} schoolName={school.displayName} />
+                  <div id="finance-panel-audit"><AuditHistory key={`${schoolId}-${data.account.id}-${auditRecord}`} schoolId={schoolId} accountId={data.account.id} schoolName={school.displayName} initialRecordId={auditRecord}/></div>
                 )}
               </>
             )}

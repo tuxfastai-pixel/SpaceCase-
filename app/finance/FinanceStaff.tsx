@@ -6,6 +6,7 @@ import {
   type InvitationMessage,
 } from "../../platform/invitations/message";
 import s from "./finance.module.css";
+import {FinanceIcon} from "./FinanceUi";
 type Invite = {
   id: string;
   email: string;
@@ -129,7 +130,7 @@ export default function FinanceStaff({
   }
   return (
     <details className={s.card}>
-      <summary>Finance team access</summary>
+      <summary><FinanceIcon name="team"/> Finance team access</summary>
       <p>
         Only the current principal can invite finance staff. A finance officer
         prepares records; a finance manager can also verify another person’s

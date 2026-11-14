@@ -2,6 +2,8 @@
 import { useState, type FormEvent } from "react";
 import { feeCategories, randToMinor, splitInstalmentsForForm } from "./forms";
 import s from "./finance.module.css";
+import {financeWords} from "./presentation";
+import {FinanceIcon} from "./FinanceUi";
 type Learner = {
   personId: string;
   admissionNumber: string;
@@ -84,7 +86,7 @@ export default function InvoiceForm({
   }
   return (
     <details className={s.card}>
-      <summary>Issue a fee invoice</summary>
+      <summary><FinanceIcon name="file"/> Create a fee invoice</summary>
       <form className={s.form} onSubmit={(event) => void issue(event)}>
         <fieldset disabled={disabled || checking}>
           <label>
@@ -123,7 +125,7 @@ export default function InvoiceForm({
             Fee category
             <select name="category">
               {feeCategories.map((value) => (
-                <option key={value}>{value}</option>
+                <option key={value} value={value}>{financeWords(value)}</option>
               ))}
             </select>
           </label>
