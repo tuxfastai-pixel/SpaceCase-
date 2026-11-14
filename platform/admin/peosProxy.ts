@@ -1,4 +1,6 @@
+import { peosPreviewHeaders } from "../peos/previewHeaders";
 import {z} from "zod";
+import {headers as nextHeaders} from "next/headers";
 import { readServerEnvironment } from "../config/env";
 import { resolvePeosAuthorization } from "../session/peosAuthorization";
 
@@ -15,8 +17,9 @@ export async function peosProxy(request: Request, path: string, body?: unknown, 
   if (!authorization) return Response.json({ error: "UNAUTHENTICATED" }, { status: 401 });
   if (!env.PEOS_BASE_URL) return Response.json({ error: "PEOS_UNAVAILABLE" }, { status: 503 });
   try {
+    const deploymentToken = process.env.VERCEL_ENV === "preview" ? (await nextHeaders()).get("x-vercel-oidc-token") : null;
     const response = await fetch(new URL(path, env.PEOS_BASE_URL), {
-      method: request.method, headers: { authorization, accept: "application/json", "content-type": "application/json", ...extraHeaders },
+      method: request.method, headers: { authorization, accept: "application/json", "content-type": "application/json", ...extraHeaders, ...peosPreviewHeaders(deploymentToken) },
       body: body === undefined ? undefined : JSON.stringify(body), cache: "no-store", signal: AbortSignal.timeout(timeoutMs),
     });
     return Response.json(await response.json(), { status: response.status, headers: { "cache-control": "no-store" } });
@@ -27,7 +30,7 @@ export async function adminSchools(authorization: string, fetchImpl:typeof fetch
   const env = readServerEnvironment();
   if (!env.PEOS_BASE_URL) throw new Error("PEOS_UNAVAILABLE");
   const response = await fetchImpl(new URL("/v1/admin/schools", env.PEOS_BASE_URL), {
-    headers: { authorization }, cache: "no-store", signal: AbortSignal.timeout(10_000),
+    headers: { authorization, ...peosPreviewHeaders(null) }, cache: "no-store", signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) throw new Error("WORKSPACE_AUTHORITY_UNAVAILABLE");
   const data = z.object({schools:z.array(z.object({id:z.string().uuid(),displayName:z.string(),principal:z.boolean().default(false)}))}).parse(await response.json());

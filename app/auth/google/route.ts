@@ -1,3 +1,4 @@
+import {googleSignInEnabled} from "../../../platform/auth/googleSignInAvailability";
 import {NextResponse} from 'next/server';
 import {DELETE as revokeSession} from '../../api/v1/auth/session/route';
 import {authConfiguration,createAuthClient} from '../../../platform/auth/supabase';
@@ -5,6 +6,7 @@ import {beginGoogleSignIn} from '../../../platform/auth/beginGoogleSignIn';
 import {onboardingPath,onboardingCookie} from '../../../platform/auth/onboardingPath';
 import {boundedText} from '../../../platform/http/boundedText';
 export async function POST(request:Request){
+ if(!googleSignInEnabled())return new Response("Sign-in is temporarily unavailable. Please try again later.",{status:503,headers:{"cache-control":"no-store"}});
  const config=authConfiguration();
  if(request.headers.get('origin')!==config.origin)return new Response('Forbidden',{status:403});
  let path;try{const form=new URLSearchParams(await boundedText(request,512));if(form.getAll('onboarding').length>1)return new Response('Invalid starting path',{status:400});path=onboardingPath(form.get('onboarding')??'existing');if(!path)return new Response('Invalid starting path',{status:400});}catch{return new Response('Invalid starting path',{status:400});}

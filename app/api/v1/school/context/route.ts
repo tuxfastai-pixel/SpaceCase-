@@ -1,3 +1,4 @@
+import { peosPreviewHeaders } from "../../../../../platform/peos/previewHeaders";
 import { handleSchoolContextRequest } from "../../../../../domains/school-context/http";
 import { PostgresSchoolContextRepository } from "../../../../../domains/school-context/postgresRepository";
 import { readServerEnvironment } from "../../../../../platform/config/env";
@@ -19,8 +20,21 @@ export async function GET(request: Request): Promise<Response> {
     return Response.json({ error: "UNAUTHENTICATED" }, { status: 401 });
   }
 
-  const sessionResolver = new PeosSessionResolver(environment.PEOS_BASE_URL);
-  const peos = new HttpPeosGateway(environment.PEOS_BASE_URL, authorization);
+  const deploymentToken = process.env.VERCEL_ENV === "preview"
+    ? request.headers.get("x-vercel-oidc-token")
+    : null;
+  const trustedRequest = new Request(request, {
+    headers: new Headers(request.headers),
+  });
+  const trustedFetch: typeof fetch = (input, init) => fetch(input, {
+    ...init,
+    headers: {
+      ...Object.fromEntries(new Headers(init?.headers).entries()),
+      ...peosPreviewHeaders(deploymentToken),
+    },
+  });
+  const sessionResolver = new PeosSessionResolver(environment.PEOS_BASE_URL, trustedFetch);
+  const peos = new HttpPeosGateway(environment.PEOS_BASE_URL, authorization, trustedFetch);
   // Resolve PEOS authority before opening a product database connection. New
   // accounts can reach the welcome state even before a school workspace exists.
   const repository = {
@@ -29,7 +43,7 @@ export async function GET(request: Request): Promise<Response> {
   };
 
   try {
-    return await handleSchoolContextRequest(request, sessionResolver, peos, repository, environment.SPACECASE_WORKSPACE_MODE);
+    return await handleSchoolContextRequest(trustedRequest, sessionResolver, peos, repository, environment.SPACECASE_WORKSPACE_MODE);
   } catch (error) {
     // Never log connection strings, upstream response bodies or session tokens.
     const code = error && typeof error === "object" && "code" in error && typeof error.code === "string" && /^[A-Z0-9_]{2,40}$/.test(error.code) ? error.code : "UNKNOWN";

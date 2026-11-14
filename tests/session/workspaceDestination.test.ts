@@ -18,3 +18,9 @@ test('principal lands in school overview and founder remains the highest-priorit
  assert.equal(await workspaceDestination(async()=>({founder:true}),async()=>[{principal:true}]),'/founder');
  await assert.rejects(workspaceDestination(async()=>({founder:false}),async()=>{throw Error('lookup failed');}),/lookup failed/);
 });
+
+test('finance-only staff have their own destination without overriding leadership',async()=>{
+ assert.equal(await workspaceDestination(async()=>({founder:false}),async()=>[],async()=>[{}]),'/finance');
+ assert.equal(await workspaceDestination(async()=>({founder:false}),async()=>[{principal:true}],async()=>{throw Error('unused');}),'/principal');
+ assert.equal(await workspaceDestination(async()=>({founder:false}),async()=>[],async()=>{throw Error('finance authority unavailable');}),null);
+});

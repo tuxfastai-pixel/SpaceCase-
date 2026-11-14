@@ -1,3 +1,4 @@
+import { peosPreviewHeaders } from "../peos/previewHeaders";
 import { z } from "zod";
 
 import type { AuthenticatedSession, SessionResolver } from "./contracts";
@@ -21,6 +22,9 @@ export class PeosSessionResolver implements SessionResolver {
   async resolve(request: Request): Promise<AuthenticatedSession | null> {
     const authorization = resolvePeosAuthorization(request);
     if (!authorization) return null;
+    const deploymentToken = process.env.VERCEL_ENV === "preview"
+      ? request.headers.get("x-vercel-oidc-token")
+      : null;
 
     const response = await this.fetchImpl(
       new URL("/v1/sessions/introspect", this.baseUrl),
@@ -31,6 +35,7 @@ export class PeosSessionResolver implements SessionResolver {
         headers: {
           authorization,
           accept: "application/json",
+          ...peosPreviewHeaders(deploymentToken),
         },
       },
     );

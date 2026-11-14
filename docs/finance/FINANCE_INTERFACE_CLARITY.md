@@ -1,0 +1,15 @@
+# Finance workspace clarity — 14 November 2026
+
+## Failure analysis and scope
+The current screen exposes internal status/action codes, long forms, unfiltered audit identifiers and workspace links that some finance roles cannot use. The user requested familiar financial wording, labelled icons and straightforward navigation. This slice changes presentation and guided data entry while preserving service commands, permission checks, verification, ledger statuses, immutable amounts and audit/export contents. No new connection, migration, production activation or staff permission is introduced.
+
+## Experience
+- Five labelled navigation cards: Fees & receipts, Import receipts, Budgets & expenses, Review & reconcile, Audit trail. Icons complement text; no action is icon-only. Principal/administration links are shown only to the current policy-management authority.
+- Statement import is three steps: Choose statement, Match columns, Check and import. Source/file selection precedes explicit column confirmation, server preview and final import. File settings and format limits are available on demand. Suggested headings require a unique recognised match and can be changed; they grant no authority and do not verify receipts.
+- Receipt queue shows actionable entries first. Captured/excluded entries are grouped separately. Statuses use financial language: Awaiting capture, Check for duplicate, Captured in receipts, Excluded from capture. The intake REPORTED state deliberately does not imply a linked payment is verified or remains unverified; the actual register is authoritative for its current verification status.
+- Amounts, excluded rows and potential duplicates are summarised before commit. Source mapping/request schemas and duplicate protections remain unchanged. Confirmation gives the next action. Current browser draft survives tab changes; changing school clears the scoped component. Same-school record refresh preserves the mounted intake form; failed authority/network refresh clears visible financial records rather than assuming access.
+- Audit filters use labelled activity choices with advanced exact filters tucked away. Audit entries show human activity names, decisions, dates and reasons; exact actor/record IDs and timestamps remain available in expandable details. CSV output is unchanged. Authorised audit users can open a revised reconciliation's earlier decisions directly with its record filter. No officer audit permission is inferred.
+- Native SVG icons, 44px minimum controls, visible keyboard focus, colour plus text badges, mobile wrapping and reduced-motion support. Reconciliation record-ledger vs bank-statement reconciliation distinction and document-reference limitations remain explicit.
+
+## Acceptance
+Typecheck/lint, terminology invariants, ambiguous-header handling, UTC date display, complete existing PostgreSQL Finance/security regressions and production builds. Observe the actual deployed import steps, previous-file/back navigation, error correction, receipt queue, contextual revision audit, school/role boundaries and phone layout separately. UI-source or CI success alone is not a live human walkthrough.
