@@ -110,7 +110,7 @@ const workspace = z.object({
 });
 type Workspace = z.infer<typeof workspace>;
 const errorMessages: Record<string, string> = {
-  FINANCE_SERVICE_UNAVAILABLE: "Finance records are temporarily unavailable. Wait a moment, then select Refresh records. No financial action was submitted.",
+  FINANCE_SERVICE_UNAVAILABLE: "Finance records are temporarily unavailable. Wait a moment, then select Refresh records to check the latest state before trying again.",
   PEOS_UNAVAILABLE: "School access checks are temporarily unavailable. Wait a moment, then select Refresh records.",
   FINANCE_NOT_ENABLED:
     "School finance is awaiting activation. No records were changed.",
