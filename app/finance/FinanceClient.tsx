@@ -110,6 +110,8 @@ const workspace = z.object({
 });
 type Workspace = z.infer<typeof workspace>;
 const errorMessages: Record<string, string> = {
+  FINANCE_SERVICE_UNAVAILABLE: "Finance records are temporarily unavailable. Wait a moment, then select Refresh records. No financial action was submitted.",
+  PEOS_UNAVAILABLE: "School access checks are temporarily unavailable. Wait a moment, then select Refresh records.",
   FINANCE_NOT_ENABLED:
     "School finance is awaiting activation. No records were changed.",
   FINANCE_FORBIDDEN: "Your current school permission could not be confirmed.",
@@ -199,7 +201,7 @@ export default function FinanceClient({
     const controller = new AbortController();
     void fetch(`/api/finance/workspace?schoolId=${schoolId}`, {
       cache: "no-store",
-      signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
+      signal: AbortSignal.any([controller.signal, AbortSignal.timeout(45000)]),
     })
       .then(async (response) => {
         const body = await response.json();

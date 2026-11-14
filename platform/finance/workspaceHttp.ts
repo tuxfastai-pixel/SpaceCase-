@@ -48,6 +48,12 @@ export function financeFailure(error: unknown) {
       { error: "FINANCE_DUPLICATE_REFERENCE" },
       { status: 409, headers },
     );
+  // Log only a bounded classification: never raw errors, connection strings or records.
+  const code = (error as { code?: unknown })?.code;
+  const diagnostic = typeof code === "string" && ["ETIMEDOUT", "ECONNRESET", "ECONNREFUSED", "ENOTFOUND", "53300", "57P03"].includes(code)
+    ? code : error instanceof Error && /connection timeout|timeout exceeded when trying to connect/i.test(error.message)
+      ? "DB_CONNECTION_TIMEOUT" : "UNEXPECTED_FAILURE";
+  console.error("[finance-service-unavailable]", { diagnostic });
   return Response.json(
     { error: "FINANCE_SERVICE_UNAVAILABLE" },
     { status: 503, headers },
