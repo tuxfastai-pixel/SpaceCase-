@@ -228,7 +228,7 @@ export async function recordFinance(
         "FINANCE_PAYMENT_REVIEWED",
         "PAYMENT",
         input.paymentId,
-        { decision: input.decision },
+        { decision: input.decision, reason: input.reason },
       );
       return { id: input.paymentId };
     } else if (input.command === "BUDGET") {

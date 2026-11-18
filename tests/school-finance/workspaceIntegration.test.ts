@@ -19,6 +19,7 @@ import {
   reviewSchoolReconciliation,
 } from "../../domains/school-finance/reconciliationService";
 import { FinanceAuthorizationError } from "../../platform/finance/peosAuthorization";
+import { financeAuditCsv } from "../../domains/school-finance/auditHistoryContracts";
 import { SchoolFinanceError } from "../../domains/school-finance/money";
 
 test(
@@ -174,6 +175,11 @@ test(
         },
         principal,
       );
+      const paymentAudit = await pool.query<{metadata:{decision:string;reason:string}}>(
+        "SELECT metadata FROM school_finance.audit_events WHERE account_id=$1 AND resource_id=$2 AND action='FINANCE_PAYMENT_REVIEWED'",
+        [accountId,payment.id],
+      );
+      assert.deepEqual(paymentAudit.rows.map(row=>row.metadata),[{decision:'VERIFIED',reason:'Independently checked reference'}]);
       await assert.rejects(
         record(
           {
@@ -347,6 +353,10 @@ test(
       assert.equal(read.totals?.allocatedMinor, "10001");
       assert.equal(read.totals?.approvedExpensesMinor, "7000");
       assert.equal(read.invoices?.[0].instalments.length, 2);
+      const paymentReview = read.audit?.find(row=>row.action==='FINANCE_PAYMENT_REVIEWED'&&row.resourceId===payment.id);
+      assert.ok(paymentReview);
+      assert.equal(paymentReview.reason,'Independently checked reference');
+      assert.match(financeAuditCsv([{id:randomUUID(),...paymentReview}]),/"VERIFIED","Independently checked reference"/);
       const visibleReview = read.audit?.find(row => row.action === "FINANCE_EXPENSE_REVIEWED");
       assert.equal(visibleReview?.actorPersonId, principal);
       assert.equal(visibleReview?.decision, "APPROVED");
