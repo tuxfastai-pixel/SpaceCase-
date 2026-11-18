@@ -10,6 +10,7 @@ import PaymentIntake from "./PaymentIntake";
 import {FinanceIcon,FinanceStatus} from "./FinanceUi";
 import {financeSections,financeWords,financeDateLabel} from "./presentation";
 import AuditHistory from "./AuditHistory";
+import {submissionNotice,type SubmissionNotice} from "./submissionNotice";
 import {csvDownloadName} from "../../platform/downloads/filename";
 import ReportDateInput from "../reports/ReportDateInput";
 type School = { id: string; displayName: string; actions: FinanceAction[] };
@@ -182,10 +183,12 @@ export default function FinanceClient({
   const [schoolId, setSchoolId] = useState(initialSchool),
     [storedData, setData] = useState<Workspace | null>(null),
     [error, setError] = useState(""),
-    [notice, setNotice] = useState(""),
+    [notice, setNotice] = useState<SubmissionNotice|null>(null),
     [busy, setBusy] = useState(false),
     [refresh, setRefresh] = useState(0),
     [tab, setTab] = useState("accounts");
+  const [noticeJump,setNoticeJump]=useState(0);
+  useEffect(()=>{if(!noticeJump||!notice)return;const id=requestAnimationFrame(()=>{const target=document.getElementById(notice.anchor);target?.scrollIntoView({block:"start",behavior:"auto"});target?.focus({preventScroll:true});setNoticeJump(0);});return()=>cancelAnimationFrame(id);},[noticeJump,notice,tab]);
   const pending = useRef(false);
   const loadedSchool = useRef(initialSchool);
   const data = loadedSchool.current === schoolId ? storedData : null;
@@ -227,7 +230,7 @@ export default function FinanceClient({
     pending.current = true;
     setBusy(true);
     setError("");
-    setNotice("");
+    setNotice(null);
     try {
       const response = await fetch("/api/finance/workspace", {
         method: "POST",
@@ -245,6 +248,7 @@ export default function FinanceClient({
           errorMessages[body.error] ??
             "The record could not be saved. Check the entries and current access, then try again.",
         );
+      setNotice(submissionNotice(input));
       setRefresh((v) => v + 1);
       return true;
     } catch (reason) {
@@ -268,7 +272,7 @@ export default function FinanceClient({
     try {
       if (await save(build(new FormData(form)))) {
         form.reset();
-        setNotice("Saved. Refreshing the school records.");
+
       }
     } catch (reason) {
       setError(
@@ -344,6 +348,7 @@ export default function FinanceClient({
               onChange={(e) => {
                 setData(null);
                 setError("");
+                setNotice(null);
                 setSchoolId(e.target.value);
               }}
             >
@@ -377,7 +382,7 @@ export default function FinanceClient({
                 {error}
               </p>
             )}
-            {notice && <p role="status">{notice}</p>}
+            {notice && <aside className={s.submissionNotice} aria-label="Submission confirmation"><p role="status"><FinanceIcon name="check"/> {notice.message}</p><div className={s.actions}><button type="button" disabled={reloading||!data?.account} onClick={()=>{setTab(notice.tab);setNoticeJump(v=>v+1);}}>View {notice.location}<FinanceIcon name="next"/></button><button type="button" className={s.secondary} onClick={()=>setNotice(null)}>Dismiss</button></div>{reloading&&<small>Refreshing the latest records…</small>}</aside>}
             {!data && !error && (
               <p role="status">Checking current access and loading records…</p>
             )}
@@ -439,7 +444,7 @@ export default function FinanceClient({
                 {tab === "accounts" && (
                   <div id="finance-panel-accounts">
                     <section className={s.card}>
-                      <h2 className={s.sectionTitle}><FinanceIcon name="receipts"/>Fee invoices</h2>
+                      <h2 id="finance-fee-invoices" tabIndex={-1} className={s.sectionTitle}><FinanceIcon name="receipts"/>Fee invoices</h2>
                       <div className={s.toolbar}>
                         <button onClick={download}>
                           <FinanceIcon name="download"/>Download fee records (CSV)
@@ -511,7 +516,7 @@ export default function FinanceClient({
                       />
                     )}
                     <section className={s.card}>
-                      <h2 className={s.sectionTitle}><FinanceIcon name="receipts"/>Receipt register</h2>
+                      <h2 id="finance-receipt-register" tabIndex={-1} className={s.sectionTitle}><FinanceIcon name="receipts"/>Receipt register</h2>
                       <p>
                         Receipt references below are internal records. This
                         workspace does not collect money or issue tax invoices.
@@ -670,7 +675,7 @@ export default function FinanceClient({
                 {tab === "budgets" && (
                   <div id="finance-panel-budgets">
                     <section className={s.card}>
-                      <h2 className={s.sectionTitle}><FinanceIcon name="budget"/>Budgets &amp; expenditure</h2>
+                      <h2 id="finance-budgets" tabIndex={-1} className={s.sectionTitle}><FinanceIcon name="budget"/>Budgets &amp; expenditure</h2>
                       <p>
                         Approved expenditure records are commitments recorded
                         here; approval does not execute a bank payment. Salary
@@ -895,7 +900,7 @@ export default function FinanceClient({
                           ))}
                     </section>
                     <section className={s.card}>
-                      <h2 className={s.sectionTitle}><FinanceIcon name="audit"/>Ledger reconciliation</h2>
+                      <h2 id="finance-reconciliation" tabIndex={-1} className={s.sectionTitle}><FinanceIcon name="audit"/>Ledger reconciliation</h2>
                       <p>
                         Check invoices, verified receipts, allocations and approved expenses for a period.
                         A different authorised person reviews each submission. Bank statement reconciliation is separate.

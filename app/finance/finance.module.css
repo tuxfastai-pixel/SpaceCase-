@@ -326,3 +326,7 @@
 }
 @media(prefers-reduced-motion:reduce){.page button{transition:none;}}
 @media print{.steps,.actions,.queueTools{display:none;}.tabs{display:none;}.badge{color:#17353d;border:1px solid #aaa;}}
+
+.submissionNotice{position:fixed;bottom:1rem;right:1rem;z-index:100;width:min(42rem,calc(100vw - 2rem));box-sizing:border-box;padding:1rem 1.2rem;border:1px solid #9bc5b0;border-left:4px solid #237769;border-radius:.8rem;background:#f0faf4;color:#174b37;box-shadow:0 6px 28px #123d352b;max-height:45vh;overflow:auto;}
+.submissionNotice p{margin:0;}.submissionNotice .actions{margin-top:.6rem;}.page:has(.submissionNotice){padding-bottom:14rem;}.page h2[id]{scroll-margin-top:1rem;}
+@media print{.submissionNotice{display:none;}}
