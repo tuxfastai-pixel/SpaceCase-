@@ -6,14 +6,15 @@ import {formatZar} from './forms';
 import {FinanceIcon,FinanceStatus} from './FinanceUi';
 import {financeDateLabel,suggestedStatementMapping} from './presentation';
 import s from './finance.module.css';
+import {IntakeRequestError,intakeRequestError,intakeRequestTimeout} from './intakeRequest';
 const suggestion=z.object({invoiceNumber:z.string(),outstandingMinor:z.string(),amountFits:z.boolean()}).nullable();
 const item=z.object({id:z.string(),source:z.string(),date:z.string(),reference:z.string(),transactionId:z.string().nullable(),amountMinor:z.string(),status:z.enum(['READY','DUPLICATE_REVIEW','REPORTED','DISMISSED']),duplicateKind:z.string().nullable(),paymentId:z.string().nullable(),reviewReason:z.string().nullable(),suggestion});
 const mappingSchema=z.object({date:z.string(),reference:z.string(),amount:z.string(),transactionId:z.string().optional()});
 const queueSchema=z.object({rows:z.array(item),profiles:z.array(z.object({source:z.string(),mapping:mappingSchema,delimiter:z.enum([',',';','\t']),decimalSeparator:z.enum(['.',',']),headerSignature:z.string()})),counts:z.array(z.object({status:z.string(),count:z.number()})),nextCursor:z.string().nullable()});
 const previewSchema=z.object({received:z.number(),ignored:z.number(),errors:z.array(z.object({line:z.number(),message:z.string()})),previewDigest:z.string(),items:z.array(z.object({line:z.number(),date:z.string(),reference:z.string(),amountMinor:z.string(),status:z.string(),duplicateKind:z.string().nullable(),suggestion}))});
 type Mapping=z.infer<typeof mappingSchema>;
-const messages:Record<string,string>={PREVIEW_CHANGED_REVIEW_AGAIN:'The records changed. Preview this file again before importing.',VALID_CREDIT_ROWS_REQUIRED:'Correct the invalid rows and preview again. At least one positive incoming payment is required.',SOURCE_TRANSACTION_ID_MUST_BE_UNIQUE:'That transaction ID is already present. Correct the source or dismiss this duplicate; it cannot be treated as a different transaction.',PAYMENT_INTAKE_NOT_ENABLED:'Payment intake is not activated in this environment.',REVIEW_DUPLICATE_OR_DISMISSED_ITEM:'Resolve the duplicate before preparing a payment.',ITEM_ALREADY_PROCESSED:'This item has already been processed. Refresh the queue.'};
-async function read(response:Response){const body=await response.json();if(!response.ok)throw Error(messages[body.error]??'The request could not be completed. Check your access and refresh before trying again.');return body;}
+const messages:Record<string,string>={FINANCE_SERVICE_UNAVAILABLE:'The finance service is temporarily unavailable. Refresh the queue and check current records before trying again.',PEOS_UNAVAILABLE:'School access checks are temporarily unavailable. Wait a moment, then refresh the queue.',UNAUTHENTICATED:'Your session needs to be renewed. Sign in again before continuing.',FINANCE_FORBIDDEN:'Your current school permission could not be confirmed. Check that you are using the intended account.',PREVIEW_CHANGED_REVIEW_AGAIN:'The records changed. Preview this file again before importing.',VALID_CREDIT_ROWS_REQUIRED:'Correct the invalid rows and preview again. At least one positive incoming payment is required.',SOURCE_TRANSACTION_ID_MUST_BE_UNIQUE:'That transaction ID is already present. Correct the source or dismiss this duplicate; it cannot be treated as a different transaction.',PAYMENT_INTAKE_NOT_ENABLED:'Payment intake is not activated in this environment.',REVIEW_DUPLICATE_OR_DISMISSED_ITEM:'Resolve the duplicate before preparing a payment.',ITEM_ALREADY_PROCESSED:'This item has already been processed. Refresh the queue.'};
+async function read(response:Response){const body=await response.json();if(!response.ok)throw new IntakeRequestError(messages[body.error]??'The request could not be completed. Check your access and refresh before trying again.');return body;}
 export default function PaymentIntake({schoolId,accountId,canRecord,enabled,active=true,onReported}:{schoolId:string;accountId:string;canRecord:boolean;enabled:boolean;active?:boolean;onReported:()=>void}) {
  const [data,setData]=useState<z.infer<typeof queueSchema>|null>(null);
  const [csv,setCsv]=useState(''),[filename,setFilename]=useState(''),[headers,setHeaders]=useState<string[]>([]);
@@ -38,16 +39,16 @@ export default function PaymentIntake({schoolId,accountId,canRecord,enabled,acti
   if(!enabled||!active)return;
   const controller=new AbortController();setError('');
   const params=new URLSearchParams({schoolId,accountId});if(before)params.set('before',before);
-  void fetch(`/api/finance/intake?${params}`,{cache:'no-store',signal:AbortSignal.any([controller.signal,AbortSignal.timeout(15000)])})
+  void fetch(`/api/finance/intake?${params}`,{cache:'no-store',signal:AbortSignal.any([controller.signal,AbortSignal.timeout(intakeRequestTimeout.queue)])})
    .then(read).then(body=>{if(!controller.signal.aborted)setData(queueSchema.parse(body));})
-   .catch(e=>{if(!controller.signal.aborted){setData(null);setError(e instanceof Error?e.message:'The receipt queue could not be loaded.');}});
+   .catch(e=>{if(!controller.signal.aborted){setData(null);setError(intakeRequestError(e,'queue'));}});
   return ()=>controller.abort();
  },[schoolId,accountId,before,refresh,enabled,active]);
  async function send(command:Record<string,unknown>) {
   if(pending.current)return;pending.current=true;setBusy(true);setError('');setNotice('');
   const controller=new AbortController();post.current=controller;
   try {
-   const body=await read(await fetch('/api/finance/intake',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({schoolId,accountId,...command}),signal:AbortSignal.any([controller.signal,AbortSignal.timeout(30000)])}));
+   const body=await read(await fetch('/api/finance/intake',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({schoolId,accountId,...command}),signal:AbortSignal.any([controller.signal,AbortSignal.timeout(intakeRequestTimeout.command)])}));
    if(controller.signal.aborted)return;
    if(command.command==='PREVIEW'){setPreview(previewSchema.parse(body));setStep(3);}
    else {
@@ -58,7 +59,7 @@ export default function PaymentIntake({schoolId,accountId,canRecord,enabled,acti
     else setNotice(command.command==='DISMISS'?'Entry excluded from capture. Your reason is saved.':'Separate transaction confirmed. It is now available for receipt capture.');
     setRefresh(v=>v+1);
    }
-  }catch(e){if(!controller.signal.aborted)setError(e instanceof Error?e.message:'The request could not be completed.');}
+  }catch(e){if(!controller.signal.aborted)setError(intakeRequestError(e,command.command==='PREVIEW'?'preview':'write'));}
   finally{pending.current=false;if(!controller.signal.aborted)setBusy(false);}
  }
  function upload(){return {source,csv,delimiter,decimalSeparator:decimal,mapping:Object.fromEntries(Object.entries(mapping).filter(([,v])=>v))};}
