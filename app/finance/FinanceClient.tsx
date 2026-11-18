@@ -10,7 +10,7 @@ import PaymentIntake from "./PaymentIntake";
 import {FinanceIcon,FinanceStatus} from "./FinanceUi";
 import {financeSections,financeWords,financeDateLabel} from "./presentation";
 import AuditHistory from "./AuditHistory";
-import {submissionNotice,type SubmissionNotice} from "./submissionNotice";
+import {submissionNotice,submissionRecordId,type SubmissionNotice} from "./submissionNotice";
 import {csvDownloadName} from "../../platform/downloads/filename";
 import ReportDateInput from "../reports/ReportDateInput";
 type School = { id: string; displayName: string; actions: FinanceAction[] };
@@ -188,12 +188,21 @@ export default function FinanceClient({
     [refresh, setRefresh] = useState(0),
     [tab, setTab] = useState("accounts");
   const [noticeJump,setNoticeJump]=useState(0);
-  useEffect(()=>{if(!noticeJump||!notice)return;const id=requestAnimationFrame(()=>{const target=document.getElementById(notice.anchor);target?.scrollIntoView({block:"start",behavior:"auto"});target?.focus({preventScroll:true});setNoticeJump(0);});return()=>cancelAnimationFrame(id);},[noticeJump,notice,tab]);
+  useEffect(()=>{if(!noticeJump||!notice)return;const id=requestAnimationFrame(()=>{const target=(notice.recordId?document.getElementById(`finance-record-${notice.recordId}`):null)??document.getElementById(notice.anchor);target?.scrollIntoView({block:"start",behavior:"auto"});target?.focus({preventScroll:true});setNoticeJump(0);});return()=>cancelAnimationFrame(id);},[noticeJump,notice,tab]);
   const pending = useRef(false);
   const loadedSchool = useRef(initialSchool);
   const data = loadedSchool.current === schoolId ? storedData : null;
   const [reloading,setReloading] = useState(false);
   const [auditRecord,setAuditRecord] = useState("");
+  const [highlightVisit,setHighlightVisit]=useState(0);
+  useEffect(()=>{
+    if(!notice?.recordId||reloading||busy||!data)return;
+    const target=document.getElementById(`finance-record-${notice.recordId}`);
+    if(!target)return;
+    const frame=requestAnimationFrame(()=>{target.scrollIntoView({block:"center",behavior:"auto"});target.classList.add(s.recordHighlight);});
+    const timer=setTimeout(()=>target.classList.remove(s.recordHighlight),4500);
+    return()=>{cancelAnimationFrame(frame);clearTimeout(timer);target.classList.remove(s.recordHighlight);};
+  },[notice,reloading,busy,data,tab,highlightVisit]);
   const school = schools.find((row) => row.id === schoolId)!,
     can = (action: FinanceAction) => school.actions.includes(action);
   useEffect(() => {
@@ -248,7 +257,7 @@ export default function FinanceClient({
           errorMessages[body.error] ??
             "The record could not be saved. Check the entries and current access, then try again.",
         );
-      setNotice(submissionNotice(input));
+      setNotice({...submissionNotice(input),recordId:submissionRecordId(input,body)});
       setRefresh((v) => v + 1);
       return true;
     } catch (reason) {
@@ -382,7 +391,7 @@ export default function FinanceClient({
                 {error}
               </p>
             )}
-            {notice && <aside className={s.submissionNotice} aria-label="Submission confirmation"><p role="status"><FinanceIcon name="check"/> {notice.message}</p><div className={s.actions}><button type="button" disabled={reloading||!data?.account} onClick={()=>{setTab(notice.tab);setNoticeJump(v=>v+1);}}>View {notice.location}<FinanceIcon name="next"/></button><button type="button" className={s.secondary} onClick={()=>setNotice(null)}>Dismiss</button></div>{reloading&&<small>Refreshing the latest records…</small>}</aside>}
+            {notice && <aside className={s.submissionNotice} aria-label="Submission confirmation"><p role="status"><FinanceIcon name="check"/> {notice.message}</p><div className={s.actions}><button type="button" disabled={reloading||!data?.account} onClick={()=>{setTab(notice.tab);setNoticeJump(v=>v+1);setHighlightVisit(v=>v+1);}}>View {notice.location}<FinanceIcon name="next"/></button><button type="button" className={s.secondary} onClick={()=>setNotice(null)}>Dismiss</button></div>{reloading&&<small>Refreshing the latest records…</small>}</aside>}
             {!data && !error && (
               <p role="status">Checking current access and loading records…</p>
             )}
@@ -468,7 +477,7 @@ export default function FinanceClient({
                           </thead>
                           <tbody>
                             {data.invoices?.map((row) => (
-                              <tr key={row.id}>
+                              <tr key={row.id} id={`finance-record-${row.id}`} tabIndex={-1}>
                                 <td>
                                   {row.invoiceNumber}
                                   <small>{row.learnerId}</small>
@@ -535,7 +544,7 @@ export default function FinanceClient({
                           </thead>
                           <tbody>
                             {data.payments?.map((row) => (
-                              <tr key={row.id}>
+                              <tr key={row.id} id={`finance-record-${row.id}`} tabIndex={-1}>
                                 <td>
                                   {row.reference}
                                   <small>{row.evidenceReference}</small>
@@ -682,7 +691,7 @@ export default function FinanceClient({
                         expenditure is a category, not a payroll service.
                       </p>
                       {data.budgets?.map((row) => (
-                        <article className={s.row} key={row.id}>
+                        <article className={s.row} key={row.id} id={`finance-record-${row.id}`} tabIndex={-1}>
                           <strong>
                             {row.year} · {financeWords(row.category)}
                           </strong>
@@ -695,7 +704,7 @@ export default function FinanceClient({
                       ))}
                       {!data.budgets?.length && <p>No budgets recorded.</p>}
                       {data.expenses?.map((row) => (
-                        <article className={s.row} key={row.id}>
+                        <article className={s.row} key={row.id} id={`finance-record-${row.id}`} tabIndex={-1}>
                           <strong>
                             {row.reference} · {row.description}
                           </strong>
@@ -907,7 +916,7 @@ export default function FinanceClient({
                       </p>
                       <details className={s.details}><summary>What does this reconciliation cover?</summary><p>Periods use UTC record timestamps. Submission saves the period totals and a record fingerprint. Approval requires unchanged records. This checks the SpaceCase ledger; it does not close a bank period or confirm bank settlement.</p></details>
                       {data.reconciliations?.map((row) => (
-                        <article className={s.review} key={row.id}>
+                        <article className={s.review} key={row.id} id={`finance-record-${row.id}`} tabIndex={-1}>
                           <h3>
                             {financeDateLabel(row.periodStart)} – {financeDateLabel(row.periodEnd)}
                           </h3>

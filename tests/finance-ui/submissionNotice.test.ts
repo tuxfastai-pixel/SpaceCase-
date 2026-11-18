@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {submissionNotice} from '../../app/finance/submissionNotice';
+import {submissionNotice,submissionRecordId} from '../../app/finance/submissionNotice';
 test('invoice confirmation identifies the saved invoice and where to find it',()=>{
  const notice=submissionNotice({command:'INVOICE',invoiceNumber:'TEST-IMPORT-ALLOC-1'});
  assert.match(notice.message,/TEST-IMPORT-ALLOC-1 issued successfully/);
@@ -20,4 +20,13 @@ test('allocation success points to balances, without inventing full payment or s
  assert.match(notice.message,/updated allocated and outstanding amounts/);
  assert.doesNotMatch(notice.message,/fully paid|settled/i);
  assert.equal(notice.anchor,'finance-fee-invoices');
+});
+
+test('highlight locates the saved row, using the invoice rather than allocation ID',()=>{
+ const id='11111111-1111-4111-8111-111111111111',other='22222222-2222-4222-8222-222222222222';
+ assert.equal(submissionRecordId({command:'INVOICE'},{id}),id);
+ assert.equal(submissionRecordId({command:'ALLOCATE',invoiceId:id},{allocationId:other}),id);
+ assert.equal(submissionRecordId({command:'REVIEW_RECONCILIATION'},{reconciliationId:id}),id);
+ assert.equal(submissionRecordId({command:'INVOICE'},{id:'untrusted selector'}),undefined);
+ assert.equal(submissionRecordId({command:'INVOICE'},{}),undefined);
 });

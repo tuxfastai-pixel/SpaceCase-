@@ -1,4 +1,4 @@
-export type SubmissionNotice={message:string;location:string;tab:string;anchor:string};
+export type SubmissionNotice={message:string;location:string;tab:string;anchor:string;recordId?:string};
 /** Only call after the server acknowledges a successful command. */
 export function submissionNotice(input:Record<string,unknown>):SubmissionNotice{
  const invoices={location:'Fee invoices',tab:'accounts',anchor:'finance-fee-invoices'};
@@ -21,4 +21,10 @@ export function submissionNotice(input:Record<string,unknown>):SubmissionNotice{
   case 'INITIALIZE':return {...invoices,location:'Finance records',message:'School finance account set up successfully. Your Finance records are now available.'};
   default:return {...invoices,location:'Finance records',message:'Saved successfully. View the latest Finance records.'};
  }
+}
+
+/** Allocation responses identify the allocation, so locate its invoice instead. */
+export function submissionRecordId(input:Record<string,unknown>,result:Record<string,unknown>):string|undefined{
+ const id=input.command==='ALLOCATE'?input.invoiceId:result.reconciliationId??result.id;
+ return typeof id==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)?id:undefined;
 }
