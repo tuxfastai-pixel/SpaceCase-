@@ -104,6 +104,8 @@ export default function InvoiceForm({
           <button
             type="button"
             disabled={!reference.trim()}
+            data-guide-priority={reference.trim()&&!learner?"true":undefined}
+            data-guide-hint="Find and confirm the learner before issuing an invoice."
             onClick={() => void findLearner()}
           >
             Find learner

@@ -34,3 +34,10 @@ export function auditActionLabel(value:string){return ({
  FINANCE_IMPORT_PREVIEWED:'Statement preview checked',FINANCE_IMPORT_SAVED:'Statement imported',FINANCE_IMPORT_ITEM_REPORTED:'Statement entry captured as receipt',FINANCE_IMPORT_DISMISS:'Statement entry excluded',FINANCE_IMPORT_CONFIRM_DISTINCT:'Separate transaction confirmed',
  FINANCE_WORKSPACE_READ:'Finance records viewed',FINANCE_AUDIT_HISTORY_READ:'Audit trail viewed',FINANCE_AUDIT_HISTORY_EXPORTED:'Audit trail downloaded',FINANCE_ACCOUNT_INITIALIZED:'School finance account opened',
  } as Record<string,string>)[value]??financeWords(value);}
+
+export function statementFileIssue(headers:string[]):string|null{
+ const names=new Set(headers.map(h=>h.trim().toLowerCase()));
+ return ['event id','action','resource id','decision'].every(h=>names.has(h))
+  ? 'This is an audit-history file. Choose a payment statement CSV containing Date, Reference and Amount columns, with an optional Transaction ID.'
+  : null;
+}
