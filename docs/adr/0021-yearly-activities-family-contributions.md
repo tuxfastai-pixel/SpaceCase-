@@ -58,3 +58,11 @@ ACT-PAY-04: private proof upload/quarantine, staff queue, deduplication and rece
 ACT-PAY-05: statement snapshots and PEOS notification outbox/delivery; full synthetic activity → parent plan → proof → review → verification → allocation → statement walkthrough; provider/notification limits remain explicit.
 
 Rollout stays isolated Preview until role, retention, private-storage and operational walkthrough gates pass. No Production changes in this work. Existing Finance-home visual acceptance remains pending; this work does not close it.
+
+## ACT-PAY-02 initial staff implementation
+
+Saved register is initially inside Finance behind SPACECASE_ACTIVITY_REGISTER_ENABLED (off by default). It uses existing finance.transactions.read/record and finance.policy.manage authority, rechecked by the service. Distinct administrator/teacher activity permissions are not inferred. Staff publication only makes a record selectable for calculator estimates; it does not send a parent notification, issue charges or imply schoolwide financial approval.
+
+Calendars and activity/decision versions are append-only. Rejected and approved versions retain their original fields/reasons; edits are permitted only to the original preparer's draft/rejected activity. Approvals cannot be performed by its preparer even with Principal policy authority. Published records cannot be edited; cancellation preserves history, and a changed proposal must be separately created/reviewed. Calendar revisions do not rewrite existing activity references. Idempotency is scoped to account, request ID, actor and canonical validated payload; every retry still requires current permission. Account locking serializes request replay, calendar revision checks and competing reviews. No new broad database update privileges.
+
+Before enabling outside isolated Preview: run migration and restricted-runtime lifecycle tests, inspect actual flag/configuration, verify staff role flows and phone/keyboard experience. Subsequent family billing and charge linkage work must enforce charge-level idempotency and retain the activity version chosen by the parent.

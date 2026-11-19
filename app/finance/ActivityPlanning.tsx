@@ -3,17 +3,19 @@ import {useState,useEffect,useRef,type FormEvent} from 'react';
 import {activityBalances,distributeContribution,contributionSchedule,deadlineShortfalls,type ContributionMode} from '../../domains/school-activities/contributions';
 import {formatZar,randToMinor} from './forms';
 import {financeDateLabel} from './presentation';
+import type {ActivityDetails} from '../../domains/school-activities/registerContracts';
 import {FinanceIcon} from './FinanceUi';
 import s from './finance.module.css';
 type DraftActivity={id:string;title:string;deadline:string;amount:string;chosen:string};
 type Preview={distribution:ReturnType<typeof distributeContribution>;schedule:ReturnType<typeof contributionSchedule>;shortfalls:ReturnType<typeof deadlineShortfalls>;total:string;flexi:boolean};
-export default function ActivityPlanning(){
- const [events,setEvents]=useState<DraftActivity[]>([{id:'activity-1',title:'',deadline:'',amount:'',chosen:''}]);
- const [nextId,setNextId]=useState(2),[contribution,setContribution]=useState(''),[mode,setMode]=useState<ContributionMode>('EARLIEST');
+export default function ActivityPlanning({initialActivities=[]}:{initialActivities?:ActivityDetails[]}){
+ const [events,setEvents]=useState<DraftActivity[]>(()=>initialActivities.length?initialActivities.map((row,i)=>{const n=BigInt(row.amountMinor);return {id:`activity-${i+1}`,title:row.title,deadline:row.paymentDeadline,amount:`${n/100n}.${(n%100n).toString().padStart(2,'0')}`,chosen:''};}):[{id:'activity-1',title:'',deadline:'',amount:'',chosen:''}]);
+ const [nextId,setNextId]=useState(initialActivities.length+2),[contribution,setContribution]=useState(''),[mode,setMode]=useState<ContributionMode>('EARLIEST');
  const [flexi,setFlexi]=useState(false),[dates,setDates]=useState([{date:'',amount:''}]),[variable,setVariable]=useState(false);
  const previewRef=useRef<HTMLElement>(null);
  const [preview,setPreview]=useState<Preview|null>(null),[error,setError]=useState('');
  useEffect(()=>{if(!preview)return;const target=previewRef.current;target?.scrollIntoView({block:'start',behavior:'auto'});target?.focus({preventScroll:true});target?.classList.add(s.recordHighlight);const timer=setTimeout(()=>target?.classList.remove(s.recordHighlight),4500);return()=>{clearTimeout(timer);target?.classList.remove(s.recordHighlight);};},[preview]);
+ useEffect(()=>{if(initialActivities.length){const target=document.getElementById('activity-planning-title');target?.scrollIntoView({block:'start'});target?.focus({preventScroll:true});}},[initialActivities.length]);
  function clear(){setPreview(null);setError('');}
  function changeEvent(id:string,key:keyof Omit<DraftActivity,'id'>,value:string){clear();setEvents(rows=>rows.map(row=>row.id===id?{...row,[key]:value}:row));}
  function activities(){return events.map(row=>({id:row.id,title:row.title,deadline:row.deadline,amountMinor:randToMinor(row.amount),verifiedMinor:'0'}));}
@@ -26,7 +28,7 @@ export default function ActivityPlanning(){
   setPreview({distribution,schedule,shortfalls:deadlineShortfalls(distribution.rows,schedule),total,flexi});
  }catch(reason){setError(reason instanceof Error&&!['ZodError','SchoolFinanceError'].includes(reason.name)&&!/^([A-Z_]+)$/.test(reason.message)?reason.message:'Check the names, amounts and payment dates. Dates must be unique and in order.');}}
  return <section className={s.card} aria-labelledby='activity-planning-title'>
-  <h2 id='activity-planning-title'><FinanceIcon name='budget'/> Plan activity contributions</h2>
+  <h2 id='activity-planning-title' tabIndex={-1}><FinanceIcon name='budget'/> Plan activity contributions</h2>
   <p>Explore how a family could spread the cost of school activities.</p>
   <div className={s.softPanel}><strong>Planning preview</strong><p>Nothing here is saved to a parent account, charged or marked as paid. Use activity estimates only; parent commitments and payment-proof uploads are not connected yet.</p></div>
   <form onSubmit={calculate} data-guided-flow data-guide-step={preview?'preview':'choices'}>

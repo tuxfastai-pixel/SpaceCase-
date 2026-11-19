@@ -4,6 +4,8 @@ import { z } from "zod";
 import { expenseCategories, formatZar, randToMinor } from "./forms";
 import type { FinanceAction } from "../../platform/finance/peosAuthorization";
 import s from "./finance.module.css";
+import ActivityRegister from "./ActivityRegister";
+import type {ActivityDetails} from "../../domains/school-activities/registerContracts";
 import ActivityPlanning from "./ActivityPlanning";
 import FinanceOverview from "./FinanceOverview";
 import InvoiceForm from "./InvoiceForm";
@@ -175,12 +177,14 @@ export default function FinanceClient({
   enabled,
   directoryTruncated,
   intakeEnabled = false,
+  activityRegisterEnabled = false,
 }: {
   schools: School[];
   initialSchool: string;
   enabled: boolean;
   directoryTruncated: boolean;
   intakeEnabled?: boolean;
+  activityRegisterEnabled?: boolean;
 }) {
   const [schoolId, setSchoolId] = useState(initialSchool),
     [storedData, setData] = useState<Workspace | null>(null),
@@ -189,6 +193,7 @@ export default function FinanceClient({
     [busy, setBusy] = useState(false),
     [refresh, setRefresh] = useState(0),
     [tab, setTab] = useState("home");
+  const [activitySeed,setActivitySeed]=useState<ActivityDetails[]>([]),[activitySeedVisit,setActivitySeedVisit]=useState(0);
   const [noticeJump,setNoticeJump]=useState(0);
   useEffect(()=>{if(!noticeJump||!notice)return;const id=requestAnimationFrame(()=>{const target=(notice.recordId?document.getElementById(`finance-record-${notice.recordId}`):null)??document.getElementById(notice.anchor);target?.scrollIntoView({block:"start",behavior:"auto"});target?.focus({preventScroll:true});setNoticeJump(0);});return()=>cancelAnimationFrame(id);},[noticeJump,notice,tab]);
   const [destination,setDestination]=useState<string|null>(null);
@@ -364,6 +369,7 @@ export default function FinanceClient({
                 setError("");
                 setNotice(null);
                 setTab("home");
+                setActivitySeed([]);
                 setDestination(null);
                 setSchoolId(e.target.value);
               }}
@@ -461,7 +467,7 @@ export default function FinanceClient({
                   </p>
                 )}
                 <div id="finance-panel-intake" tabIndex={-1} hidden={tab !== "intake"}>{intakeEnabled&&<PaymentIntake key={`${schoolId}-${data.account.id}`} schoolId={schoolId} accountId={data.account.id} canRecord={can("finance.transactions.record")} enabled={intakeEnabled} active={tab === "intake"} onReported={()=>setRefresh(v=>v+1)}/>}</div>
-                {tab === "activities" && <div id="finance-panel-activities" tabIndex={-1}><ActivityPlanning key={schoolId}/></div>}
+                {tab === "activities" && <div id="finance-panel-activities" tabIndex={-1}>{activityRegisterEnabled&&<ActivityRegister key={schoolId} schoolId={schoolId} accountId={data.account.id} personId={data.personId} actions={school.actions} onExplore={rows=>{setActivitySeed(rows);setActivitySeedVisit(n=>n+1);}}/>}<ActivityPlanning key={`${schoolId}-${activitySeedVisit}`} initialActivities={activitySeed}/></div>}
                 {tab === "accounts" && (
                   <div id="finance-panel-accounts" tabIndex={-1}>
                     <section className={s.card}>
