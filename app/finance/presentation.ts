@@ -3,6 +3,7 @@ export const financeSections:{key:string;label:string;hint:string;icon:FinanceIc
  {key:'home',label:'Overview',hint:'Your tasks and next steps',icon:'home'},
  {key:'accounts',label:'Fees & receipts',hint:'Invoices, receipts and allocations',icon:'receipts'},
  {key:'intake',label:'Import receipts',hint:'Statement entries to review',icon:'import'},
+ {key:'activities',label:'Activity planning',hint:'Explore contribution plans',icon:'budget'},
  {key:'budgets',label:'Budgets & expenses',hint:'Plan and track expenditure',icon:'budget'},
  {key:'review',label:'Review & reconcile',hint:'Independent checks and approvals',icon:'review'},
  {key:'audit',label:'Audit trail',hint:'Decisions, reasons and downloads',icon:'audit'},

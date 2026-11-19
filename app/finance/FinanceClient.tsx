@@ -4,6 +4,7 @@ import { z } from "zod";
 import { expenseCategories, formatZar, randToMinor } from "./forms";
 import type { FinanceAction } from "../../platform/finance/peosAuthorization";
 import s from "./finance.module.css";
+import ActivityPlanning from "./ActivityPlanning";
 import FinanceOverview from "./FinanceOverview";
 import InvoiceForm from "./InvoiceForm";
 import FinanceStaff from "./FinanceStaff";
@@ -460,6 +461,7 @@ export default function FinanceClient({
                   </p>
                 )}
                 <div id="finance-panel-intake" tabIndex={-1} hidden={tab !== "intake"}>{intakeEnabled&&<PaymentIntake key={`${schoolId}-${data.account.id}`} schoolId={schoolId} accountId={data.account.id} canRecord={can("finance.transactions.record")} enabled={intakeEnabled} active={tab === "intake"} onReported={()=>setRefresh(v=>v+1)}/>}</div>
+                {tab === "activities" && <div id="finance-panel-activities" tabIndex={-1}><ActivityPlanning key={schoolId}/></div>}
                 {tab === "accounts" && (
                   <div id="finance-panel-accounts" tabIndex={-1}>
                     <section className={s.card}>
