@@ -336,3 +336,17 @@
 .recordHighlight>td{background:transparent!important;}
 @media(prefers-reduced-motion:reduce){.recordHighlight{animation:none;background-color:#e2f4e9;}}
 @media print{.recordHighlight{animation:none;outline:none;background:transparent;}}
+
+/* A predictable workspace menu, with a short task-first home. */
+.workspaceLayout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:1.3rem;align-items:start;margin-top:1.5rem;}
+.workspaceLayout>.tabs{position:sticky;top:1rem;display:flex;flex-direction:column;margin:0;padding:.65rem;border-radius:1rem;background:#e8efed;}
+.workspaceLayout>.tabs button{width:100%;min-height:68px;}
+.workspaceBody{min-width:0;}.workspaceBody>div{scroll-margin-top:1rem;}.workspaceBody .card:first-child{margin-top:0;}
+.welcome{padding:1.5rem;background:#e5f1eb;border:1px solid #c9dfd5;border-radius:1rem;}.welcome h2{font-size:1.65rem;margin:.3rem 0;}.welcome p{margin:.4rem 0 1rem;}
+.taskGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.7rem;}.taskGrid button{text-align:left;justify-content:flex-start;align-items:start;padding:1rem;}.taskGrid button span{flex:1;}.taskGrid button small{color:inherit;font-weight:400;line-height:1.5;opacity:.9;}
+.overviewColumns{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:1rem;margin-top:1rem;}.overviewColumns>.card{margin:0 0 1rem;}
+.taskRow{display:flex;align-items:start;justify-content:space-between;gap:1rem;padding:1rem 0;border-top:1px solid #dce7e3;}.taskRow p{font-size:.85rem;color:#47636f;margin:.4rem 0;}.taskRow button{flex:none;}
+.overviewList{list-style:none;padding:0;}.overviewList li{display:flex;gap:1rem;justify-content:space-between;border-bottom:1px solid #dce7e3;padding:.7rem 0;margin:0;}.overviewList strong,.overviewList time{flex:none;font-size:.85rem;}.overviewList span{overflow-wrap:anywhere;}
+@media(max-width:950px){.workspaceLayout{grid-template-columns:1fr;}.workspaceLayout>.tabs{position:static;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));}.overviewColumns{grid-template-columns:1fr;}}
+@media(max-width:600px){.workspaceLayout>.tabs{grid-template-columns:repeat(2,minmax(0,1fr));}.workspaceLayout>.tabs button:last-child:nth-child(odd){grid-column:auto;}.welcome{padding:1rem;}.taskGrid{grid-template-columns:1fr;}.taskRow{flex-wrap:wrap;}.overviewList li{flex-wrap:wrap;}}
+@media print{.workspaceLayout{display:block;}.workspaceLayout>.tabs,.welcome,.taskRow button{display:none;}.overviewColumns{display:block;}}

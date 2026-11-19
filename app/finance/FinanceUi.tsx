@@ -2,6 +2,7 @@ import type {FinanceIconName} from './presentation';
 import {financeStatus} from './presentation';
 import s from './finance.module.css';
 const paths:Record<FinanceIconName,string>={
+ home:'m3 10 9-7 9 7v11h-6v-7H9v7H3V10Z',
  receipts:'M6 3h12v18l-3-2-3 2-3-2-3 2V3Zm3 4h6M9 11h6M9 15h3',
  import:'M12 3v12m-4-4 4 4 4-4M4 15v5h16v-5',
  budget:'M3 7h18v13H3V7Zm0 4h18M7 3v4m10-4v4M7 15h3m4 0h3',

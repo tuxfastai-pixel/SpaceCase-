@@ -4,6 +4,7 @@ import { z } from "zod";
 import { expenseCategories, formatZar, randToMinor } from "./forms";
 import type { FinanceAction } from "../../platform/finance/peosAuthorization";
 import s from "./finance.module.css";
+import FinanceOverview from "./FinanceOverview";
 import InvoiceForm from "./InvoiceForm";
 import FinanceStaff from "./FinanceStaff";
 import PaymentIntake from "./PaymentIntake";
@@ -186,9 +187,12 @@ export default function FinanceClient({
     [notice, setNotice] = useState<SubmissionNotice|null>(null),
     [busy, setBusy] = useState(false),
     [refresh, setRefresh] = useState(0),
-    [tab, setTab] = useState("accounts");
+    [tab, setTab] = useState("home");
   const [noticeJump,setNoticeJump]=useState(0);
   useEffect(()=>{if(!noticeJump||!notice)return;const id=requestAnimationFrame(()=>{const target=(notice.recordId?document.getElementById(`finance-record-${notice.recordId}`):null)??document.getElementById(notice.anchor);target?.scrollIntoView({block:"start",behavior:"auto"});target?.focus({preventScroll:true});setNoticeJump(0);});return()=>cancelAnimationFrame(id);},[noticeJump,notice,tab]);
+  const [destination,setDestination]=useState<string|null>(null);
+  function openSection(section:string,anchor?:string){setTab(section);if(section==='audit')setAuditRecord('');setDestination(anchor??`finance-panel-${section}`);}
+  useEffect(()=>{if(!destination)return;const frame=requestAnimationFrame(()=>{const target=document.getElementById(destination);if(target instanceof HTMLDetailsElement)target.open=true;if(destination==='finance-create-invoice'){const details=target?.querySelector('details');if(details)details.open=true;}target?.scrollIntoView({block:'start',behavior:'auto'});target?.focus({preventScroll:true});setDestination(null);});return()=>cancelAnimationFrame(frame);},[destination,tab]);
   const pending = useRef(false);
   const loadedSchool = useRef(initialSchool);
   const data = loadedSchool.current === schoolId ? storedData : null;
@@ -358,6 +362,8 @@ export default function FinanceClient({
                 setData(null);
                 setError("");
                 setNotice(null);
+                setTab("home");
+                setDestination(null);
                 setSchoolId(e.target.value);
               }}
             >
@@ -419,7 +425,17 @@ export default function FinanceClient({
                   Amounts are in rand. Captured receipts need independent verification before allocation.
                   Keep supporting documents in your approved records; document references here do not upload or validate them.
                 </p>
-                {data.totals && (
+                <div className={s.workspaceLayout}>
+                <nav id="finance-sections" className={s.tabs} aria-label="Finance sections">
+                  {financeSections.filter(section=>section.key!=="intake"||intakeEnabled).filter(section=>section.key!=="audit"||Boolean(data.audit)).map(({key,label,hint,icon})=>(
+                    <button key={key} aria-pressed={tab===key} aria-controls={tab===key?`finance-panel-${key}`:undefined} onClick={()=>openSection(key)}>
+                      <FinanceIcon name={icon}/><span>{label}<small>{hint}</small></span>
+                    </button>
+                  ))}
+                </nav>
+                <div className={s.workspaceBody}>
+                {tab==='home'&&<FinanceOverview actions={school.actions} personId={data.personId} intakeEnabled={intakeEnabled} truncated={data.truncated} invoices={data.invoices} payments={data.payments} audit={data.audit} open={openSection}/>}
+                {tab==='home'&&data.totals&&<details className={s.card}><summary>School totals</summary>                {data.totals && (
                   <section className={s.metrics} aria-label="School totals">
                     {Object.entries({
                       Invoiced: data.totals.invoicedMinor,
@@ -435,13 +451,7 @@ export default function FinanceClient({
                     ))}
                   </section>
                 )}
-                <nav id="finance-sections" className={s.tabs} aria-label="Finance sections">
-                  {financeSections.filter(section=>section.key!=="intake"||intakeEnabled).filter(section=>section.key!=="audit"||Boolean(data.audit)).map(({key,label,hint,icon})=>(
-                    <button key={key} aria-pressed={tab===key} aria-controls={tab===key?`finance-panel-${key}`:undefined} onClick={()=>{setTab(key);if(key==="audit")setAuditRecord("");}}>
-                      <FinanceIcon name={icon}/><span>{label}<small>{hint}</small></span>
-                    </button>
-                  ))}
-                </nav>
+</details>}
                 {data.truncated && (
                   <p className={s.note}>
                     Lists show the latest 100 records per category. School
@@ -449,9 +459,9 @@ export default function FinanceClient({
                     invoices only.
                   </p>
                 )}
-                <div id="finance-panel-intake" hidden={tab !== "intake"}>{intakeEnabled&&<PaymentIntake key={`${schoolId}-${data.account.id}`} schoolId={schoolId} accountId={data.account.id} canRecord={can("finance.transactions.record")} enabled={intakeEnabled} active={tab === "intake"} onReported={()=>setRefresh(v=>v+1)}/>}</div>
+                <div id="finance-panel-intake" tabIndex={-1} hidden={tab !== "intake"}>{intakeEnabled&&<PaymentIntake key={`${schoolId}-${data.account.id}`} schoolId={schoolId} accountId={data.account.id} canRecord={can("finance.transactions.record")} enabled={intakeEnabled} active={tab === "intake"} onReported={()=>setRefresh(v=>v+1)}/>}</div>
                 {tab === "accounts" && (
-                  <div id="finance-panel-accounts">
+                  <div id="finance-panel-accounts" tabIndex={-1}>
                     <section className={s.card}>
                       <h2 id="finance-fee-invoices" tabIndex={-1} className={s.sectionTitle}><FinanceIcon name="receipts"/>Fee invoices</h2>
                       <div className={s.toolbar}>
@@ -516,13 +526,13 @@ export default function FinanceClient({
                       </div>
                     </section>
                     {can("finance.transactions.record") && (
-                      <InvoiceForm
+                      <div id="finance-create-invoice" tabIndex={-1}><InvoiceForm
                         key={schoolId}
                         schoolId={schoolId}
                         disabled={Boolean(formsDisabled)}
                         save={save}
                         onError={setError}
-                      />
+                      /></div>
                     )}
                     <section className={s.card}>
                       <h2 id="finance-receipt-register" tabIndex={-1} className={s.sectionTitle}><FinanceIcon name="receipts"/>Receipt register</h2>
@@ -606,7 +616,7 @@ export default function FinanceClient({
                             </fieldset>
                           </form>
                         </details>
-                        <details className={s.card}>
+                        <details className={s.card} id="finance-allocate-receipt" tabIndex={-1}>
                           <summary>
                             <FinanceIcon name="check"/> Allocate a verified receipt
                           </summary>
@@ -682,7 +692,7 @@ export default function FinanceClient({
                   </div>
                 )}
                 {tab === "budgets" && (
-                  <div id="finance-panel-budgets">
+                  <div id="finance-panel-budgets" tabIndex={-1}>
                     <section className={s.card}>
                       <h2 id="finance-budgets" tabIndex={-1} className={s.sectionTitle}><FinanceIcon name="budget"/>Budgets &amp; expenditure</h2>
                       <p>
@@ -797,7 +807,7 @@ export default function FinanceClient({
                   </div>
                 )}
                 {tab === "review" && (
-                  <div id="finance-panel-review">
+                  <div id="finance-panel-review" tabIndex={-1}>
                     {can("finance.policy.manage") && (
                       <FinanceStaff
                         key={schoolId}
@@ -806,7 +816,7 @@ export default function FinanceClient({
                       />
                     )}
                     <section className={s.card}>
-                      <h2 className={s.sectionTitle}><FinanceIcon name="review"/>Independent checks &amp; approvals</h2>
+                      <h2 id="finance-independent-review" tabIndex={-1} className={s.sectionTitle}><FinanceIcon name="review"/>Independent checks &amp; approvals</h2>
                       <p>
                         You cannot verify or approve records you prepared.
                         Confirm the independently held evidence before making a
@@ -1030,8 +1040,9 @@ export default function FinanceClient({
                   </div>
                 )}
                 {tab === "audit" && data.audit && (
-                  <div id="finance-panel-audit"><AuditHistory key={`${schoolId}-${data.account.id}-${auditRecord}`} schoolId={schoolId} accountId={data.account.id} schoolName={school.displayName} initialRecordId={auditRecord}/></div>
+                  <div id="finance-panel-audit" tabIndex={-1}><AuditHistory key={`${schoolId}-${data.account.id}-${auditRecord}`} schoolId={schoolId} accountId={data.account.id} schoolName={school.displayName} initialRecordId={auditRecord}/></div>
                 )}
+                </div></div>
               </>
             )}
           </>

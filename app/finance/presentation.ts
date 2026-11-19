@@ -1,5 +1,6 @@
-export type FinanceIconName='receipts'|'import'|'budget'|'review'|'audit'|'refresh'|'download'|'print'|'check'|'help'|'back'|'next'|'file'|'team'|'exit'|'warning'|'search';
+export type FinanceIconName='home'|'receipts'|'import'|'budget'|'review'|'audit'|'refresh'|'download'|'print'|'check'|'help'|'back'|'next'|'file'|'team'|'exit'|'warning'|'search';
 export const financeSections:{key:string;label:string;hint:string;icon:FinanceIconName}[]=[
+ {key:'home',label:'Overview',hint:'Your tasks and next steps',icon:'home'},
  {key:'accounts',label:'Fees & receipts',hint:'Invoices, receipts and allocations',icon:'receipts'},
  {key:'intake',label:'Import receipts',hint:'Statement entries to review',icon:'import'},
  {key:'budgets',label:'Budgets & expenses',hint:'Plan and track expenditure',icon:'budget'},
