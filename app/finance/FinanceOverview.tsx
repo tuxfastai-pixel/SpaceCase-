@@ -14,7 +14,7 @@ type Props={
 export default function FinanceOverview({actions,personId,intakeEnabled,truncated,invoices,payments,audit,open}:Props){
  const can=(action:FinanceAction)=>actions.includes(action);
  const {awaiting,reviewable,available,outstanding}=financeOverview(invoices,payments,personId);
- return <div id='finance-panel-home'>
+ return <div id='finance-panel-home' tabIndex={-1}>
   <section className={s.welcome} aria-labelledby='finance-overview-title'>
    <p className={s.eyebrow}>Your finance workspace</p><h2 id='finance-overview-title' tabIndex={-1}>What would you like to do?</h2>
    <p>Start a task below, or use the menu to find your records.</p>
