@@ -15,7 +15,8 @@ export const familyPlanChoice=z.object({
  flexiDeadlineAcknowledged:z.boolean(),agreementChecked:z.literal(true),
 }).strict().refine(v=>new Set(v.selections.map(r=>r.chargeId)).size===v.selections.length,'Choose each activity once');
 export type FamilyPlanChoice=z.infer<typeof familyPlanChoice>;
-const sourceCharge=z.object({chargeId:uuid,activityId:uuid,activityRevision:z.number().int().positive(),invoiceId:uuid,invoiceNumber:z.string().min(1).max(160),title:z.string().min(1).max(160),deadline:financeDate,amountMinor:cents,allocatedMinor:cents}).strict();
+export const familyPlanDraft=familyPlanChoice.innerType().omit({agreementChecked:true});
+export const sourceCharge=z.object({chargeId:uuid,activityId:uuid,activityRevision:z.number().int().positive(),invoiceId:uuid,invoiceNumber:z.string().min(1).max(160),title:z.string().min(1).max(160),deadline:financeDate,amountMinor:cents,allocatedMinor:cents}).strict();
 export type FamilyPlanCharge=z.infer<typeof sourceCharge>;
 export class FamilyPlanError extends Error{}
 function fail(code:string):never{throw new FamilyPlanError(code);}
@@ -54,13 +55,19 @@ export function buildFamilyPlan(input:FamilyPlanChoice,source:{calendarId:string
   if(choice.firstDueDate||!choice.instalments?.length)fail('PLAN_DATES_UNAVAILABLE');
   const dates=scheduleDates.parse(choice.instalments.map(p=>p.dueDate));
   if(dates.some(d=>d<source.today||d<policy.start||d>policy.end))fail('PLAN_DATES_UNAVAILABLE');
-  instalments=contributionSchedule(total.toString(),dates,choice.instalments.map(p=>p.amountMinor));
+  try{instalments=contributionSchedule(total.toString(),dates,choice.instalments.map(p=>p.amountMinor));}catch{fail('PLAN_INSTALMENT_TOTAL_INVALID');}
  }else{
   if(!choice.firstDueDate||choice.instalments)fail('PLAN_DATES_UNAVAILABLE');
-  instalments=contributionSchedule(total.toString(),approvedPlanDates(policy,choice.option,choice.firstDueDate,source.today));
+  const dates=approvedPlanDates(policy,choice.option,choice.firstDueDate,source.today);
+  try{instalments=contributionSchedule(total.toString(),dates);}catch{fail('PLAN_TOO_MANY_INSTALMENTS');}
  }
  if(instalments.some(p=>minorUnits(p.amountMinor)<minorUnits(policy.minimumMinor)))fail('PLAN_BELOW_SCHOOL_MINIMUM');
  const shortfalls=deadlineShortfalls(charges.map(c=>({deadline:c.deadline,remainingMinor:c.outstandingMinor})),instalments);
  if(shortfalls.length&&choice.option!=='FLEXI')fail('PLAN_MISSES_ACTIVITY_DEADLINE');
  return {version:'family-activity-plan-v1' as const,currency:'ZAR' as const,calendarId:source.calendarId,policy:structuredClone(policy),charges,option:choice.option,totalOutstandingMinor:total.toString(),instalments,shortfalls,flexiDeadlineAcknowledged:choice.flexiDeadlineAcknowledged};
 }
+
+export const familyPlanSnapshot=z.object({version:z.literal('family-activity-plan-v1'),currency:z.literal('ZAR'),calendarId:uuid,policy:calendarPolicy,charges:z.array(sourceCharge.extend({outstandingMinor:cents})).min(1).max(100),option:z.enum(paymentOptions),totalOutstandingMinor:cents,instalments:z.array(z.object({dueDate:financeDate,amountMinor:cents}).strict()).max(60),shortfalls:z.array(z.object({deadline:financeDate,shortfallMinor:cents}).strict()).max(100),flexiDeadlineAcknowledged:z.boolean()}).strict();
+export const familyPlanRecord=z.object({id:uuid,revision:z.number().int().positive(),year:z.number().int(),acceptedAt:z.string(),snapshot:familyPlanSnapshot}).strict();
+export const familyPlanDirectory=z.object({today:financeDate,calendars:z.array(z.object({calendarId:uuid,year:z.number().int(),policy:calendarPolicy,charges:z.array(sourceCharge).max(100),revision:z.number().int().min(0)}).strict()).max(100),plans:z.array(familyPlanRecord).max(100),truncated:z.boolean()}).strict();
+export const familyPlanReview=z.object({snapshot:familyPlanSnapshot,reviewDigest:z.string().regex(/^[a-f0-9]{64}$/)}).strict();

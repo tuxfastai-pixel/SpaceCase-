@@ -2,7 +2,8 @@ import {test} from 'node:test';import assert from 'node:assert/strict';import {r
 import {initializeFinance,type FinanceAuthority} from '../../domains/school-finance/workspaceService';
 import {writeActivityRegister} from '../../domains/school-activities/registerService';
 import {registerCommand} from '../../domains/school-activities/registerContracts';
-import {linkActivityCharge,acceptFamilyActivityPlan} from '../../domains/school-activities/familyPlanService';
+import {linkActivityCharge,acceptFamilyActivityPlan,previewFamilyActivityPlan,readFamilyActivityPlans,readActivityChargeLinks} from '../../domains/school-activities/familyPlanService';
+import {familyPlanDirectory,familyPlanReview} from '../../domains/school-activities/familyPlan';
 import type {FamilyPlanChoice} from '../../domains/school-activities/familyPlan';
 import type {FamilyBillingDecision} from '../../platform/family/billingContracts';
 import {samplePolicy} from './fixtures';
@@ -34,7 +35,18 @@ test('family plan persistence serializes retries, locks scope, preserves revisio
   await assert.rejects(acceptFamilyActivityPlan(pool,grantId,input,async()=>({...await authorize(),action:'family.finance.read'})),/FAMILY_BILLING_FORBIDDEN/);
   let calls=0;await assert.rejects(acceptFamilyActivityPlan(pool,grantId,input,async()=>{if(++calls>1)throw Error('permission revoked');return authorize();}),/permission revoked/);
   assert.equal((await pool.query('SELECT count(*)::int AS n FROM school_finance.family_activity_plans WHERE account_id=$1',[accountId])).rows[0].n,0);
-  const [one,two]=await Promise.all([acceptFamilyActivityPlan(pool,grantId,input,authorize),acceptFamilyActivityPlan(pool,grantId,input,authorize)]);assert.deepEqual(one,two);
+  const readAuthorize=async():Promise<FamilyBillingDecision>=>({...await authorize(),action:'family.finance.read'});
+  const offer=familyPlanReview.parse(await previewFamilyActivityPlan(pool,grantId,input,authorize));assert.equal(offer.snapshot.totalOutstandingMinor,'35000');
+  await assert.rejects(acceptFamilyActivityPlan(pool,grantId,input,authorize,'0'.repeat(64)),/PLAN_REVIEW_CHANGED/);
+  const before=familyPlanDirectory.parse(await readFamilyActivityPlans(pool,grantId,readAuthorize));assert.equal(before.calendars[0].charges[0].chargeId,linked.id);assert.equal(before.plans.length,0);
+  assert.deepEqual(await readFamilyActivityPlans(pool,grantId,readAuthorize,input.requestId),{status:'NOT_FOUND'});
+  const [one,two]=await Promise.all([acceptFamilyActivityPlan(pool,grantId,input,authorize,offer.reviewDigest),acceptFamilyActivityPlan(pool,grantId,input,authorize,offer.reviewDigest)]);assert.deepEqual(one,two);
+  assert.deepEqual(await readFamilyActivityPlans(pool,grantId,readAuthorize,input.requestId),{status:'SAVED',...one});
+  const visible=familyPlanDirectory.parse(await readFamilyActivityPlans(pool,grantId,readAuthorize));assert.equal(visible.plans[0].id,one.id);for(const secret of ['actor_person_id','actorPersonId','grant_id','request_id','digest'])assert.equal(JSON.stringify(visible).includes(secret),false);
+  const otherLearner=randomUUID();const other=async():Promise<FamilyBillingDecision>=>({...await readAuthorize(),learnerPersonId:otherLearner});const hidden=familyPlanDirectory.parse(await readFamilyActivityPlans(pool,grantId,other));assert.equal(hidden.plans.length,0);assert.equal(hidden.calendars.length,0);
+  const otherParent=randomUUID();assert.deepEqual(await readFamilyActivityPlans(pool,grantId,async()=>({...await readAuthorize(),personId:otherParent}),input.requestId),{status:'NOT_FOUND'});
+  let revokedReads=0;await assert.rejects(readFamilyActivityPlans(pool,grantId,async()=>{if(++revokedReads>1)throw Error('read revoked');return readAuthorize();}),/read revoked/);
+  assert.equal((await readActivityChargeLinks(pool,scope(),authority(officer))).links[0].id,linked.id);
   await assert.rejects(acceptFamilyActivityPlan(pool,grantId,{...input,expectedRevision:1},authorize),/PLAN_REQUEST_CONFLICT/);
   await assert.rejects(acceptFamilyActivityPlan(pool,grantId,{...input,requestId:randomUUID()},authorize),/PLAN_REVISION_CHANGED/);
   const revised={...input,requestId:randomUUID(),expectedRevision:1};const outcomes=await Promise.allSettled([acceptFamilyActivityPlan(pool,grantId,revised,authorize),acceptFamilyActivityPlan(pool,grantId,{...revised,requestId:randomUUID()},authorize)]);assert.equal(outcomes.filter(r=>r.status==='fulfilled').length,1);
@@ -50,6 +62,7 @@ test('family plan persistence serializes retries, locks scope, preserves revisio
   assert.deepEqual(await acceptFamilyActivityPlan(pool,grantId,input,authorize),one);
   await write({command:'CANCEL_ACTIVITY',activityId:activity.id,revision:activity.revision,reason:'Cancelled test'},principal);
   await assert.rejects(acceptFamilyActivityPlan(pool,grantId,{...input,requestId:randomUUID(),expectedRevision:3},authorize),/PLAN_ACTIVITY_UNAVAILABLE/);
+  const history=familyPlanDirectory.parse(await readFamilyActivityPlans(pool,grantId,readAuthorize));assert.equal(history.calendars.length,0);assert.deepEqual(history.plans.map(p=>p.revision),[3,2,1]);
   assert.equal((await pool.query('SELECT snapshot FROM school_finance.family_activity_plans WHERE id=$1',[one.id])).rows[0].snapshot.policy.label,policy.label);
   assert.equal((await pool.query('SELECT count(*)::int AS n FROM school_finance.payments WHERE account_id=$1',[accountId])).rows[0].n,0);
   assert.equal((await pool.query('SELECT count(*)::int AS n FROM school_finance.allocations WHERE account_id=$1',[accountId])).rows[0].n,0);

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { currentSession } from "../../platform/auth/currentSession";
 import { PEOS_SESSION_COOKIE } from "../../platform/session/peosAuthorization";
 import { financeSchools } from "../../platform/finance/peosAuthorization";
+import {familyPlansEnabled} from "../../platform/family/activityPlanHttp";
 import FinanceClient from "./FinanceClient";
 export const metadata = { title: "School finance | SpaceCase" };
 export const dynamic = "force-dynamic";
@@ -69,6 +70,7 @@ export default async function Page({
         process.env.SPACECASE_WORKSPACE_MODE !== "authority_only"
       }
       directoryTruncated={directory.truncated}
+      familyActivityPlansEnabled={familyPlansEnabled()}
       familyFinanceEnabled={process.env.SPACECASE_FAMILY_FINANCE_ENABLED === "true"}
       activityRegisterEnabled={process.env.SPACECASE_ACTIVITY_REGISTER_ENABLED === "true"}
       intakeEnabled={process.env.SPACECASE_FINANCE_INTAKE_ENABLED === "true"}

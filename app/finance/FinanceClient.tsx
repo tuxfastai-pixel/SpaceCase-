@@ -4,6 +4,7 @@ import { z } from "zod";
 import { expenseCategories, formatZar, randToMinor } from "./forms";
 import type { FinanceAction } from "../../platform/finance/peosAuthorization";
 import s from "./finance.module.css";
+import ActivityChargeLinks from "./ActivityChargeLinks";
 import FamilyBillingAccess from "./FamilyBillingAccess";
 import ActivityRegister from "./ActivityRegister";
 import type {ActivityDetails} from "../../domains/school-activities/registerContracts";
@@ -180,6 +181,7 @@ export default function FinanceClient({
   intakeEnabled = false,
   activityRegisterEnabled = false,
   familyFinanceEnabled = false,
+  familyActivityPlansEnabled = false,
 }: {
   schools: School[];
   initialSchool: string;
@@ -188,6 +190,7 @@ export default function FinanceClient({
   intakeEnabled?: boolean;
   activityRegisterEnabled?: boolean;
   familyFinanceEnabled?: boolean;
+  familyActivityPlansEnabled?: boolean;
 }) {
   const [schoolId, setSchoolId] = useState(initialSchool),
     [storedData, setData] = useState<Workspace | null>(null),
@@ -470,7 +473,7 @@ export default function FinanceClient({
                   </p>
                 )}
                 <div id="finance-panel-intake" tabIndex={-1} hidden={tab !== "intake"}>{intakeEnabled&&<PaymentIntake key={`${schoolId}-${data.account.id}`} schoolId={schoolId} accountId={data.account.id} canRecord={can("finance.transactions.record")} enabled={intakeEnabled} active={tab === "intake"} onReported={()=>setRefresh(v=>v+1)}/>}</div>
-                {tab === "activities" && <div id="finance-panel-activities" tabIndex={-1}>{activityRegisterEnabled&&<ActivityRegister key={schoolId} schoolId={schoolId} accountId={data.account.id} personId={data.personId} actions={school.actions} onExplore={rows=>{setActivitySeed(rows);setActivitySeedVisit(n=>n+1);}}/>}<ActivityPlanning key={`${schoolId}-${activitySeedVisit}`} initialActivities={activitySeed}/></div>}
+                {tab === "activities" && <div id="finance-panel-activities" tabIndex={-1}>{activityRegisterEnabled&&<ActivityRegister key={schoolId} schoolId={schoolId} accountId={data.account.id} personId={data.personId} actions={school.actions} onExplore={rows=>{setActivitySeed(rows);setActivitySeedVisit(n=>n+1);}}/>}{familyActivityPlansEnabled&&can("finance.transactions.read")&&<ActivityChargeLinks key={`${schoolId}-links`} schoolId={schoolId} accountId={data.account.id} invoices={data.invoices??[]} canRecord={can("finance.transactions.record")}/>}<ActivityPlanning key={`${schoolId}-${activitySeedVisit}`} initialActivities={activitySeed}/></div>}
                 {tab === "accounts" && (
                   <div id="finance-panel-accounts" tabIndex={-1}>
                     <section className={s.card}>
@@ -819,7 +822,7 @@ export default function FinanceClient({
                 )}
                 {tab === "review" && (
                   <div id="finance-panel-review" tabIndex={-1}>
-                    {familyFinanceEnabled&&can("finance.policy.manage")&&<FamilyBillingAccess key={schoolId} schoolId={schoolId}/>}
+                    {familyFinanceEnabled&&can("finance.policy.manage")&&<FamilyBillingAccess key={schoolId} schoolId={schoolId} plansEnabled={familyActivityPlansEnabled}/>}
                     {can("finance.policy.manage") && (
                       <FinanceStaff
                         key={schoolId}

@@ -8,6 +8,7 @@ CREATE TABLE school_finance.activity_charge_links (
  FOREIGN KEY(invoice_id,account_id) REFERENCES school_finance.invoices(id,account_id),
  UNIQUE(account_id,invoice_id),UNIQUE(account_id,activity_id,learner_person_id)
 );
+CREATE INDEX activity_charge_links_learner ON school_finance.activity_charge_links(account_id,learner_person_id,activity_id);
 CREATE TABLE school_finance.family_activity_plans (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),account_id uuid NOT NULL REFERENCES school_finance.accounts(id),
  learner_person_id text NOT NULL,calendar_id uuid NOT NULL,academic_year integer NOT NULL CHECK(academic_year BETWEEN 1900 AND 2200),revision integer NOT NULL CHECK(revision BETWEEN 1 AND 9999),

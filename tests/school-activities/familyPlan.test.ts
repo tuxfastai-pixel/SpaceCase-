@@ -26,7 +26,7 @@ test('fresh allocations invalidate stale reviewed amounts and settled charges ca
 test('fixed instalments must cover every deadline, school minimum and exact remaining total',()=>{
  const src=source();src.charges[0].deadline='2027-02-15';assert.throws(()=>buildFamilyPlan(choice,src),/PLAN_MISSES_ACTIVITY_DEADLINE/);
  assert.throws(()=>buildFamilyPlan({...choice,instalments:[{dueDate:'2027-02-01',amountMinor:'500'},{dueDate:'2027-03-01',amountMinor:'34500'}]},source()),/PLAN_BELOW_SCHOOL_MINIMUM/);
- assert.throws(()=>buildFamilyPlan({...choice,instalments:[{dueDate:'2027-02-01',amountMinor:'34999'}]},source()),/add up exactly/);
+ assert.throws(()=>buildFamilyPlan({...choice,instalments:[{dueDate:'2027-02-01',amountMinor:'34999'}]},source()),/PLAN_INSTALMENT_TOTAL_INVALID/);
 });
 test('Flexi explicitly acknowledges deadlines and never manufactures a payment or a fixed schedule',()=>{
  const flexi={...choice,option:'FLEXI' as const,instalments:undefined,flexiDeadlineAcknowledged:true};const result=buildFamilyPlan(flexi,source());assert.deepEqual(result.instalments,[]);assert.deepEqual(result.shortfalls,[{deadline:'2027-12-10',shortfallMinor:'35000'}]);assert.equal(result.charges[0].allocatedMinor,'0');assert.throws(()=>buildFamilyPlan({...flexi,flexiDeadlineAcknowledged:false},source()),/PLAN_FLEXI_ACKNOWLEDGEMENT_REQUIRED/);assert.throws(()=>buildFamilyPlan({...flexi,instalments:choice.instalments},source()),/PLAN_FLEXI_ACKNOWLEDGEMENT_REQUIRED/);
