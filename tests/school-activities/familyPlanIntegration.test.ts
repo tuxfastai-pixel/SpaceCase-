@@ -15,18 +15,19 @@ test('family plan persistence serializes retries, locks scope, preserves revisio
  const authorize=async():Promise<FamilyBillingDecision>=>({allowed:true,contractVersion:'family-billing-v1',grantId,personId:parent,schoolId,learnerPersonId:learner,action:'family.finance.plan.accept',expiresAt:new Date(Date.now()+30000).toISOString()});
  try{
   await pool.query('INSERT INTO school_ops.school_workspaces(peos_school_id) VALUES($1)',[schoolId]);accountId=(await initializeFinance(pool,schoolId,principal,authority(principal))).accountId;
-  const policy={...samplePolicy,paymentOptions:['CUSTOM','FLEXI'] as ('CUSTOM'|'FLEXI')[]};
+  const year=Number((await pool.query("SELECT EXTRACT(YEAR FROM now() AT TIME ZONE 'Africa/Johannesburg')::int AS year")).rows[0].year)+1;
+  const policy={...JSON.parse(JSON.stringify(samplePolicy).replaceAll('2027',String(year))),paymentOptions:['CUSTOM','FLEXI'] as ('CUSTOM'|'FLEXI')[]};
   const calendar=await write({command:'SAVE_CALENDAR',expectedVersion:0,policy},principal);
-  const details={calendarId:calendar.id,title:'Synthetic annual trip',description:'Isolated plan test',audience:'Not an eligibility rule',eventDate:'2027-12-20',paymentDeadline:'2027-12-10',amountMinor:'35000',optional:true};
+  const details={calendarId:calendar.id,title:'Synthetic annual trip',description:'Isolated plan test',audience:'Not an eligibility rule',eventDate:`${year}-12-20`,paymentDeadline:`${year}-12-10`,amountMinor:'35000',optional:true};
   let activity=await write({command:'CREATE_ACTIVITY',details});
-  const invoiceId=randomUUID();await pool.query("INSERT INTO school_finance.invoices(id,account_id,peos_learner_id,invoice_number,amount_minor,due_date,created_by_peos_person_id) VALUES($1,$2,$3,$4,35000,'2027-12-10',$5)",[invoiceId,accountId,learner,`PLAN-${invoiceId}`,officer]);
+  const invoiceId=randomUUID();await pool.query("INSERT INTO school_finance.invoices(id,account_id,peos_learner_id,invoice_number,amount_minor,due_date,created_by_peos_person_id) VALUES($1,$2,$3,$4,35000,$6,$5)",[invoiceId,accountId,learner,`PLAN-${invoiceId}`,officer,`${year}-12-10`]);
   const link=()=>linkActivityCharge(pool,scope(),{activityId:activity.id,revision:activity.revision,invoiceId,eligibilityChecked:true},authority(officer));
   await assert.rejects(link(),/PLAN_ACTIVITY_UNAVAILABLE/);
   activity=await write({command:'SUBMIT_ACTIVITY',activityId:activity.id,revision:activity.revision,reason:'Test ready'});
   activity=await write({command:'APPROVE_ACTIVITY',activityId:activity.id,revision:activity.revision,reason:'Independent test check'},principal);
   activity=await write({command:'PUBLISH_ACTIVITY',activityId:activity.id,revision:activity.revision,reason:'Published test'},principal);
   const [linked,replayed]=await Promise.all([link(),link()]);assert.deepEqual(linked,replayed);
-  const duplicate=randomUUID();await pool.query("INSERT INTO school_finance.invoices(id,account_id,peos_learner_id,invoice_number,amount_minor,due_date,created_by_peos_person_id) VALUES($1,$2,$3,$4,35000,'2027-12-10',$5)",[duplicate,accountId,learner,`PLAN-${duplicate}`,officer]);
+  const duplicate=randomUUID();await pool.query("INSERT INTO school_finance.invoices(id,account_id,peos_learner_id,invoice_number,amount_minor,due_date,created_by_peos_person_id) VALUES($1,$2,$3,$4,35000,$6,$5)",[duplicate,accountId,learner,`PLAN-${duplicate}`,officer,`${year}-12-10`]);
   await assert.rejects(linkActivityCharge(pool,scope(),{activityId:activity.id,revision:activity.revision,invoiceId:duplicate,eligibilityChecked:true},authority(officer)),/PLAN_CHARGE_CONFLICT/);
   const input:FamilyPlanChoice={requestId:randomUUID(),calendarId:calendar.id,expectedRevision:0,selections:[{chargeId:linked.id,expectedOutstandingMinor:'35000'}],option:'FLEXI',flexiDeadlineAcknowledged:true,agreementChecked:true};
   await assert.rejects(acceptFamilyActivityPlan(pool,grantId,input,async()=>({...await authorize(),learnerPersonId:randomUUID()})),/PLAN_ACTIVITY_UNAVAILABLE/);
@@ -42,11 +43,13 @@ test('family plan persistence serializes retries, locks scope, preserves revisio
    const db={connect:async()=>({query:(sql:string,args?:unknown[])=>runtime.query(sql,args),release:()=>{}})} as unknown as Pool;
    assert.deepEqual(await acceptFamilyActivityPlan(db,grantId,input,authorize),one);
   }finally{await runtime.query('RESET ROLE');runtime.release();}
-  await write({command:'SAVE_CALENDAR',expectedVersion:1,policy:{...policy,label:'Later school policy'}},principal);
-  await assert.rejects(acceptFamilyActivityPlan(pool,grantId,{...input,requestId:randomUUID(),expectedRevision:2},authorize),/PLAN_POLICY_CHANGED/);
+  const newerCalendar=await write({command:'SAVE_CALENDAR',expectedVersion:1,policy:{...policy,label:'Later school policy'}},principal);
+  await assert.rejects(acceptFamilyActivityPlan(pool,grantId,{...input,requestId:randomUUID(),calendarId:newerCalendar.id,expectedRevision:2},authorize),/PLAN_ACTIVITY_UNAVAILABLE/);
+  const third=await acceptFamilyActivityPlan(pool,grantId,{...input,requestId:randomUUID(),expectedRevision:2},authorize);assert.equal(third.revision,3);
   // Old request lookup remains valid after policy changes, but still requires current permission.
   assert.deepEqual(await acceptFamilyActivityPlan(pool,grantId,input,authorize),one);
   await write({command:'CANCEL_ACTIVITY',activityId:activity.id,revision:activity.revision,reason:'Cancelled test'},principal);
+  await assert.rejects(acceptFamilyActivityPlan(pool,grantId,{...input,requestId:randomUUID(),expectedRevision:3},authorize),/PLAN_ACTIVITY_UNAVAILABLE/);
   assert.equal((await pool.query('SELECT snapshot FROM school_finance.family_activity_plans WHERE id=$1',[one.id])).rows[0].snapshot.policy.label,policy.label);
   assert.equal((await pool.query('SELECT count(*)::int AS n FROM school_finance.payments WHERE account_id=$1',[accountId])).rows[0].n,0);
   assert.equal((await pool.query('SELECT count(*)::int AS n FROM school_finance.allocations WHERE account_id=$1',[accountId])).rows[0].n,0);
