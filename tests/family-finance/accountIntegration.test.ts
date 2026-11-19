@@ -1,0 +1,16 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {randomUUID} from 'node:crypto';import {Pool} from 'pg';
+import {readFamilyFinanceAccount} from '../../domains/school-finance/familyAccount';import {initializeFinance,type FinanceAuthority} from '../../domains/school-finance/workspaceService';import type {FamilyBillingDecision} from '../../platform/family/billingContracts';
+test('family account contains only authorised learner invoices and rolls back if current billing scope changes',{timeout:60000},async t=>{
+ if(!process.env.DATABASE_URL){t.skip('Requires isolated PostgreSQL');return;}
+ const pool=new Pool({connectionString:process.env.DATABASE_URL}),school=randomUUID(),officer=randomUUID(),parent=randomUUID(),child=randomUUID(),other=randomUUID(),grantId=randomUUID();let accountId='';
+ const authority:FinanceAuthority=async schoolId=>({schoolId,personId:officer});
+ const decision=():FamilyBillingDecision=>({allowed:true,contractVersion:'family-billing-v1',grantId,personId:parent,schoolId:school,learnerPersonId:child,action:'family.finance.read',expiresAt:new Date(Date.now()+30000).toISOString()});
+ try{await pool.query('INSERT INTO school_ops.school_workspaces(peos_school_id) VALUES($1)',[school]);accountId=(await initializeFinance(pool,school,officer,authority)).accountId;
+ for(const [learner,reference,amount] of [[child,'OWN-001',140000],[other,'OTHER-FAMILY-PRIVATE',900000]])await pool.query("INSERT INTO school_finance.invoices(account_id,peos_learner_id,invoice_number,amount_minor,due_date,created_by_peos_person_id) VALUES($1,$2,$3,$4,'2027-03-01',$5)",[accountId,learner,reference,amount,officer]);
+ const result=await readFamilyFinanceAccount(pool,grantId,async()=>decision());assert.equal(result.invoices.length,1);assert.equal(result.invoices[0].invoiceNumber,'OWN-001');assert.equal(result.totals.invoicedMinor,'140000');const serialized=JSON.stringify(result);for(const forbidden of [other,'OTHER-FAMILY-PRIVATE','preparedBy','evidenceReference','actorPersonId'])assert.equal(serialized.includes(forbidden),false);
+ let calls=0;await assert.rejects(readFamilyFinanceAccount(pool,grantId,async()=>({...decision(),personId:++calls===1?parent:other})),/FAMILY_BILLING_FORBIDDEN/);
+ await assert.rejects(readFamilyFinanceAccount(pool,grantId,async()=>({...decision(),grantId:randomUUID()})),/FAMILY_BILLING_FORBIDDEN/);
+ const audits=await pool.query("SELECT count(*)::int AS n FROM school_finance.audit_events WHERE account_id=$1 AND action='FINANCE_FAMILY_ACCOUNT_READ'",[accountId]);assert.equal(audits.rows[0].n,1);
+ const runtime=await pool.connect();try{await runtime.query('SET ROLE spacecase_runtime');const db={connect:async()=>({query:(sql:string,args?:unknown[])=>runtime.query(sql,args),release:()=>{}})} as unknown as Pool;assert.equal((await readFamilyFinanceAccount(db,grantId,async()=>decision())).invoices.length,1);}finally{await runtime.query('RESET ROLE');runtime.release();}
+ }finally{if(accountId){await pool.query('DELETE FROM school_finance.audit_events WHERE account_id=$1',[accountId]);await pool.query('DELETE FROM school_finance.invoices WHERE account_id=$1',[accountId]);await pool.query('DELETE FROM school_finance.accounts WHERE id=$1',[accountId]);await pool.query('DELETE FROM school_ops.school_workspaces WHERE peos_school_id=$1',[school]);}await pool.end();}
+});

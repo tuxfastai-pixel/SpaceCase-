@@ -1,0 +1,3 @@
+import {redirect} from 'next/navigation';import {currentSession} from '../../../platform/auth/currentSession';import {familyFinanceEnabled} from '../../../platform/family/billingAuthority';import FamilyFinance from './FamilyFinance';
+export const metadata={title:'Your school account | SpaceCase'};export const dynamic='force-dynamic';
+export default async function Page(){if(!await currentSession())redirect('/login?onboarding=parent');if(!familyFinanceEnabled())return <main><h1>School accounts are being prepared</h1><p>Your school will let you know when family billing access is ready.</p><a href='/parent'>Back to your family workspace</a></main>;return <FamilyFinance/>;}

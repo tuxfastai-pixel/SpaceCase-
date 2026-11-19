@@ -4,6 +4,7 @@ import { z } from "zod";
 import { expenseCategories, formatZar, randToMinor } from "./forms";
 import type { FinanceAction } from "../../platform/finance/peosAuthorization";
 import s from "./finance.module.css";
+import FamilyBillingAccess from "./FamilyBillingAccess";
 import ActivityRegister from "./ActivityRegister";
 import type {ActivityDetails} from "../../domains/school-activities/registerContracts";
 import ActivityPlanning from "./ActivityPlanning";
@@ -178,6 +179,7 @@ export default function FinanceClient({
   directoryTruncated,
   intakeEnabled = false,
   activityRegisterEnabled = false,
+  familyFinanceEnabled = false,
 }: {
   schools: School[];
   initialSchool: string;
@@ -185,6 +187,7 @@ export default function FinanceClient({
   directoryTruncated: boolean;
   intakeEnabled?: boolean;
   activityRegisterEnabled?: boolean;
+  familyFinanceEnabled?: boolean;
 }) {
   const [schoolId, setSchoolId] = useState(initialSchool),
     [storedData, setData] = useState<Workspace | null>(null),
@@ -816,6 +819,7 @@ export default function FinanceClient({
                 )}
                 {tab === "review" && (
                   <div id="finance-panel-review" tabIndex={-1}>
+                    {familyFinanceEnabled&&can("finance.policy.manage")&&<FamilyBillingAccess key={schoolId} schoolId={schoolId}/>}
                     {can("finance.policy.manage") && (
                       <FinanceStaff
                         key={schoolId}
