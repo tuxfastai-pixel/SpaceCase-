@@ -17,7 +17,9 @@ The user completed the synthetic receipt import/capture/independent verification
 ## Activity build boundaries
 
 ACT-PAY-01: contribution calculator released to isolated Preview; live visual acceptance pending.
-ACT-PAY-02: saved school calendar/activity register is the current build. Initial staff entry uses existing Finance record/read and Principal policy authority. No new administrator/teacher permissions are implied. Stage their distinct school-activity permissions in PEOS before expanding input access.
+ACT-PAY-02: saved school calendar/activity register released to isolated Preview; PostgreSQL CI passed 352 tests and the guarded synthetic-database migration was applied. Live visual/role acceptance is pending because an open Chrome extension panel blocked automation. Initial staff entry uses existing Finance record/read and Principal policy authority. No new administrator/teacher permissions are implied. Stage their distinct school-activity permissions in PEOS before expanding input access.
 ACT-PAY-03..05: parent billing authority and accepted plan revisions, private evidence uploads/Finance queue, statement snapshots and notification delivery remain separate pending stages. No bank connection, OCR verification, auto-send, parent charge or Production activation is implied by the activity register.
 
 After ACT-PAY-02 checks and Preview release, resume the Finance acceptance tasks above and continue the parent stages without losing their separate completion status. See FEATURE_COMPLETION_REGISTER.md for exact commit/workflow/release evidence.
+
+Latest release: source 0c1b238c605e99dc8db7867b6f70d954da94fd27, PR #94, workflow 44506695088, flagged Preview dpl_FfN44Kf5NWJUawdfRtjC3LGcRa2z. Existing R200.50 test invoice remained fully allocated on a read-only post-migration check. No live activity/calendar submissions were performed. Resume the acceptance queue above after the extension panel is closed; do not infer a completed UI walkthrough from CI.
