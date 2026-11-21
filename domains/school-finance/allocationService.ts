@@ -28,12 +28,14 @@ export async function allocateVerifiedSchoolPayment(
     );
     if (!account.rows[0] || account.rows[0].currency !== "ZAR")
       throw new SchoolFinanceError("FINANCE_ACCOUNT_UNAVAILABLE");
+    // All Finance mutations serialize on the locked account. The immutable invoice
+    // needs no UPDATE grant merely to acquire an additional row lock.
     const payment = await client.query<{amount_minor:string;verification:string}>(
-      "SELECT amount_minor::text,verification FROM school_finance.payments WHERE id=$1 AND account_id=$2 FOR UPDATE",
+      "SELECT amount_minor::text,verification FROM school_finance.payments WHERE id=$1 AND account_id=$2",
       [input.paymentId,input.accountId],
     );
     const invoice = await client.query<{amount_minor:string;status:string}>(
-      "SELECT amount_minor::text,status FROM school_finance.invoices WHERE id=$1 AND account_id=$2 FOR UPDATE",
+      "SELECT amount_minor::text,status FROM school_finance.invoices WHERE id=$1 AND account_id=$2",
       [input.invoiceId,input.accountId],
     );
     if (!payment.rows[0] || !invoice.rows[0]) throw new SchoolFinanceError("FINANCE_RECORD_NOT_FOUND");

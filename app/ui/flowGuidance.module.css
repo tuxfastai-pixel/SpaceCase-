@@ -1,0 +1,7 @@
+.panel{position:fixed;left:1rem;bottom:1rem;z-index:90;width:min(25rem,calc(100vw - 2rem));box-sizing:border-box;padding:1rem;border:1px solid #8bb8a5;border-left:4px solid #237769;border-radius:.8rem;background:#f4fbf7;color:#173e35;box-shadow:0 5px 22px #123d3526;font: .88rem/1.5 ui-sans-serif,system-ui,sans-serif;max-height:38vh;overflow:auto;}
+.panel p{margin:0 0 .5rem;}.panel>div{display:flex;gap:.5rem;flex-wrap:wrap;}.panel button{min-height:44px;padding:.5rem .8rem;border:1px solid #86a99c;border-radius:.45rem;background:#fff;color:#174e40;cursor:pointer;font:inherit;}
+@keyframes nextAttention{0%,100%{box-shadow:0 0 0 3px #9dcbb6;}50%{box-shadow:0 0 0 5px #f1d37d;}}
+.attention{outline:3px solid #237769!important;outline-offset:3px;animation:nextAttention 1.6s ease-in-out 2;scroll-margin:5rem;}
+body:has([aria-label="Submission confirmation"]) .panel{display:none;}
+@media(prefers-reduced-motion:reduce){.attention{animation:none;outline:3px solid #237769;}}
+@media print{.panel{display:none;}.attention{animation:none;outline:none!important;}}

@@ -1,3 +1,4 @@
+import {googleSignInEnabled} from "../../platform/auth/googleSignInAvailability";
 import { redirect } from "next/navigation";
 import { currentSession } from "../../platform/auth/currentSession";
 import styles from "./login.module.css";
@@ -23,7 +24,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <p className={styles.brand}>SPACECASE</p>
       <h1 id="welcome">More time for what matters.</h1>
       <p>A calmer space for teaching, learning and supporting your school community.</p>
-      <SignInForm initialPath={initialPath}/>
+      {googleSignInEnabled() ? <SignInForm initialPath={initialPath}/> : <p role="status">Sign-in is temporarily unavailable. Please try again later.</p>}
       <p className={styles.note}>Choose the Google account you want to use. Signing out of SpaceCase does not sign you out of Google on this device.</p>
       <p className={styles.note}>New here? Your account is created when you continue. No separate password needed.</p>
       <p className={styles.note}><a href="/help/parents">Need a hand? Parent / guardian help and current availability</a></p>

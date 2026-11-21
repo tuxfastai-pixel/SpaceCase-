@@ -1,0 +1,14 @@
+# Statement intake — isolated Preview acceptance
+
+Use only the synthetic Finance school and approved isolated staff identities. Existing Production and authority-only Pilot remain unactivated. A successful build is not this walkthrough.
+
+1. Confirm migration `20261113220000_finance_payment_intake.sql` and restricted runtime grants in isolated SpaceCase test DB. Confirm existing independent Finance permissions through PEOS. Set the intake flag only on the Finance test Preview and deploy validated source to the existing stable test alias.
+2. Sign in as officer, open Incoming payments, choose source `Synthetic test statement`, upload `examples/incoming-payments.csv`, map Date / Reference / Amount / Transaction ID. Expect 3 source rows, 1 debit excluded, 2 incoming candidates. Neither is verified or allocated; no invoice match is invented for nonexistent invoice references.
+3. Save the import. Re-upload the same file/source: expect an already-imported result with no new candidates. Saved mapping should be selectable and checked against the uploaded header names.
+4. Prepare one reported payment. Refresh and repeat the action: expect one reported payment and one candidate-to-payment link. Fees & payments shows the unique IMPORT reference; the original reference/date/source remain visible in Incoming payments. The reporting person cannot independently verify that payment.
+5. Add a synthetic unique invoice with the exact other reference through the normal officer invoice flow, then preview a separate statement. A suggestion must explain the exact match and show outstanding amount compatibility. No auto-allocation or verification occurs.
+6. Use an overlapping statement with a new additional row: the repeated transaction ID must enter duplicate review. It may be dismissed with a reason but cannot be declared distinct while reusing that ID. A suspected duplicate without a transaction ID requires an explicit separate-transaction reason before reporting. Verify audit trail.
+7. Switch to principal: queue can be read, officer preparation controls absent. End/revoke an officer assignment in the isolated authority source and confirm the next queue/action request is denied; restore only through the approved test setup.
+8. Verify date/amount/reference display, mapping controls, duplicate review, errors, saved mapping and paging on phone. Preview failure retains local input for correction. No real bank statement, mailbox connection or live money is required.
+
+Record source SHA, deployment ID, migration checksum, tester-reported steps and exact failures in FEATURE_COMPLETION_REGISTER. Revisit pending sign-out/back-navigation acceptance separately. XLSX, direct bank feeds, provider/email/accounting connectors, source-file evidence retention and automated outbound statements/reminders are not activated by this flag.

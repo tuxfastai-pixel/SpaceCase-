@@ -1,3 +1,4 @@
+import FlowGuidance from "./ui/FlowGuidance";
 import SupportEntry from "./SupportEntry";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}<SupportEntry/></body>
+      <body>{children}<SupportEntry/><FlowGuidance/></body>
     </html>
   );
 }

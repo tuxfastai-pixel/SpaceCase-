@@ -15,7 +15,9 @@ export function getDatabasePool(): Pool {
   pool = new Pool({
     connectionString: environment.DATABASE_URL,
     max: 10,
-    connectionTimeoutMillis: 5_000,
+    // Serverless databases can need more than five seconds to resume and negotiate TLS.
+    // Keep acquisition bounded without retrying any financial transaction.
+    connectionTimeoutMillis: 15_000,
     query_timeout: 15_000,
     idleTimeoutMillis: 10_000,
   });

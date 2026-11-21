@@ -1,3 +1,4 @@
+import { peosPreviewHeaders } from "../../../../../platform/peos/previewHeaders";
 import { z } from "zod";
 
 import { readServerEnvironment } from "../../../../../platform/config/env";
@@ -52,23 +53,79 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: "UNAUTHENTICATED" }, { status: 401 });
   }
 
-  const response = await fetch(new URL("/v1/sessions/exchange", environment.PEOS_BASE_URL), {
-    method: "POST",
-    headers: {
-      authorization: externalAuthorization,
-      accept: "application/json",
-    },
-    cache: "no-store", signal:AbortSignal.timeout(10000),
-  });
-
-  if (response.status === 401 || response.status === 403) {
-    return Response.json({ error: response.status === 403 ? "IDENTITY_NOT_PROVISIONED" : "UNAUTHENTICATED" }, { status: response.status });
+  // Vercel Trusted Sources uses a short-lived deployment token, not the user's token.
+  const trustedOidcToken = process.env.VERCEL_ENV === "preview"
+    ? request.headers.get("x-vercel-oidc-token")
+    : null;
+  if (process.env.VERCEL_ENV === "preview" && !trustedOidcToken) {
+    console.error("SPACECASE_PEOS_EXCHANGE", { outcome: "missing_vercel_oidc_token" });
   }
-  if (!response.ok) {
+
+  // Log only bounded diagnostic categories; never log tokens, cookies or response bodies.
+  let response: Response;
+  try {
+    response = await fetch(new URL("/v1/sessions/exchange", environment.PEOS_BASE_URL), {
+      method: "POST",
+      headers: {
+        authorization: externalAuthorization,
+        accept: "application/json",
+        ...peosPreviewHeaders(trustedOidcToken),
+      },
+      cache: "no-store", signal: AbortSignal.timeout(10000),
+    });
+  } catch (error) {
+    console.error("SPACECASE_PEOS_EXCHANGE", {
+      outcome: "network_failure",
+      category: error instanceof Error && error.name === "TimeoutError" ? "timeout" : "fetch_failed",
+    });
     return Response.json({ error: "PEOS_UNAVAILABLE" }, { status: 503 });
   }
 
-  const exchanged = exchangeSchema.parse(await response.json());
+  if (!response.ok) {
+    // Log only a fixed allowlist of upstream error codes, never response bodies or identity data.
+    let upstreamCode = "unknown";
+    if (response.headers.get("content-type")?.includes("application/json")) {
+      try {
+        const payload: unknown = await response.clone().json();
+        if (payload && typeof payload === "object" && "error" in payload) {
+          const code = (payload as { error?: unknown }).error;
+          if (typeof code === "string" && [
+            "UNAUTHENTICATED", "IDENTITY_NOT_PROVISIONED", "PEOS_UNAVAILABLE",
+            "DEPLOYMENT_NOT_FOUND", "NOT_AUTHORIZED", "UNAUTHORIZED",
+          ].includes(code)) upstreamCode = code;
+        }
+      } catch { /* Do not log upstream response content. */ }
+    }
+    console.error("SPACECASE_PEOS_EXCHANGE", {
+      outcome: "upstream_rejected",
+      status: response.status,
+      upstreamCode,
+      responseType: response.headers.get("content-type")?.includes("application/json") ? "json" : response.headers.get("content-type")?.startsWith("text/html") ? "html" : "other",
+      vercelMitigation: response.headers.has("x-vercel-mitigated"),
+      upstreamErrorCode: response.headers.get("x-vercel-error") ? "vercel_error" : "none",
+    });
+    if (response.status === 401 || response.status === 403) {
+      return Response.json({ error: response.status === 403 ? "IDENTITY_NOT_PROVISIONED" : "UNAUTHENTICATED" }, { status: response.status });
+    }
+    return Response.json({ error: "PEOS_UNAVAILABLE" }, { status: 503 });
+  }
+
+  // A protected upstream can return an HTML sign-in page with HTTP 200.
+  if (!response.headers.get("content-type")?.includes("application/json")) {
+    console.error("SPACECASE_PEOS_EXCHANGE", {
+      outcome: "unexpected_content_type",
+      status: response.status,
+      responseType: response.headers.get("content-type")?.startsWith("text/html") ? "html" : "other",
+    });
+    return Response.json({ error: "PEOS_UNAVAILABLE" }, { status: 503 });
+  }
+  let exchanged: z.infer<typeof exchangeSchema>;
+  try {
+    exchanged = exchangeSchema.parse(await response.json());
+  } catch {
+    console.error("SPACECASE_PEOS_EXCHANGE", { outcome: "invalid_session_payload", status: response.status });
+    return Response.json({ error: "PEOS_UNAVAILABLE" }, { status: 503 });
+  }
   const headers = new Headers({ "cache-control": "no-store" });
   headers.append(
     "set-cookie",
@@ -86,7 +143,7 @@ export async function DELETE(request: Request): Promise<Response> {
     try {
       await fetch(new URL("/v1/sessions/revoke", environment.PEOS_BASE_URL), {
         method: "POST",
-        headers: { authorization, accept: "application/json" },
+        headers: { authorization, accept: "application/json", ...peosPreviewHeaders(request.headers.get("x-vercel-oidc-token")) },
         cache: "no-store", signal:AbortSignal.timeout(5000),
       });
     } catch {

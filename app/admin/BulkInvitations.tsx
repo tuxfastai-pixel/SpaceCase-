@@ -43,21 +43,21 @@ export default function BulkInvitations({schoolId,schoolName,canInviteAdministra
     return {...row,message};
   });
 
-  return <section className={styles.card} aria-labelledby="bulk-invite-heading">
+  return <section className={styles.card} aria-labelledby="bulk-invite-heading" data-guided-flow data-guide-step={results!==null?"created":rows!==null?"review":"choose"}>
     <p className={styles.eyebrow}>Invite your team</p><h2 id="bulk-invite-heading">Bulk invitations</h2><AdministratorGuide topic="bulk"/>
     <p>Only the principal can create administrator invitations. Paste email addresses or upload a CSV, then review access before creating up to {BULK_LIMIT} invitations. A separate link is created for each person. SpaceCase does not email the batch.</p>
     {error?<p className={styles.error} role="alert">{error}</p>:null}{notice?<p className={styles.notice} role="status">{notice}</p>:null}
     {results===null?<>
       {rows===null?<>
         <label className={styles.field}>Input format<select value={format} disabled={locked} onChange={e=>setFormat(e.target.value as "list"|"csv")}><option value="list">Email list</option><option value="csv">CSV with email and optional role columns</option></select></label>
-        <label className={styles.field}>Email list or CSV<textarea rows={6} maxLength={MAX_IMPORT_SIZE} value={source} disabled={locked} onChange={e=>setSource(e.target.value)} placeholder={format==="list"?"One email per line, or separate addresses with commas":"email,role"}/></label>
-        <label className={styles.field}>Upload CSV (maximum 64 KB)<input type="file" accept=".csv,text/csv" disabled={locked} onChange={e=>{
+        <label className={styles.field}>Email list or CSV<textarea required rows={6} maxLength={MAX_IMPORT_SIZE} value={source} disabled={locked} onChange={e=>setSource(e.target.value)} placeholder={format==="list"?"One email per line, or separate addresses with commas":"email,role"}/></label>
+        <label className={styles.field}>Upload CSV (maximum 64 KB)<input type="file" data-guide-hint="Choose the invitation CSV for this task. Use the invitation template; maximum 64 KB." accept=".csv,text/csv" disabled={locked} onChange={e=>{
           const file=e.target.files?.[0];e.target.value="";if(!file)return;
           if(file.size>MAX_IMPORT_SIZE){setError("Use a CSV file smaller than 64 KB.");return;}
           setReading(true);
           void file.text().then(text=>{setSource(text);setFormat("csv");setError("");}).catch(()=>setError("We couldn’t read that file.")).finally(()=>setReading(false));
         }}/></label>
-        <div className={styles.actions}><button className={styles.primary} disabled={locked||!source.trim()} onClick={preview}>Review recipients</button><button className={styles.secondary} disabled={locked} onClick={()=>download("spacecase-staff-template.csv","email,role\r\n")}>Download CSV template</button></div>
+        <div className={styles.actions}><button data-guide-next className={styles.primary} disabled={locked||!source.trim()} onClick={preview}>Review recipients</button><button className={styles.secondary} disabled={locked} onClick={()=>download("spacecase-staff-template.csv","email,role\r\n")}>Download CSV template</button></div>
         <p className={styles.note}>CSV columns: email and optionally role. Roles: TEACHER or SCHOOL_ADMINISTRATOR. A missing role defaults to Teacher. Lists and uploaded files are reviewed in your browser before selected recipients are submitted.</p>
       </>:<>
         <p>{selected.length} selected · {review.filter(row=>row.issue).length} rows need attention. Invalid and duplicate rows are excluded. Existing pending invitations and staff who previously accepted an invitation at this email will be skipped during creation.</p>
@@ -66,8 +66,8 @@ export default function BulkInvitations({schoolId,schoolName,canInviteAdministra
           <td><input aria-label={`Email for row ${index+1}`} type="email" maxLength={254} value={rows[index].email} disabled={locked} onChange={e=>edit(index,{email:e.target.value})}/></td>
           <td><select aria-label={`Access for row ${index+1}`} value={["TEACHER","SCHOOL_ADMINISTRATOR"].includes(row.roleCode)?row.roleCode:""} disabled={locked} onChange={e=>edit(index,{roleCode:e.target.value})}><option value="">Choose role</option><option value="TEACHER">Teacher</option><option value="SCHOOL_ADMINISTRATOR" disabled={!canInviteAdministrators}>School administrator (principal only)</option></select></td>
           <td>{row.issue??(row.selected?"Ready":"Excluded")}</td></tr>)}</tbody></table></div>
-        {adminCount>0?<label className={styles.confirmation}><input type="checkbox" checked={confirmAdmin} disabled={locked} onChange={e=>setConfirmAdmin(e.target.checked)}/>I intend to invite {adminCount} school administrator{adminCount===1?"":"s"} with school administration access.</label>:null}
-        <div className={styles.actions}><button className={styles.primary} disabled={locked||!selected.length||(adminCount>0&&!confirmAdmin)} onClick={()=>void create()}>{busy?"Creating invitations…":`Create ${selected.length} invitation links`}</button><button className={styles.secondary} disabled={locked} onClick={()=>{setRows(null);setError("");}}>Back to input</button></div>
+        {adminCount>0?<label className={styles.confirmation}><input type="checkbox" required checked={confirmAdmin} disabled={locked} onChange={e=>setConfirmAdmin(e.target.checked)}/>I intend to invite {adminCount} school administrator{adminCount===1?"":"s"} with school administration access.</label>:null}
+        <div className={styles.actions}><button data-guide-next data-guide-hint="Check recipients and permissions before creating links. This action does not send email." className={styles.primary} disabled={locked||!selected.length||(adminCount>0&&!confirmAdmin)} onClick={()=>void create()}>{busy?"Creating invitations…":`Create ${selected.length} invitation links`}</button><button className={styles.secondary} disabled={locked} onClick={()=>{setRows(null);setError("");}}>Back to input</button></div>
       </>}
     </>:<>
       <p role="status">{created.length} links created · {results.filter(r=>r.status==="SKIPPED").length} skipped · {results.filter(r=>r.status==="FAILED").length} need attention. No emails sent by SpaceCase.</p>

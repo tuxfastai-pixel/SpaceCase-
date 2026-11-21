@@ -3,7 +3,7 @@ import {useEffect,useId,useRef,useState} from 'react';
 import styles from './reports.module.css';
 type Parts={year:string;month:string;day:string};
 const empty:Parts={year:'',month:'',day:''};
-export default function ReportDateInput({label,value,onChange,required=true}:{label:string;value:string;onChange:(value:string)=>void;required?:boolean}){
+export default function ReportDateInput({label,value,onChange,required=true,name}:{label:string;value:string;onChange:(value:string)=>void;required?:boolean;name?:string}){
  const [parts,setParts]=useState<Parts>(()=>value?split(value):empty);
  const [calendarAvailable,setCalendarAvailable]=useState(false);
  const month=useRef<HTMLInputElement>(null),day=useRef<HTMLInputElement>(null),calendar=useRef<HTMLInputElement>(null);
@@ -18,6 +18,6 @@ export default function ReportDateInput({label,value,onChange,required=true}:{la
  <input ref={day} aria-label={`${label} day`} placeholder='DD' inputMode='numeric' autoComplete='off' required={required} maxLength={2} pattern='(0[1-9]|[12][0-9]|3[01])' value={parts.day} onPaste={paste} onFocus={e=>e.target.select()} onChange={e=>enter('day',e.target.value)}/>
  {calendarAvailable?<button type='button' aria-label={`Choose ${label.toLowerCase()} date from calendar`} onClick={()=>calendar.current?.showPicker()}>Calendar</button>:null}
  <input ref={calendar} className={styles.calendarInput} type='date' tabIndex={-1} aria-hidden='true' value={value} onChange={e=>{if(e.target.value)update(split(e.target.value));}}/>
- </div><small id={hint}>YYYY / MM / DD</small></div>;
+ </div>{name?<input type='hidden' name={name} value={value}/>:null}<small id={hint}>YYYY / MM / DD</small></div>;
 }
 function split(value:string):Parts{const [year='',month='',day='']=value.split('-');return {year,month,day};}

@@ -46,7 +46,7 @@ export default function JoinClient() {
     {message ? <p role="alert">{message}</p> : null}
     {state.status === "loading" ? <p role="status">Opening your invitation…</p> : null}
     {state.status === "signin" ? <><p>Continue with the Google account matching your invitation. Your account will be created if you’re new.</p><form action="/auth/google?choose_account=1" method="post"><button className={styles.button}>Continue with Google</button></form></> : null}
-    {state.status === "ready" ? <><p>You’ve been invited as a {state.roleCode === "SCHOOL_ADMINISTRATOR" ? "school administrator" : "teacher"}.</p><button className={styles.button} onClick={() => void accept()}>Accept invitation</button></> : null}
+    {state.status === "ready" ? <><p>You’ve been invited as a {({SCHOOL_ADMINISTRATOR:"school administrator",TEACHER:"teacher",FINANCE_MANAGER:"finance manager",FINANCE_OFFICER:"finance officer"} as Record<string,string>)[state.roleCode]??"school staff member"}.</p><button className={styles.button} onClick={() => void accept()}>Accept invitation</button></> : null}
     {state.status === "accepting" ? <p role="status">Connecting your account…</p> : null}
     <p className={styles.note}><a href="/dashboard">Back to workspace</a></p>
   </section></main>;

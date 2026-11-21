@@ -21,11 +21,11 @@ export function prepareInvitationMessage(input: {
     throw new Error("A secure application origin is required");
   }
   if (!/^[A-Za-z0-9_-]{43}$/.test(input.token)) throw new Error("Invalid invitation token");
-  if (!["TEACHER", "SCHOOL_ADMINISTRATOR"].includes(input.roleCode)) throw new Error("Invalid invitation role");
+  if (!["TEACHER", "SCHOOL_ADMINISTRATOR", "FINANCE_MANAGER", "FINANCE_OFFICER"].includes(input.roleCode)) throw new Error("Invalid invitation role");
   if (!Number.isFinite(Date.parse(input.expiresAt))) throw new Error("Invalid invitation expiry");
   const schoolName = input.schoolName.replace(/[\r\n\u0000-\u001f\u007f]/g, " ").trim().slice(0, 120);
   if (!schoolName) throw new Error("School name is required");
-  const role = input.roleCode === "TEACHER" ? "teacher" : "school administrator";
+  const role = ({TEACHER:"teacher",SCHOOL_ADMINISTRATOR:"school administrator",FINANCE_MANAGER:"finance manager",FINANCE_OFFICER:"finance officer"} as Record<string,string>)[input.roleCode];
   const link = `${origin.origin}/join#token=${input.token}`;
   const expires = `${new Date(input.expiresAt).toISOString().slice(0, 19).replace("T", " ")} UTC`;
   const subject = `Join ${schoolName} on SpaceCase`;

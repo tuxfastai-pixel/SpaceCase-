@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 
+import {SchoolWatermark,SchoolLogo} from "../ui/appearance/Appearance";
 import styles from "./dashboard.module.css";
 import WorkspaceIcon from "../ui/WorkspaceIcon";
 
 import ClassTools from "./ClassTools";
-import EntryPaths from "../onboarding/EntryPaths";
+import UnassignedWorkspace from "./UnassignedWorkspace";
 import DayOverview from "./DayOverview";
 import {schoolContextSchema,orderedClasses,classPath,type SchoolContext} from "./workspaceModel";
 
@@ -83,9 +84,7 @@ export default function DashboardClient() {
   }
 
   if (state.status === "onboarding") {
-    return <DashboardShell>
-      <StatusPanel title="Welcome to SpaceCase" body="You’re signed in. Your school workspace will appear here once your school connects your account. Ask your school administrator to arrange access—there’s no need to create another account." /><EntryPaths/>
-    </DashboardShell>;
+    return <UnassignedWorkspace/>;
   }
 
   if (state.status === "unavailable") {
@@ -114,8 +113,8 @@ export function WorkspaceHome({context}:{context:SchoolContext}){
   const selected=classes.find(c=>c.classId===selectedId)??classes[0];
   const matches=orderedClasses(context.classes,classSearch);
   const operational=context.setupStatus!=="CLASSROOM_SETUP_REQUIRED"&&context.schoolWorkspace.configured===true;
-  return <DashboardShell>
-    <section className={styles.hero} aria-labelledby="dashboard-heading"><div><p className={styles.eyebrow}>Teacher workspace</p><h1 id="dashboard-heading">Your teaching day</h1><p className={styles.lead}>A little less admin. More space to teach. Pick up your class work below.</p></div><div className={styles.authorityBadge}><span>Academic year</span><strong>{context.schoolWorkspace.academicYearLabel??"School year not set"}</strong></div></section>
+  return <DashboardShell><SchoolWatermark school={context.schoolId} view="teacher"/>
+    <section className={styles.hero} aria-labelledby="dashboard-heading"><div><SchoolLogo school={context.schoolId} view="teacher"/><p className={styles.eyebrow}>Teacher workspace</p><h1 id="dashboard-heading">Your teaching day</h1><p className={styles.lead}>A little less admin. More space to teach. Pick up your class work below.</p></div><div className={styles.authorityBadge}><span>Academic year</span><strong>{context.schoolWorkspace.academicYearLabel??"School year not set"}</strong></div></section>
     <nav className={styles.workspaceNav} aria-label="Workspace sections">{operational&&selected?.workspaceConfigured?<a href="#day-heading">Today</a>:null}<a href="#classes-heading">Classes</a>{operational&&selected?.workspaceConfigured?<a href={classPath(context.schoolId,selected.classId,"assessments")}>Assessments</a>:null}<a href="#tools-heading">All tools</a><a href="#teacher-examples">Help & examples</a></nav>
     {operational&&selected?.workspaceConfigured?<section className={styles.quickStart} aria-label="Quick actions for current class"><div><p className={styles.eyebrow}>Let’s get started</p><h2>{selected.name??"Your class"}</h2><p>Choose what you’d like to do next.</p></div><div className={styles.quickActions}><a href={classPath(context.schoolId,selected.classId,"attendance")}><WorkspaceIcon name="attendance"/>Take attendance <span aria-hidden="true">↗</span></a><a href={`${classPath(context.schoolId,selected.classId,"assessments")}?scan=1`}><WorkspaceIcon name="camera"/>Scan / upload work <span aria-hidden="true">↗</span></a><a href={classPath(context.schoolId,selected.classId,"planner")}><WorkspaceIcon name="planner"/>Plan a lesson <span aria-hidden="true">↗</span></a></div></section>:null}
     <section className={styles.classPicker} aria-labelledby="classes-heading"><div className={styles.sectionHeader}><div><p className={styles.eyebrow}>{classes.length} assigned {classes.length===1?"class":"classes"}</p><h2 id="classes-heading">Choose your class</h2></div><button className={styles.secondaryButton} type="button" onClick={()=>window.location.reload()}>Refresh class access</button></div>
