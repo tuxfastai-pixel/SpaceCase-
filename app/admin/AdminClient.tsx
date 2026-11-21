@@ -1,4 +1,5 @@
 "use client";
+import {SchoolWatermark,SchoolLogoSetup} from "../ui/appearance/Appearance";
 import { useCallback, useEffect, useState } from "react";
 import AdministratorHelp, {AdministratorGuide} from "../help/AdministratorHelp";
 import styles from "./admin.module.css";
@@ -83,7 +84,7 @@ export default function AdminClient({initialSchool}:{initialSchool?:string}) {
     if(target instanceof HTMLDetailsElement) target.open=true;
   }
 
-  return <main className={styles.page}>
+  return <main className={styles.page}>{schoolId&&<SchoolWatermark school={schoolId} view="admin"/>}
     <header className={styles.topbar}><div><a className={styles.brand} href="/dashboard">SpaceCase</a><WorkspaceSwitcher current="ADMIN" schoolId={schoolId} principal={schools?.find(s=>s.id===schoolId)?.principal===true}/></div>
       <div className={styles.actions}><form action="/auth/google?choose_account=1" method="post"><button className={styles.secondary}>Use another Google account</button></form><form action="/auth/logout" method="post"><button className={styles.secondary}>Sign out</button></form></div></header>
     <div className={styles.content}>
@@ -123,7 +124,7 @@ export default function AdminClient({initialSchool}:{initialSchool?:string}) {
               <label className={styles.field}>School name<input required minLength={2} maxLength={120} value={name} onChange={e => setName(e.target.value)} /></label>
               <button className={styles.primary} disabled={busy}>Save school name</button>
             </form><p className={styles.note}>Your administrator access applies to this school.</p>
-          </section><SchoolDetails key={`details-${schoolId}`} schoolId={schoolId} onDirty={onSchoolDetailsDirty}/><SchoolMessagingGuide compact/><WorkspaceSetup key={`workspace-${schoolId}`} schoolId={schoolId}/></div></details>
+          </section><SchoolLogoSetup key={`logo-${schoolId}`} school={schoolId}/><SchoolDetails key={`details-${schoolId}`} schoolId={schoolId} onDirty={onSchoolDetailsDirty}/><SchoolMessagingGuide compact/><WorkspaceSetup key={`workspace-${schoolId}`} schoolId={schoolId}/></div></details>
           <details className={styles.disclosure} id="billing-section"><summary><WorkspaceIcon name="billing"/><span><strong>Billing records</strong><small>View recorded invoices, payments and service terms</small></span><span className={styles.chevron} aria-hidden="true">⌄</span></summary><div className={styles.sectionBody}><p><a href="/billing-policy">Read how school billing and service terms will work</a></p><BillingPanel key={`billing-${schoolId}`} schoolId={schoolId}/></div></details>
         </div>
       </>}

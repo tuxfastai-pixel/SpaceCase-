@@ -1,4 +1,5 @@
 "use client";
+import {SchoolWatermark} from "../ui/appearance/Appearance";
 import { useEffect, useState, useRef, type FormEvent } from "react";
 import { z } from "zod";
 import { expenseCategories, formatZar, randToMinor } from "./forms";
@@ -346,7 +347,7 @@ export default function FinanceClient({
   }
   const formsDisabled = busy || reloading || !data?.account;
   return (
-    <main className={s.page}>
+    <main className={s.page}><SchoolWatermark school={schoolId} view="finance"/>
       <header className={s.header}>
         <a href="/dashboard">SpaceCase</a>
         <nav aria-label="Workspace">
