@@ -19,12 +19,12 @@ export function FamilyStatus({status}:{status:string}){const value=familyInvitat
 type Share={id:string;recipient:string;message:InvitationMessage};
 export function CreateFamilyInvitation({schoolId,learnerPersonId,name,onCreated}:{schoolId:string;learnerPersonId:string;name:string;onCreated?:()=>void}){
  const [email,setEmail]=useState(''),[relationship,setRelationship]=useState('PARENT'),[busy,setBusy]=useState(false),[error,setError]=useState(''),[share,setShare]=useState<Share|null>(null);
- const shareTarget=useRef<HTMLDivElement>(null);
- useEffect(()=>{if(!share)return;const frame=requestAnimationFrame(()=>{shareTarget.current?.scrollIntoView({block:'center',behavior:'auto'});shareTarget.current?.focus({preventScroll:true});});return()=>cancelAnimationFrame(frame);},[share]);
+ const shareTarget=useRef<HTMLDivElement>(null),focusedShare=useRef<Share|null>(null);
  const base=`/api/v1/admin/schools/${schoolId}/family-invitations`;
  const list=useInvitations(`${base}?learnerPersonId=${learnerPersonId}&view=ALL`,!busy);
  function prepared(d:{id:string;token:string;expiresAt:string},recipient:string){setShare({id:d.id,recipient,message:prepareFamilyInvitationMessage({origin:window.location.origin,token:d.token,expiresAt:d.expiresAt})});list.refresh();onCreated?.();}
  async function replace(i:Invite){if(!window.confirm('Create a replacement link? The previous link will stop working. The expiry date stays the same.'))return;setBusy(true);setError('');setShare(null);try{const d=await api(`${base}/${i.id}`,'POST',{});prepared(d,i.email);}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
+ useEffect(()=>{if(!share||focusedShare.current===share)return;const frame=requestAnimationFrame(()=>{const target=shareTarget.current;if(!target)return;focusedShare.current=share;target.scrollIntoView({block:'center',behavior:'auto'});target.focus({preventScroll:true});});return()=>cancelAnimationFrame(frame);},[share,list.data]);
  const currentShare=share&&(!list.data||list.data.invitations.some(i=>i.id===share.id&&i.status==='ISSUED'));
  const duplicate=list.data?.invitations.find(i=>i.email.toLowerCase()===email.trim().toLowerCase()&&['ISSUED','CLAIMED','CONFIRMED'].includes(i.status));
  return <section data-guided-flow data-guide-step={share?'share':'email'}><h3>Parent / caregiver for {name}</h3><p>Use the adult’s exact Google sign-in email. They can open the same private invitation from email or WhatsApp. Acceptance requests school review; it does not grant learner-record access.</p>
