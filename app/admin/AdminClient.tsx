@@ -1,5 +1,5 @@
 "use client";
-import {SchoolWatermark,SchoolLogoSetup} from "../ui/appearance/Appearance";
+import {SchoolWatermark,SchoolLogo,SchoolLogoSetup} from "../ui/appearance/Appearance";
 import { useCallback, useEffect, useState } from "react";
 import AdministratorHelp, {AdministratorGuide} from "../help/AdministratorHelp";
 import styles from "./admin.module.css";
@@ -88,7 +88,7 @@ export default function AdminClient({initialSchool}:{initialSchool?:string}) {
     <header className={styles.topbar}><div><a className={styles.brand} href="/dashboard">SpaceCase</a><WorkspaceSwitcher current="ADMIN" schoolId={schoolId} principal={schools?.find(s=>s.id===schoolId)?.principal===true}/></div>
       <div className={styles.actions}><form action="/auth/google?choose_account=1" method="post"><button className={styles.secondary}>Use another Google account</button></form><form action="/auth/logout" method="post"><button className={styles.secondary}>Sign out</button></form></div></header>
     <div className={styles.content}>
-      <section className={styles.hero}><p className={styles.eyebrow}>Your school, ready to grow</p>
+      <section className={styles.hero}>{schoolId&&<SchoolLogo school={schoolId} view="admin"/>}<p className={styles.eyebrow}>Your school, ready to grow</p>
       <h1>School workspace</h1><p className={styles.lead}>Welcome your community and keep your school organised, one step at a time.</p></section>
       {schoolId ? <nav className={`${styles.quickNav} ${styles.compactNav}`} aria-label="School workspace sections"><a href="#classes-section" onClick={()=>openSection("classes-section")}><WorkspaceIcon name="family"/><span>Learner intake</span></a><a href={`/admin/families/${schoolId}`}><WorkspaceIcon name="family"/><span>Family invitations</span></a><a href="#classes-section" onClick={()=>openSection("classes-section")}><WorkspaceIcon name="class"/><span>Classes & teachers</span></a><a href="#staff-section" onClick={()=>openSection("staff-section")}><WorkspaceIcon name="people"/><span>Invite staff</span></a><a href="#setup-section" onClick={()=>openSection("setup-section")}><WorkspaceIcon name="settings"/><span>School setup</span></a><a href="#billing-section" onClick={()=>openSection("billing-section")}><WorkspaceIcon name="billing"/><span>Billing records</span></a><a href="/support"><WorkspaceIcon name="support"/><span>Support</span></a></nav> : null}
       <AdministratorHelp/>

@@ -1,5 +1,5 @@
 "use client";
-import {SchoolWatermark} from "../ui/appearance/Appearance";
+import {SchoolWatermark,SchoolLogo} from "../ui/appearance/Appearance";
 import { useEffect, useState, useRef, type FormEvent } from "react";
 import { z } from "zod";
 import { expenseCategories, formatZar, randToMinor } from "./forms";
@@ -361,7 +361,7 @@ export default function FinanceClient({
       </header>
       <div className={s.content}>
         <p className={s.eyebrow}>School operations</p>
-        <h1>School finance</h1>
+        <SchoolLogo school={schoolId} view="finance"/><h1>School finance</h1>
         <p>
           Invoices, receipts, budgets and approvals — one clear place for your school’s finances.
         </p>
