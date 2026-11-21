@@ -27,7 +27,7 @@ export default function ParentHome(){
   }catch(e){setAckError(e instanceof Error?e.message:'Please try again.');}finally{setSaving(false);}
  }
  const next=home?welcome[home.stage]:null;
- return <main className={s.page}>{!loading&&home?.learners.length===1&&<SchoolWatermark account={home.learners[0].accountKey}/>}
+ return <main className={s.page}>{!loading&&home&&home.learners.length>0&&new Set(home.learners.map(l=>l.schoolKey)).size===1&&<SchoolWatermark account={home.learners[0].accountKey}/>}
  <header className={s.topbar}><div><a className={s.brand} href='/parent'>SpaceCase</a><span>Your family workspace</span></div><nav aria-label='Account'><a href='/help/parents'>Help</a><form action='/auth/google' method='post'><input type='hidden' name='onboarding' value='parent'/><button>Use another Google account</button></form><form action='/auth/logout' method='post'><button>Sign out</button></form></nav></header>
  <div className={s.content}><section className={s.hero}><p className={s.eyebrow}>A place for your family</p><h1>Your family, your school</h1><p>A clear next step, with your school updates and available tools together.</p></section>
  <nav className={s.quickNav} aria-label='Family workspace sections'>{home?.canOpenAccount&&<a href='#school-accounts'><WorkspaceIcon name='billing'/>School account</a>}<a href='/family/connections'><WorkspaceIcon name='connection'/>School connection</a><a href='/family/onboarding'><WorkspaceIcon name='family'/>Family profile</a><a href='/help/parents'><WorkspaceIcon name='help'/>Need a hand?</a></nav>

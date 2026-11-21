@@ -4,6 +4,7 @@ import sharp from 'sharp';
 import {Pool} from 'pg';
 import {randomUUID} from 'node:crypto';
 import {normalizeLogo,chooseAccountPhoto,accountPhoto} from '../../platform/appearance/service';
+import {parentHomeState} from '../../platform/family/home';
 import {emptyFamily} from '../../domains/family/contracts';
 import {writeFamilyDraft,clearFamilyDraft} from '../../domains/family/service';
 import {changeAvatar} from '../../platform/family/photos';
@@ -20,6 +21,7 @@ test('media routes require current authority before storage and never allow pare
  const {appearanceHandler}=await import('../../platform/appearance/http');const {accountKeyInput}=await import('../../platform/family/accountNavigation');const {createHash}=await import('node:crypto');const id=randomUUID(),school=randomUUID(),owner=randomUUID(),key=createHash('sha256').update(accountKeyInput(id)).digest('hex');let storage=0;
  const directory={contractVersion:'family-billing-v1' as const,scopes:[{grantId:id,schoolId:school,learnerPersonId:randomUUID(),schoolName:'Example school',learnerReference:'DEMO-1',givenName:'Example',familyName:'Learner',actions:['family.finance.read' as const],expiresAt:'2099-01-01T00:00:00Z'}],truncated:false};
  const deps={session:async()=>({personId:owner}),origin:()=>true,operational:()=>true,enabled:()=>true,directory:async()=>directory,authorize:async()=>({allowed:true as const,contractVersion:'family-billing-v1' as const,grantId:id,personId:owner,schoolId:school,learnerPersonId:directory.scopes[0].learnerPersonId,action:'family.finance.read' as const,expiresAt:'2099-01-01T00:00:00Z'}),pool:()=>{storage++;throw Error('must not access storage');},admin:async()=>[]};
+ const home=parentHomeState({connections:null,directory,plansEnabled:false,incomplete:false});assert.match(home.learners[0].schoolKey,/^[a-f0-9]{64}$/);assert.equal(JSON.stringify(home).includes(school),false);
  const request=(query:string,method='GET')=>new Request(`https://school.example/api/v1/appearance?${query}`,{method,headers:{authorization:'Bearer synthetic-test-session'}});
  assert.equal((await appearanceHandler({...deps,session:async()=>null})(request(`kind=photo&account=${key}`))).status,401);
  assert.equal((await appearanceHandler({...deps,directory:async()=>({...directory,scopes:[]})})(request(`kind=photo&account=${key}`))).status,403);
@@ -28,4 +30,11 @@ test('media routes require current authority before storage and never allow pare
  assert.equal((await appearanceHandler(deps)(request(`kind=logo&school=${school}&view=finance`,'PUT'))).status,403);
  assert.equal((await appearanceHandler(deps)(request(`kind=logo&school=${school}&view=admin`,'PUT'))).status,403);
  assert.equal((await appearanceHandler({...deps,origin:()=>false})(request(`kind=logo&school=${school}&view=admin`,'PUT'))).status,403);assert.equal(storage,0);
+});
+
+test('authorised logo reads are private and only current administrators can save normalized school branding',async()=>{
+ const {appearanceHandler}=await import('../../platform/appearance/http');const owner=randomUUID(),school=randomUUID(),writes:unknown[][]=[],jpeg=await sharp({create:{width:200,height:100,channels:3,background:'#245b48'}}).jpeg().toBuffer();
+ const pool={query:async(sql:string,values:unknown[])=>{writes.push(values);return {rows:sql.startsWith('SELECT')?[{jpeg}]:[],rowCount:1};}} as unknown as Pool;
+ const handler=appearanceHandler({session:async()=>({personId:owner}),origin:()=>true,operational:()=>true,admin:async()=>[{id:school,displayName:'Example school',principal:false}],pool:()=>pool});
+ const url=`https://school.example/api/v1/appearance?kind=logo&school=${school}&view=admin`,r=await handler(new Request(url,{headers:{authorization:'Bearer synthetic-test-session'}}));assert.equal(r.status,200);assert.equal(r.headers.get('cache-control'),'private, no-store');assert.deepEqual(Buffer.from(await r.arrayBuffer()),jpeg);const saved=await handler(new Request(url,{method:'PUT',headers:{authorization:'Bearer synthetic-test-session','content-type':'image/jpeg'},body:new Uint8Array(jpeg)}));assert.equal(saved.status,200);assert.equal(writes[1][0],school);assert.equal(writes[1][2],owner);assert.equal((await sharp(writes[1][1] as Buffer).metadata()).exif,undefined);
 });
