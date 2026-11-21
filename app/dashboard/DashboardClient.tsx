@@ -6,7 +6,7 @@ import styles from "./dashboard.module.css";
 import WorkspaceIcon from "../ui/WorkspaceIcon";
 
 import ClassTools from "./ClassTools";
-import EntryPaths from "../onboarding/EntryPaths";
+import UnassignedWorkspace from "./UnassignedWorkspace";
 import DayOverview from "./DayOverview";
 import {schoolContextSchema,orderedClasses,classPath,type SchoolContext} from "./workspaceModel";
 
@@ -83,9 +83,7 @@ export default function DashboardClient() {
   }
 
   if (state.status === "onboarding") {
-    return <DashboardShell>
-      <StatusPanel title="Welcome to SpaceCase" body="You’re signed in. Your school workspace will appear here once your school connects your account. Ask your school administrator to arrange access—there’s no need to create another account." /><EntryPaths/>
-    </DashboardShell>;
+    return <UnassignedWorkspace/>;
   }
 
   if (state.status === "unavailable") {

@@ -1,6 +1,7 @@
 import { supportAuthority } from "../../platform/support/authority";
 import { workspaceDestination } from "../../platform/auth/workspaceDestination";
 import {financeSchools} from "../../platform/finance/peosAuthorization";
+import {readParentHome,parentLandingDestination} from "../../platform/family/home";
 import DashboardClient from "./DashboardClient";
 import { currentSession } from "../../platform/auth/currentSession";
 import { redirect } from "next/navigation";
@@ -25,11 +26,14 @@ export default async function DashboardPage() {
       },
     });
     let destination;
-    try{destination = await workspaceDestination(
-      () => supportAuthority(new Request("https://spacecase.invalid", { headers: { authorization, ...(deploymentToken ? { "x-vercel-oidc-token": deploymentToken } : {}) } })),
+    try{const request=new Request("https://spacecase.invalid",{headers:{authorization,...(deploymentToken?{"x-vercel-oidc-token":deploymentToken}:{})}});
+      const authority=await supportAuthority(request);
+      destination = await workspaceDestination(
+      async () => authority,
       () => adminSchools(authorization, trustedFetch),
       async () => (await financeSchools(authorization, trustedFetch)).schools,
     );
+      if(!destination&&authority.schools.length===0)destination=parentLandingDestination(0,await readParentHome(request));
     }catch{return <main><h1>Your workspace could not be checked</h1><p>We could not confirm your current role. Refresh or choose your intended Google account.</p><a href="/dashboard">Try again</a><form action="/auth/google?choose_account=1" method="post"><button>Use another Google account</button></form></main>;}
     if (destination) redirect(destination);
   }
