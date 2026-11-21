@@ -27,3 +27,7 @@ Never automate school verification or billing grants from a CSV or a claimed inv
 ## Acceptance remaining
 
 Full CI for both repositories, isolated deployment, desktop/phone/keyboard and reduced-motion sharing walkthrough, real Google roundtrip, and WhatsApp draft opening. An actual WhatsApp trial send needs the user's intended recipient number; no send is authorized to an unspecified contact. Bulk parent creation and automatic delivery are not implemented by this repair. Earlier Finance acceptance and activity/proof/statement work remains in FINANCE_CONTINUITY.md.
+
+## Release evidence
+
+Both repositories passed full CI (366 SpaceCase/service tests and 69 PEOS tests, no failures/skips). The tested sources were released only to isolated Finance aliases using their protected branch settings. Anonymous read-back verified the new parent sign-in screen with HTTP 200 and no hosting-login redirect. Connected-browser inspection failed; real Google acceptance, sending-panel visual/keyboard/mobile acceptance and WhatsApp handoff remain pending. No trial message was sent. See FIN-INVITE-UX-01 in FEATURE_COMPLETION_REGISTER.md for exact deployment and workflow evidence.
