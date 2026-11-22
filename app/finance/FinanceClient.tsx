@@ -227,6 +227,13 @@ export default function FinanceClient({
   },[notice,reloading,busy,data,tab,highlightVisit]);
   const school = schools.find((row) => row.id === schoolId)!,
     can = (action: FinanceAction) => school.actions.includes(action);
+  const teamAllowed=can("finance.policy.manage"),financeReady=Boolean(data?.account);
+  useEffect(()=>{
+    if(!financeReady||!teamAllowed)return;
+    const followTeamLink=()=>{if(window.location.hash==='#finance-team'){setTab('team');setDestination('finance-panel-team');}};
+    followTeamLink();window.addEventListener('hashchange',followTeamLink);
+    return()=>window.removeEventListener('hashchange',followTeamLink);
+  },[schoolId,financeReady,teamAllowed]);
   useEffect(() => {
     if(loadedSchool.current !== schoolId) setData(null);
     setError("");
@@ -446,7 +453,7 @@ export default function FinanceClient({
                 </p>
                 <div className={s.workspaceLayout}>
                 <nav id="finance-sections" className={s.tabs} aria-label="Finance sections">
-                  {financeSections.filter(section=>section.key!=="intake"||intakeEnabled).filter(section=>section.key!=="audit"||Boolean(data.audit)).map(({key,label,hint,icon})=>(
+                  {financeSections.filter(section=>section.key!=="intake"||intakeEnabled).filter(section=>section.key!=="team"||teamAllowed).filter(section=>section.key!=="audit"||Boolean(data.audit)).map(({key,label,hint,icon})=>(
                     <button key={key} aria-pressed={tab===key} aria-controls={tab===key?`finance-panel-${key}`:undefined} onClick={()=>openSection(key)}>
                       <FinanceIcon name={icon}/><span>{label}<small>{hint}</small></span>
                     </button>
@@ -826,17 +833,11 @@ export default function FinanceClient({
                     )}
                   </div>
                 )}
+                {tab === "team" && teamAllowed && <div id="finance-panel-team" tabIndex={-1}><FinanceStaff key={schoolId} schoolId={schoolId} schoolName={school.displayName}/></div>}
                 {tab === "review" && (
                   <div id="finance-panel-review" tabIndex={-1}>
                     {paymentProofsEnabled&&can("finance.transactions.read")&&<PaymentProofReview key={`${schoolId}-proofs`} schoolId={schoolId} accountId={data.account.id} payments={data.payments??[]} canRecord={can("finance.transactions.record")} onReceipts={()=>openSection("accounts","finance-receipt-register")}/>}
                     {familyFinanceEnabled&&can("finance.policy.manage")&&<FamilyBillingAccess key={schoolId} schoolId={schoolId} plansEnabled={familyActivityPlansEnabled} proofsEnabled={paymentProofsEnabled}/>}
-                    {can("finance.policy.manage") && (
-                      <FinanceStaff
-                        key={schoolId}
-                        schoolId={schoolId}
-                        schoolName={school.displayName}
-                      />
-                    )}
                     <section className={s.card}>
                       <h2 id="finance-independent-review" tabIndex={-1} className={s.sectionTitle}><FinanceIcon name="review"/>Independent checks &amp; approvals</h2>
                       <p>

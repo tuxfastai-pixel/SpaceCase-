@@ -6,6 +6,7 @@ export const financeSections:{key:string;label:string;hint:string;icon:FinanceIc
  {key:'activities',label:'Activity planning',hint:'Explore contribution plans',icon:'budget'},
  {key:'budgets',label:'Budgets & expenses',hint:'Plan and track expenditure',icon:'budget'},
  {key:'review',label:'Review & reconcile',hint:'Independent checks and approvals',icon:'review'},
+ {key:'team',label:'Finance team',hint:'Invite staff and manage access',icon:'team'},
  {key:'audit',label:'Audit trail',hint:'Decisions, reasons and downloads',icon:'audit'},
 ];
 const statusLabels:Record<string,string>={READY:'Awaiting capture',DUPLICATE_REVIEW:'Check for duplicate',DISMISSED:'Excluded from capture',REPORTED:'Awaiting verification',VERIFIED:'Verified',REJECTED:'Rejected',APPROVED:'Approved',SUBMITTED:'Awaiting review',DRAFT:'Draft',ISSUED:'Issued',DISPUTED:'Disputed',VOID:'Void'};

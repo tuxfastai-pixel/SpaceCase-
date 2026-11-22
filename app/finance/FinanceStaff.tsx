@@ -129,8 +129,8 @@ export default function FinanceStaff({
     }
   }
   return (
-    <details className={s.card}>
-      <summary><FinanceIcon name="team"/> Finance team access</summary>
+    <section className={s.card}>
+      <h2 className={s.sectionTitle}><FinanceIcon name="team"/> Finance team</h2>
       <p>
         Only the current principal can invite finance staff. A finance officer
         prepares records; a finance manager can also verify another person’s
@@ -194,6 +194,6 @@ export default function FinanceStaff({
             )}
         </div>
       ))}
-    </details>
+    </section>
   );
 }
