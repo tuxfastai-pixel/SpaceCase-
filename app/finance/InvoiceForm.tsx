@@ -1,4 +1,5 @@
 "use client";
+import {SearchMatch,SearchResults} from "../ui/search/SearchResults";
 import { useState, type FormEvent } from "react";
 import { feeCategories, randToMinor, splitInstalmentsForForm } from "./forms";
 import s from "./finance.module.css";
@@ -111,13 +112,13 @@ export default function InvoiceForm({
             Find learner
           </button>
           {learner && (
-            <p role="status">
+            <SearchResults active focusKey={learner} label="Matched learner"><p role="status">
               <strong>
                 {learner.givenName} {learner.familyName}
               </strong>{" "}
-              · {learner.admissionNumber}. Check the learner reference and both
+              · <SearchMatch text={learner.admissionNumber} query={reference}/>. Check the learner reference and both
               names.
-            </p>
+            </p></SearchResults>
           )}
           <label>
             Unique invoice number

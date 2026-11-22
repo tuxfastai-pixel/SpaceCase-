@@ -597,7 +597,7 @@ export default function FinanceClient({
                                           BigInt(row.allocatedMinor)
                                         ).toString(),
                                       )
-                                    : "Await independent verification"}
+                                    : row.verification === "REJECTED" ? "Cannot allocate — rejected" : "Await independent verification"}
                                 </td>
                               </tr>
                             ))}

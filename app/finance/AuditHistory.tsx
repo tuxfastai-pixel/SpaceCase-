@@ -5,6 +5,7 @@ import s from "./finance.module.css";
 import {csvDownloadName} from "../../platform/downloads/filename";
 import {FinanceIcon,FinanceStatus} from "./FinanceUi";
 import {auditActions,auditActionLabel,financeDateLabel} from "./presentation";
+import {SearchMatch,SearchResults} from "../ui/search/SearchResults";
 import ReportDateInput from "../reports/ReportDateInput";
 const pageSchema = z.object({rows: z.array(z.object({
   id: z.string().uuid(), occurredAt: z.string(), actorPersonId: z.string(), action: z.string(),
@@ -75,12 +76,14 @@ export default function AuditHistory({schoolId, accountId, schoolName, initialRe
       </div>
       <p role="status" className={s.fileHelp}>Page {previous.length+1} · {page.rows.length} entries{page.nextCursor ? " · More activity available" : " · End of matching history"}. Downloads contain up to 100 matching entries from this page, rather than the whole account. New activity may appear on the first page.</p>
       {!page.rows.length && <p className={s.softPanel}>No activity matches these filters. Try a wider date range or clear the filters.</p>}
-      <ol className={s.auditList}>{page.rows.map(row => <li key={row.id}>
+      <SearchResults active={Object.values(filters).some(Boolean)} focusKey={page} label="Matching audit activity"><p role="status">{Object.values(filters).some(Boolean)?`${page.rows.length} matching entries on this page`:"All financial activity"}</p><ol className={s.auditList}>{page.rows.map(row => <li key={row.id}>
         <div className={s.receiptSummary}><strong>{auditActionLabel(row.action)}</strong>{row.decision&&<FinanceStatus value={row.decision}/>}</div>
         <time dateTime={row.occurredAt}>{financeDateLabel(row.occurredAt)} · {new Date(row.occurredAt).toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'})} UTC</time>
+        {filters.action&&<p>Activity code: <SearchMatch text={row.action} query={filters.action}/></p>}
+        {filters.resourceId&&<p>Record reference: <SearchMatch text={row.resourceId} query={filters.resourceId}/></p>}
         {row.reason && <p><strong>Reason:</strong> {row.reason}</p>}
         <details className={s.details}><summary>Staff and record references</summary><p>Staff reference: <code>{row.actorPersonId}</code></p><p>{row.resourceType.replaceAll('_',' ')} reference: <code>{row.resourceId}</code></p><p>Exact timestamp: <code>{row.occurredAt}</code></p><p>Activity code: <code>{row.action}</code></p></details>
-      </li>)}</ol>
+      </li>)}</ol></SearchResults>
     </>}
   </section>;
 }

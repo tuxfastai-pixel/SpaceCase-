@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
 import {schoolSetupSignals} from "../../domains/support/setupDiagnostics";
+import {SearchMatch,SearchResults} from "../ui/search/SearchResults";
 import EscalationInbox from "./EscalationInbox";
 import ObserverManager from "./ObserverManager";
 import InsightsPanel from "./InsightsPanel";
@@ -13,9 +14,9 @@ type School={id:string;displayName:string;status:string;createdAt:string;classCo
 type Health={schoolId:string;configured:boolean;timezone:string|null;openTickets:number};
 type Profile={school:School;classes:Array<{id:string;name:string;academicYear:number|null;assignedTeachers:number}>;classesTruncated:boolean;asOf:string;workspace:{status:string;timezone:string;academicYearLabel:string;autoGenerateLearnerReferences:boolean}|null;connectedClassIds:string[];ticketCounts:Array<{status:string;count:number}>;audit:Array<{id:string;action:string;resourceType:string;occurredAt:string}>};
 type Data=Partial<Profile&TicketData>&{schools?:School[];health?:Health[];nextOffset?:number|null;tickets?:Ticket[];pending?:Array<{id:string;ticketId:string;reference:string;summary:string;schoolId:string}>};
-function SchoolRow({school,health,open}:{school:School;health?:Health;open:()=>void}){
+function SchoolRow({school,health,open,query}:{school:School;health?:Health;open:()=>void;query:string}){
  const [expanded,setExpanded]=useState(false);
- return <article className={s.row}><div><strong>{school.displayName}</strong><p className={s.muted}>{school.status} · {health?.configured?"Workspace configured":"Workspace not configured"}</p>
+ return <article className={s.row}><div><strong><SearchMatch text={school.displayName} query={query}/></strong><p className={s.muted}>{school.status} · {health?.configured?"Workspace configured":"Workspace not configured"}</p>
  <div className={s.preview} onMouseEnter={()=>setExpanded(true)} onMouseLeave={()=>setExpanded(false)}><button type="button" className={s.secondary} aria-expanded={expanded} onFocus={()=>setExpanded(true)} onBlur={()=>setExpanded(false)} onKeyDown={e=>{if(e.key==="Escape")setExpanded(false);}} onClick={()=>setExpanded(true)}>Quick school summary</button>
  {expanded?<div className={s.peek}><p>{school.staffCount} staff · {school.classCount} classes · {school.learnerCount} learners</p><p>{school.pendingInvitations} pending invitations · {health?.openTickets??0} open support tickets</p><p className={s.muted}>Learner counts only; individual records are not included.</p></div>:null}</div>
  </div><button className={s.button} onClick={open}>Open school profile</button></article>;
@@ -45,7 +46,7 @@ export default function FounderClient({initialSchool=""}:{initialSchool?:string}
  {view==="insights"?<InsightsPanel key={insightVersion}/>:null}
  {view==="directory"?<section className={s.card}><h2>School directory</h2><p className={s.muted}>Alphabetical order. Search is by school name. Hover, focus or tap Quick school summary for a preview.</p>
  <form className={s.actions} onSubmit={e=>{e.preventDefault();setOffset(0);setQ(search);}}><label className={s.field}>Find a school<input maxLength={100} value={search} onChange={e=>setSearch(e.target.value)}/></label><button className={s.secondary}>Search</button></form>
- {data?.schools?.length?data.schools.map(item=><SchoolRow key={item.id} school={item} health={data.health?.find(h=>h.schoolId===item.id)} open={()=>openSchool(item.id)}/>):!loading?<p>No schools match this page.</p>:null}
+ {!loading&&<SearchResults active={Boolean(q.trim())} focusKey={data} label="Matching schools">{data?.schools?.length?data.schools.map(item=><SchoolRow query={q} key={item.id} school={item} health={data.health?.find(h=>h.schoolId===item.id)} open={()=>openSchool(item.id)}/>):<p>No schools match this page.</p>}</SearchResults>}
  {data?.asOf?<p className={s.muted}>Authority counts checked {showDate(data.asOf)}. Setup and ticket counts are current product records, not a service-health score.</p>:null}
  </section>:null}
  {view==="inbox"?<><EscalationInbox open={openTicket}/><section className={s.card}><h2>Decisions awaiting review</h2><p className={s.muted}>Manual recommendations only. Agents, automatic recovery and deployment execution are not connected.</p>{data?.pending?.length?data.pending.map(p=><article className={s.row} key={p.id}><div><strong>{p.reference}</strong><p className={s.text}>{p.summary}</p></div><button className={s.button} onClick={()=>openTicket(p.ticketId)}>Review recommendation</button></article>):!loading?<p>No recommendations are awaiting a decision.</p>:null}</section>
