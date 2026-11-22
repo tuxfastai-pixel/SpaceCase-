@@ -46,6 +46,8 @@ test('private proof quarantine scopes retries, denies raw runtime reads, purges 
    await assert.rejects(runtime.query('SELECT body FROM school_finance.payment_proof_quarantine WHERE proof_id=$1',[first.id]),/permission denied/);
    await assert.rejects(purgeExpiredPaymentProofFiles(db),/permission denied/);
   }finally{await runtime.query('RESET ROLE');runtime.release();}
+  // Two different requests competing for the final allowed slot cannot both win.
+  const finalSlot={...policy,requestsPerPersonDay:4};const attempts=await Promise.allSettled([4,5].map(n=>submitPaymentProof(pool,grantId,{...input,requestId:randomUUID(),claim:{...input.claim,reference:`SYNTHETIC-CONCURRENT-${n}`}},Buffer.from([...bytes,n]),finalSlot,authorize)));assert.equal(attempts.filter(r=>r.status==='fulfilled').length,1);assert.ok(attempts.some(r=>r.status==='rejected'&&String(r.reason).includes('PROOF_DAILY_LIMIT')));
   // Simulate time passing with the test owner; normal runtime cannot rewrite these dates.
   await pool.query("UPDATE school_finance.payment_proof_cases SET received_at=now()-interval '2 days',expires_at=now()-interval '1 day' WHERE id=$1",[first.id]);
   await pool.query("UPDATE school_finance.payment_proof_quarantine SET expires_at=now()-interval '1 day' WHERE proof_id=$1",[first.id]);
