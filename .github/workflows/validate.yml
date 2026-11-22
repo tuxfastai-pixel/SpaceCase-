@@ -46,7 +46,7 @@ jobs:
         run: npm install --no-audit --no-fund
 
       - name: Create restricted runtime test role
-        run: PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -v ON_ERROR_STOP=1 -c "CREATE ROLE spacecase_runtime NOLOGIN NOSUPERUSER NOBYPASSRLS; CREATE ROLE spacecase_proof_cleanup NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE"
+        run: PGPASSWORD=spacecase psql --host=127.0.0.1 --username=spacecase --dbname=spacecase_test -v ON_ERROR_STOP=1 -c "CREATE ROLE spacecase_runtime NOLOGIN NOSUPERUSER NOBYPASSRLS; CREATE ROLE spacecase_proof_cleanup NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE; CREATE ROLE spacecase_proof_scanner NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE"
       - name: Run database migrations
         run: npm run db:migrate
 

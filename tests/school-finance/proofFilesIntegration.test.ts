@@ -1,0 +1,50 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {randomUUID,createHash} from 'node:crypto';import {Pool} from 'pg';
+import {initializeFinance,type FinanceAuthority} from '../../domains/school-finance/workspaceService';
+import {submitPaymentProof,paymentProofStatus} from '../../domains/school-finance/paymentProofService';
+import {scanPaymentProof,readFamilyPaymentProofFile,readStaffPaymentProofFile,purgeExpiredClearedProofFiles} from '../../domains/school-finance/paymentProofFiles';
+import type {FamilyBillingDecision} from '../../platform/family/billingContracts';import type {ProofScanner} from '../../platform/evidence/clamav';
+test('cleared proof requires trusted hash-bound scanning and current family/staff authority; expiry removes bytes and retains history',{timeout:60000},async t=>{
+ if(!process.env.DATABASE_URL){t.skip('Requires isolated PostgreSQL');return;}
+ const pool=new Pool({connectionString:process.env.DATABASE_URL,max:6}),schoolId=randomUUID(),parent=randomUUID(),learner=randomUUID(),grantId=randomUUID(),officer=randomUUID();let accountId='';
+ const staff:FinanceAuthority=async school=>({schoolId:school,personId:officer}),scope=()=>({schoolId,accountId,actorPersonId:officer});
+ const submitAuth=async():Promise<FamilyBillingDecision>=>({allowed:true,contractVersion:'family-billing-v1',grantId,personId:parent,schoolId,learnerPersonId:learner,action:'family.finance.proof.submit',expiresAt:new Date(Date.now()+30000).toISOString()});
+ const readAuth=async():Promise<FamilyBillingDecision>=>({...await submitAuth(),action:'family.finance.read'});
+ const scanner:ProofScanner={scan:async bytes=>({hash:createHash('sha256').update(bytes).digest('hex'),verdict:'CLEAN',engine:'synthetic-test-only',definitions:'v1',checkedAt:new Date().toISOString()})};
+ const policy={version:'synthetic-only-v1',days:2},requestIds:string[]=[];
+ const submit=async()=>{const requestId=randomUUID();requestIds.push(requestId);const bytes=Buffer.from(`%PDF-1.7\nSYNTHETIC-${requestId}\n%%EOF`);const record=await submitPaymentProof(pool,grantId,{requestId,mimeType:'application/pdf',claim:{amountMinor:'35000',paidOn:'2020-01-01',reference:'SYNTHETIC-ONLY',method:'EFT'}},bytes,{version:'synthetic-only-v1',hours:24,requestsPerPersonDay:20,accountBytesPerDay:2097152},submitAuth);return {record,bytes,requestId};};
+ try{
+  await pool.query('INSERT INTO school_ops.school_workspaces(peos_school_id) VALUES($1)',[schoolId]);accountId=(await initializeFinance(pool,schoolId,officer,staff)).accountId;
+  const first=await submit();await assert.rejects(readFamilyPaymentProofFile(pool,grantId,first.record.id,readAuth),/PROOF_FILE_UNAVAILABLE/);
+  let scanCalls=0;const denied:ProofScanner={scan:async bytes=>{scanCalls++;return scanner.scan(bytes);}};
+  await assert.rejects(scanPaymentProof(pool,first.record.id,accountId,denied,policy,async()=>({...await submitAuth(),action:'family.finance.read'})),/FAMILY_BILLING_FORBIDDEN/);assert.equal(scanCalls,0);
+  let checks=0;await assert.rejects(scanPaymentProof(pool,first.record.id,accountId,scanner,policy,async()=>{if(++checks>1)throw Error('scope revoked');return submitAuth();}),/scope revoked/);
+  assert.equal((await pool.query('SELECT count(*)::int AS n FROM school_finance.payment_proof_cleared WHERE account_id=$1',[accountId])).rows[0].n,0);
+  const worker=await pool.connect();try{await worker.query('SET ROLE spacecase_proof_scanner');const db={query:(sql:string,args?:unknown[])=>worker.query(sql,args),connect:async()=>({query:(sql:string,args?:unknown[])=>worker.query(sql,args),release:()=>{}})} as unknown as Pool;
+   assert.equal((await scanPaymentProof(db,first.record.id,accountId,scanner,policy,submitAuth)).status,'CLEARED');
+   const rights=(await worker.query("SELECT has_table_privilege(current_user,'school_finance.payments','INSERT') AS payment,has_table_privilege(current_user,'school_finance.payment_proof_cleared','UPDATE') AS overwrite,has_table_privilege(current_user,'school_finance.payment_proof_cleared_files','DELETE') AS deletion")).rows[0];assert.deepEqual(rights,{payment:false,overwrite:false,deletion:false});
+  }finally{await worker.query('RESET ROLE');worker.release();}
+  const file=await readFamilyPaymentProofFile(pool,grantId,first.record.id,readAuth);assert.deepEqual(file.body,first.bytes);assert.equal(file.mimeType,'application/pdf');assert.deepEqual((await readStaffPaymentProofFile(pool,scope(),first.record.id,staff)).body,first.bytes);
+  const status=await paymentProofStatus(pool,grantId,first.requestId,submitAuth);assert.ok(status.found);if(status.found)assert.equal(status.proof.status,'READY_FOR_REVIEW');
+  const otherPerson=randomUUID(),otherLearner=randomUUID(),otherSchool=randomUUID();for(const changed of [{personId:otherPerson},{learnerPersonId:otherLearner},{schoolId:otherSchool}])await assert.rejects(readFamilyPaymentProofFile(pool,grantId,first.record.id,async()=>({...await readAuth(),...changed})),/PROOF_FILE_UNAVAILABLE/);
+  let reads=0;await assert.rejects(readFamilyPaymentProofFile(pool,grantId,first.record.id,async()=>{if(++reads>1)throw Error('read revoked');return readAuth();}),/read revoked/);
+  await assert.rejects(readStaffPaymentProofFile(pool,scope(),first.record.id,async()=>{throw Error('staff denied');}),/staff denied/);
+  const blocked=await submit();assert.equal((await scanPaymentProof(pool,blocked.record.id,accountId,{scan:async bytes=>({...await scanner.scan(bytes),verdict:'INFECTED'})},policy,submitAuth)).status,'BLOCKED');
+  await assert.rejects(scanPaymentProof(pool,blocked.record.id,accountId,scanner,policy,submitAuth),/PROOF_FILE_BLOCKED/);await assert.rejects(readFamilyPaymentProofFile(pool,grantId,blocked.record.id,readAuth),/PROOF_FILE_UNAVAILABLE/);
+  const blockedStatus=await paymentProofStatus(pool,grantId,blocked.requestId,submitAuth);assert.ok(blockedStatus.found);if(blockedStatus.found)assert.equal(blockedStatus.proof.status,'FILE_BLOCKED');
+  const failed=await submit();for(let i=0;i<3;i++)assert.equal((await scanPaymentProof(pool,failed.record.id,accountId,{scan:async bytes=>({...await scanner.scan(bytes),hash:'0'.repeat(64)})},policy,submitAuth)).status,'FAILED');
+  await assert.rejects(scanPaymentProof(pool,failed.record.id,accountId,scanner,policy,submitAuth),/PROOF_SCAN_RETRY_LIMIT/);await assert.rejects(readFamilyPaymentProofFile(pool,grantId,failed.record.id,readAuth),/PROOF_FILE_UNAVAILABLE/);
+  const concurrent=await submit();const results=await Promise.all([scanPaymentProof(pool,concurrent.record.id,accountId,scanner,policy,submitAuth),scanPaymentProof(pool,concurrent.record.id,accountId,scanner,policy,submitAuth)]);assert.equal(results.filter(r=>r.status==='CLEARED').length,1);assert.equal(results.filter(r=>r.status==='ALREADY_PROCESSED').length,1);
+  const runtime=await pool.connect();try{await runtime.query('SET ROLE spacecase_runtime');const db={query:(sql:string,args?:unknown[])=>runtime.query(sql,args),connect:async()=>({query:(sql:string,args?:unknown[])=>runtime.query(sql,args),release:()=>{}})} as unknown as Pool;
+   assert.deepEqual((await readFamilyPaymentProofFile(db,grantId,first.record.id,readAuth)).body,first.bytes);
+   const rights=(await runtime.query("SELECT has_table_privilege(current_user,'school_finance.payment_proof_cleared','INSERT') AS clear,has_table_privilege(current_user,'school_finance.payment_proof_cleared_files','DELETE') AS deletion,has_column_privilege(current_user,'school_finance.payment_proof_scan_attempts','outcome','UPDATE') AS rewrite")).rows[0];assert.deepEqual(rights,{clear:false,deletion:false,rewrite:false});
+   await assert.rejects(scanPaymentProof(db,failed.record.id,accountId,scanner,policy,submitAuth),/permission denied/);await assert.rejects(purgeExpiredClearedProofFiles(db),/permission denied/);
+  }finally{await runtime.query('RESET ROLE');runtime.release();}
+  await pool.query("UPDATE school_finance.payment_proof_cleared SET created_at=now()-interval '2 days',expires_at=now()-interval '1 day' WHERE proof_id=$1",[first.record.id]);await assert.rejects(readFamilyPaymentProofFile(pool,grantId,first.record.id,readAuth),/PROOF_FILE_UNAVAILABLE/);
+  const cleanup=await pool.connect();try{await cleanup.query('SET ROLE spacecase_proof_cleanup');const db={connect:async()=>({query:(sql:string,args?:unknown[])=>cleanup.query(sql,args),release:()=>{}})} as unknown as Pool;assert.deepEqual(await purgeExpiredClearedProofFiles(db),{purged:1});assert.deepEqual(await purgeExpiredClearedProofFiles(db),{purged:0});}finally{await cleanup.query('RESET ROLE');cleanup.release();}
+  assert.equal((await pool.query('SELECT count(*)::int AS n FROM school_finance.payment_proof_cleared_files WHERE proof_id=$1',[first.record.id])).rows[0].n,0);
+  const history=(await pool.query('SELECT scans,file_hash FROM school_finance.payment_proof_cleared WHERE proof_id=$1',[first.record.id])).rows[0];assert.equal(history.scans.length,1);assert.equal(history.file_hash,createHash('sha256').update(first.bytes).digest('hex'));
+  assert.equal((await scanPaymentProof(pool,first.record.id,accountId,scanner,policy,submitAuth)).status,'ALREADY_PROCESSED');
+  const expired=await paymentProofStatus(pool,grantId,first.requestId,submitAuth);assert.ok(expired.found);if(expired.found)assert.equal(expired.proof.status,'EXPIRED');
+  for(const table of ['invoices','payments','allocations'])assert.equal((await pool.query(`SELECT count(*)::int AS n FROM school_finance.${table} WHERE account_id=$1`,[accountId])).rows[0].n,0);
+ }finally{if(accountId){for(const table of ['payment_proof_cleared_purges','payment_proof_cleared_files','payment_proof_cleared','payment_proof_scan_attempts','payment_proof_purges','payment_proof_quarantine','payment_proof_requests','payment_proof_cases','audit_events'])await pool.query(`DELETE FROM school_finance.${table} WHERE account_id=$1`,[accountId]);await pool.query('DELETE FROM school_finance.accounts WHERE id=$1',[accountId]);await pool.query('DELETE FROM school_ops.school_workspaces WHERE peos_school_id=$1',[schoolId]);}await pool.end();}
+});
