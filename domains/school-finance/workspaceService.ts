@@ -1,3 +1,4 @@
+import {enqueueFinanceEvent} from "./financeOutbox";
 import type { Pool, PoolClient } from "pg";
 import { randomUUID } from "node:crypto";
 import { SchoolFinanceError, invoiceTotal, minorUnits } from "./money";
@@ -230,6 +231,7 @@ export async function recordFinance(
         input.paymentId,
         { decision: input.decision, reason: input.reason },
       );
+      await enqueueFinanceEvent(db,input.accountId,'RECEIPT_CHANGED','PAYMENT',input.paymentId);
       return { id: input.paymentId };
     } else if (input.command === "BUDGET") {
       await db.query(

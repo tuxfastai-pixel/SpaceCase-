@@ -6,6 +6,7 @@ import { expenseCategories, formatZar, randToMinor } from "./forms";
 import type { FinanceAction } from "../../platform/finance/peosAuthorization";
 import s from "./finance.module.css";
 import ActivityChargeLinks from "./ActivityChargeLinks";
+import PaymentProofReview from "./PaymentProofReview";
 import FamilyBillingAccess from "./FamilyBillingAccess";
 import ActivityRegister from "./ActivityRegister";
 import type {ActivityDetails} from "../../domains/school-activities/registerContracts";
@@ -118,6 +119,7 @@ const workspace = z.object({
 });
 type Workspace = z.infer<typeof workspace>;
 const errorMessages: Record<string, string> = {
+  PAYMENT_LEARNER_MISMATCH:"This receipt is connected to another learner’s payment proof. Check the learner and invoice before allocating.",
   FINANCE_SERVICE_UNAVAILABLE: "Finance records are temporarily unavailable. Wait a moment, then select Refresh records to check the latest state before trying again.",
   PEOS_UNAVAILABLE: "School access checks are temporarily unavailable. Wait a moment, then select Refresh records.",
   FINANCE_NOT_ENABLED:
@@ -183,6 +185,7 @@ export default function FinanceClient({
   activityRegisterEnabled = false,
   familyFinanceEnabled = false,
   familyActivityPlansEnabled = false,
+  paymentProofsEnabled = false,
 }: {
   schools: School[];
   initialSchool: string;
@@ -192,6 +195,7 @@ export default function FinanceClient({
   activityRegisterEnabled?: boolean;
   familyFinanceEnabled?: boolean;
   familyActivityPlansEnabled?: boolean;
+  paymentProofsEnabled?: boolean;
 }) {
   const [schoolId, setSchoolId] = useState(initialSchool),
     [storedData, setData] = useState<Workspace | null>(null),
@@ -824,7 +828,8 @@ export default function FinanceClient({
                 )}
                 {tab === "review" && (
                   <div id="finance-panel-review" tabIndex={-1}>
-                    {familyFinanceEnabled&&can("finance.policy.manage")&&<FamilyBillingAccess key={schoolId} schoolId={schoolId} plansEnabled={familyActivityPlansEnabled}/>}
+                    {paymentProofsEnabled&&can("finance.transactions.read")&&<PaymentProofReview key={`${schoolId}-proofs`} schoolId={schoolId} accountId={data.account.id} payments={data.payments??[]} canRecord={can("finance.transactions.record")} onReceipts={()=>openSection("accounts","finance-receipt-register")}/>}
+                    {familyFinanceEnabled&&can("finance.policy.manage")&&<FamilyBillingAccess key={schoolId} schoolId={schoolId} plansEnabled={familyActivityPlansEnabled} proofsEnabled={paymentProofsEnabled}/>}
                     {can("finance.policy.manage") && (
                       <FinanceStaff
                         key={schoolId}
