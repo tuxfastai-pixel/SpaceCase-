@@ -1,4 +1,5 @@
 'use client';
+import ReportDateInput from '../reports/ReportDateInput';
 import {useState,useEffect,useRef,type FormEvent} from 'react';
 import {activityBalances,type ContributionMode} from '../../domains/school-activities/contributions';
 import {formatZar} from './forms';
@@ -12,7 +13,7 @@ type Preview=ReturnType<typeof buildActivityPreview>;
 export default function ActivityPlanning({initialActivities=[]}:{initialActivities?:ActivityDetails[]}){
  const [events,setEvents]=useState<DraftActivity[]>(()=>initialActivities.length?initialActivities.map((row,i)=>{const n=BigInt(row.amountMinor);return {id:`activity-${i+1}`,title:row.title,deadline:row.paymentDeadline,amount:`${n/100n}.${(n%100n).toString().padStart(2,'0')}`,chosen:''};}):[{id:'activity-1',title:'',deadline:'',amount:'',chosen:''}]);
  const [nextId,setNextId]=useState(initialActivities.length+2),[contribution,setContribution]=useState(''),[mode,setMode]=useState<ContributionMode>('EARLIEST');
- const [scheduled,setScheduled]=useState(false),[dates,setDates]=useState([{date:'',amount:''}]),[variable,setVariable]=useState(false),[step,setStep]=useState<1|2|3>(1),[total,setTotal]=useState('0');
+ const [scheduled,setScheduled]=useState(false),[dates,setDates]=useState([{id:'payment-1',date:'',amount:''}]),[variable,setVariable]=useState(false),[step,setStep]=useState<1|2|3>(1),[total,setTotal]=useState('0');
  const previewRef=useRef<HTMLElement>(null),heading=useRef<HTMLHeadingElement>(null),previousStep=useRef(1),adjustments=useRef<HTMLDetailsElement>(null);
  const [preview,setPreview]=useState<Preview|null>(null),[error,setError]=useState('');
  useEffect(()=>{if(previousStep.current===step)return;previousStep.current=step;if(step!==3){heading.current?.scrollIntoView({block:'nearest',behavior:'auto'});heading.current?.focus({preventScroll:true});}},[step]);
@@ -24,7 +25,7 @@ export default function ActivityPlanning({initialActivities=[]}:{initialActiviti
  function chooseActivities(event:FormEvent){event.preventDefault();clear();try{const value=activityBalances(planningActivities(events));if(BigInt(value.totalMinor)<=0n)throw Error('Add an activity amount greater than zero.');setTotal(value.totalMinor);setStep(2);}catch(reason){displayError(reason);}}
  function preset(half:boolean){clear();const amount=BigInt(total),value=half?(amount+1n)/2n:amount;setContribution(`${value/100n}.${(value%100n).toString().padStart(2,'0')}`);}
  function calculate(event:FormEvent){event.preventDefault();clear();try{setPreview(buildActivityPreview(events,contribution,{mode,scheduled,dates,variable}));setStep(3);}catch(reason){if(adjusted&&adjustments.current)adjustments.current.open=true;displayError(reason);}}
- function resetOptions(){clear();setMode('EARLIEST');setScheduled(false);setVariable(false);setDates([{date:'',amount:''}]);setEvents(rows=>rows.map(row=>({...row,chosen:''})));}
+ function resetOptions(){clear();setMode('EARLIEST');setScheduled(false);setVariable(false);setDates([{id:'payment-1',date:'',amount:''}]);setEvents(rows=>rows.map(row=>({...row,chosen:''})));}
  const adjusted=mode!=='EARLIEST'||scheduled||events.some(row=>row.chosen.trim());
  return <section className={s.card} aria-labelledby='activity-planning-title'>
   <h2 id='activity-planning-title' tabIndex={-1}><FinanceIcon name='budget'/> Preview the parent’s experience</h2>
@@ -37,7 +38,7 @@ export default function ActivityPlanning({initialActivities=[]}:{initialActiviti
    {events.map((row,index)=><div className={s.planningEvent} key={row.id}><h4>Activity {index+1}</h4><div className={s.planningGrid}>
     <label>Activity name<input required maxLength={160} value={row.title} onChange={e=>changeEvent(row.id,'title',e.target.value)}/></label>
     <label>Cost per learner (R)<input required inputMode='decimal' value={row.amount} onChange={e=>changeEvent(row.id,'amount',e.target.value)}/></label>
-    <label>Money needed by<input type='date' required value={row.deadline} onChange={e=>changeEvent(row.id,'deadline',e.target.value)}/></label>
+    <ReportDateInput label={`Activity ${index+1} money needed by`} value={row.deadline} onChange={value=>changeEvent(row.id,'deadline',value)}/>
    </div>{events.length>1&&<button type='button' className={s.secondary} onClick={()=>{clear();setEvents(rows=>rows.filter(r=>r.id!==row.id));}}>Remove activity {index+1}</button>}</div>)}
    <button type='button' className={s.secondary} disabled={events.length>=20} onClick={()=>{clear();setEvents(rows=>[...rows,{id:`activity-${nextId}`,title:'',deadline:'',amount:'',chosen:''}]);setNextId(n=>n+1);}}>Add another activity</button>
   </fieldset>{error&&<p role='alert' className={s.error}>{error}</p>}<p className={s.note}>Next: try an amount against these activities.</p><button data-guide-next>Continue to amount <span aria-hidden='true'>→</span></button></form>}
@@ -51,8 +52,8 @@ export default function ActivityPlanning({initialActivities=[]}:{initialActiviti
     <details className={s.details} open={mode==='CUSTOM'?true:undefined}><summary>Set some aside for an activity</summary><p>Enter an amount for any activity you want to prioritise. Leave the others blank for automatic sharing. “Choose all amounts myself” leaves the rest unassigned.</p><div className={s.planningGrid}>{events.map((row,index)=><label key={row.id}>{row.title||`Activity ${index+1}`} (R)<input inputMode='decimal' value={row.chosen} onChange={e=>changeEvent(row.id,'chosen',e.target.value)}/></label>)}</div></details>
     <label><span><input type='checkbox' checked={scheduled} onChange={e=>{clear();setScheduled(e.target.checked);}}/> Add dates for the remaining balance</span></label>
     {scheduled&&<><p>Use the school’s approved dates. SpaceCase splits the remaining balance evenly unless you choose different amounts.</p><label><span><input type='checkbox' checked={variable} onChange={e=>{clear();setVariable(e.target.checked);}}/> Choose different payment amounts</span></label>
-     {dates.map((row,index)=><div className={s.planningGrid} key={index}><label>Payment date {index+1}<input type='date' value={row.date} onChange={e=>{clear();setDates(rows=>rows.map((r,i)=>i===index?{...r,date:e.target.value}:r));}}/></label>{variable&&<label>Amount {index+1} (R)<input inputMode='decimal' value={row.amount} onChange={e=>{clear();setDates(rows=>rows.map((r,i)=>i===index?{...r,amount:e.target.value}:r));}}/></label>}{dates.length>1&&<button type='button' className={s.secondary} onClick={()=>{clear();setDates(rows=>rows.filter((_,i)=>i!==index));}}>Remove payment date {index+1}</button>}</div>)}
-     <button type='button' className={s.secondary} disabled={dates.length>=60} onClick={()=>{clear();setDates(rows=>[...rows,{date:'',amount:''}]);}}>Add a payment date</button></>}
+     {dates.map((row,index)=><div className={s.planningGrid} key={row.id}><ReportDateInput required={false} label={`Payment date ${index+1}`} value={row.date} onChange={value=>{clear();setDates(rows=>rows.map((r,i)=>i===index?{...r,date:value}:r));}}/>{variable&&<label>Amount {index+1} (R)<input inputMode='decimal' value={row.amount} onChange={e=>{clear();setDates(rows=>rows.map((r,i)=>i===index?{...r,amount:e.target.value}:r));}}/></label>}{dates.length>1&&<button type='button' className={s.secondary} onClick={()=>{clear();setDates(rows=>rows.filter((_,i)=>i!==index));}}>Remove payment date {index+1}</button>}</div>)}
+     <button type='button' className={s.secondary} disabled={dates.length>=60} onClick={()=>{clear();setDates(rows=>[...rows,{id:crypto.randomUUID(),date:'',amount:''}]);}}>Add a payment date</button></>}
     <p><button type='button' className={s.secondary} onClick={resetOptions}>Reset to closest deadlines</button></p>
    </details>
    {error&&<p role='alert' className={s.error}>{error}</p>}<p className={s.note}>Next: see what this amount would cover. Nothing is paid or saved.</p><div className={s.actions}><button type='button' className={s.secondary} onClick={()=>{clear();setStep(1);}}>Back to activities</button><button data-guide-next><FinanceIcon name='search'/>Show the result</button></div>
