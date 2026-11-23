@@ -37,12 +37,17 @@ test('optional participation: school offers, current parent consent charges once
   const visible=await readActivityOffers(pool,grantId,()=>auth('family.finance.read'));assert.equal(visible.offers[0].invoiceId,a.invoiceId);assert.equal(visible.offers[0].choice,'ACCEPT');
   assert.equal((await readActivityOffers(pool,grantId,()=>auth('family.finance.read',randomUUID()))).offers.length,0);
   assert.equal((await readFamilyActivityPlans(pool,grantId,()=>auth('family.finance.read')) as {calendars:unknown[]}).calendars.length,1);
+  // Two contacts race the first acceptance, not only retries of an already saved result.
+  const racingLearner=randomUUID(),racingOffer=await offerActivity(pool,scope(),input(),authority(officer),async()=>racingLearner),secondGrant=randomUUID(),secondPerson=randomUUID();
+  const racingDecision={...decision,offerId:racingOffer.id};
+  const racing=await Promise.all([decideParticipation(pool,grantId,racingDecision,()=>auth('family.finance.activity.accept',racingLearner)),decideParticipation(pool,secondGrant,racingDecision,async()=>({...await auth('family.finance.activity.accept',racingLearner),grantId:secondGrant,personId:secondPerson}))]);assert.deepEqual(racing[0],racing[1]);
+  assert.equal((await pool.query('SELECT count(*)::int AS n FROM school_finance.invoices WHERE account_id=$1 AND peos_learner_id=$2',[accountId,racingLearner])).rows[0].n,1);
   const declinedLearner=randomUUID(),declined=await offerActivity(pool,scope(),input(),authority(officer),async()=>declinedLearner);
   await decideParticipation(pool,grantId,{...decision,offerId:declined.id,choice:'DECLINE'},()=>auth('family.finance.activity.accept',declinedLearner));
   const staleLearner=randomUUID(),stale=await offerActivity(pool,scope(),input(),authority(officer),async()=>staleLearner);
   await write({command:'CANCEL_ACTIVITY',activityId:activity.id,revision:activity.revision,reason:'Synthetic cancellation'},principal);
   await assert.rejects(decideParticipation(pool,grantId,{...decision,offerId:stale.id},()=>auth('family.finance.activity.accept',staleLearner)),/ACTIVITY_OFFER_CHANGED/);
-  assert.equal((await pool.query('SELECT count(*)::int AS n FROM school_finance.invoices WHERE account_id=$1',[accountId])).rows[0].n,1);
+  assert.equal((await pool.query('SELECT count(*)::int AS n FROM school_finance.invoices WHERE account_id=$1',[accountId])).rows[0].n,2);
   for(const table of ['payments','allocations'])assert.equal((await pool.query(`SELECT count(*)::int AS n FROM school_finance.${table} WHERE account_id=$1`,[accountId])).rows[0].n,0);
  }finally{
   if(accountId){for(const table of ['family_activity_plans','activity_participations','activity_offers','activity_charge_links','instalments','invoice_lines','invoices','activity_requests','activity_versions','activity_calendars','audit_events'])await pool.query(`DELETE FROM school_finance.${table} WHERE account_id=$1`,[accountId]);await pool.query('DELETE FROM school_finance.accounts WHERE id=$1',[accountId]);await pool.query('DELETE FROM school_ops.school_workspaces WHERE peos_school_id=$1',[schoolId]);}await pool.end();
