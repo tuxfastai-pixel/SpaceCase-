@@ -58,7 +58,12 @@ export function buildFamilyPlan(input:FamilyPlanChoice,source:{calendarId:string
   try{instalments=contributionSchedule(total.toString(),dates,choice.instalments.map(p=>p.amountMinor));}catch{fail('PLAN_INSTALMENT_TOTAL_INVALID');}
  }else{
   if(!choice.firstDueDate||choice.instalments)fail('PLAN_DATES_UNAVAILABLE');
-  const dates=approvedPlanDates(policy,choice.option,choice.firstDueDate,source.today);
+  // Fund the selected activities by their earliest deadline; never spread a trip into later months.
+  let dates=approvedPlanDates(policy,choice.option,choice.firstDueDate,source.today).filter(d=>d<=charges[0].deadline);
+  if(!dates.length)fail('PLAN_MISSES_ACTIVITY_DEADLINE');
+  const minimum=minorUnits(policy.minimumMinor),slots=total/(minimum>0n?minimum:1n);
+  if(!slots)fail('PLAN_BELOW_SCHOOL_MINIMUM');
+  if(BigInt(dates.length)>slots)dates=dates.slice(0,Number(slots));
   try{instalments=contributionSchedule(total.toString(),dates);}catch{fail('PLAN_TOO_MANY_INSTALMENTS');}
  }
  if(instalments.some(p=>minorUnits(p.amountMinor)<minorUnits(policy.minimumMinor)))fail('PLAN_BELOW_SCHOOL_MINIMUM');

@@ -42,3 +42,12 @@ test('monthly dates retain chosen day after short months, every-two-months and c
 test('duplicate invoice links, invalid totals and missing agreement cannot become accepted plans',()=>{
  const src=source();src.charges.push({...charge,chargeId:randomUUID()});assert.throws(()=>buildFamilyPlan(choice,src),/PLAN_CHARGE_CONFLICT/);assert.equal(familyPlanChoice.safeParse({...choice,agreementChecked:false}).success,false);assert.throws(()=>buildFamilyPlan({...choice,calendarId:randomUUID()},source()),/PLAN_POLICY_CHANGED/);
 });
+
+test('guided standard plans finish before the earliest activity deadline and respect school minimums without late dates',()=>{
+ const src=source();src.charges[0].amountMinor='15000';src.charges[0].deadline='2027-05-15';src.policy.minimumMinor='15000';
+ const monthly={...choice,selections:[{chargeId,expectedOutstandingMinor:'15000'}],option:'MONTHLY' as const,instalments:undefined,firstDueDate:'2027-01-13'};
+ const one=buildFamilyPlan(monthly,src);assert.deepEqual(one.instalments,[{dueDate:'2027-01-13',amountMinor:'15000'}]);assert.deepEqual(one.shortfalls,[]);
+ src.policy.minimumMinor='1000';const split=buildFamilyPlan(monthly,src);assert.equal(split.instalments.length,5);assert.ok(split.instalments.every(p=>p.dueDate<='2027-05-15'&&BigInt(p.amountMinor)>=1000n));assert.equal(split.instalments.reduce((n,p)=>n+BigInt(p.amountMinor),0n),15000n);
+ assert.throws(()=>buildFamilyPlan({...monthly,firstDueDate:'2027-06-01'},src),/PLAN_MISSES_ACTIVITY_DEADLINE/);
+ src.policy.minimumMinor='15001';assert.throws(()=>buildFamilyPlan(monthly,src),/PLAN_BELOW_SCHOOL_MINIMUM/);
+});
