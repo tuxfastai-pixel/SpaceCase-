@@ -35,7 +35,7 @@ test('optional participation: school offers, current parent consent charges once
   assert.equal((await pool.query('SELECT count(*)::int AS n FROM school_finance.invoices WHERE account_id=$1',[accountId])).rows[0].n,1);
   assert.equal((await pool.query('SELECT amount_minor::text AS amount FROM school_finance.invoices WHERE account_id=$1',[accountId])).rows[0].amount,'15000');
   const visible=await readActivityOffers(pool,grantId,()=>auth('family.finance.read'));assert.equal(visible.offers[0].invoiceId,a.invoiceId);assert.equal(visible.offers[0].choice,'ACCEPT');
-  assert.equal((await readActivityOffers(pool,grantId,()=>auth('family.finance.read',randomUUID()))).offers.length,0);
+  const unrelatedLearner=randomUUID();assert.equal((await readActivityOffers(pool,grantId,()=>auth('family.finance.read',unrelatedLearner))).offers.length,0);
   assert.equal((await readFamilyActivityPlans(pool,grantId,()=>auth('family.finance.read')) as {calendars:unknown[]}).calendars.length,1);
   // Two contacts race the first acceptance, not only retries of an already saved result.
   const racingLearner=randomUUID(),racingOffer=await offerActivity(pool,scope(),input(),authority(officer),async()=>racingLearner),secondGrant=randomUUID(),secondPerson=randomUUID();
