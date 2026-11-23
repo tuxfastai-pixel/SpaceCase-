@@ -1,3 +1,4 @@
+import {participationEnabled} from '../../platform/family/participationHttp';
 import { peosPreviewHeaders } from "../../platform/peos/previewHeaders";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -71,7 +72,7 @@ export default async function Page({
         process.env.SPACECASE_WORKSPACE_MODE !== "authority_only"
       }
       directoryTruncated={directory.truncated}
-      familyActivityPlansEnabled={familyPlansEnabled()}
+      familyActivityPlansEnabled={familyPlansEnabled()} participationEnabled={participationEnabled()}
       paymentProofsEnabled={paymentProofsEnabled()}
       familyFinanceEnabled={process.env.SPACECASE_FAMILY_FINANCE_ENABLED === "true"}
       activityRegisterEnabled={process.env.SPACECASE_ACTIVITY_REGISTER_ENABLED === "true"}

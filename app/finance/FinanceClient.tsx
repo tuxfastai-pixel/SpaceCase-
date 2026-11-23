@@ -185,6 +185,7 @@ export default function FinanceClient({
   activityRegisterEnabled = false,
   familyFinanceEnabled = false,
   familyActivityPlansEnabled = false,
+  participationEnabled = false,
   paymentProofsEnabled = false,
 }: {
   schools: School[];
@@ -195,6 +196,7 @@ export default function FinanceClient({
   activityRegisterEnabled?: boolean;
   familyFinanceEnabled?: boolean;
   familyActivityPlansEnabled?: boolean;
+  participationEnabled?: boolean;
   paymentProofsEnabled?: boolean;
 }) {
   const [schoolId, setSchoolId] = useState(initialSchool),
@@ -486,7 +488,7 @@ export default function FinanceClient({
                   </p>
                 )}
                 <div id="finance-panel-intake" tabIndex={-1} hidden={tab !== "intake"}>{intakeEnabled&&<PaymentIntake key={`${schoolId}-${data.account.id}`} schoolId={schoolId} accountId={data.account.id} canRecord={can("finance.transactions.record")} enabled={intakeEnabled} active={tab === "intake"} onReported={()=>setRefresh(v=>v+1)}/>}</div>
-                {tab === "activities" && <div id="finance-panel-activities" tabIndex={-1}>{activityRegisterEnabled&&<ActivityRegister key={schoolId} schoolId={schoolId} accountId={data.account.id} personId={data.personId} actions={school.actions} onAddToLearner={familyActivityPlansEnabled&&can("finance.transactions.record")?id=>setActivityLinkSeed(seed=>({id,visit:seed.visit+1})):undefined} onExplore={rows=>{setActivitySeed(rows);setActivitySeedVisit(n=>n+1);}}/>}{familyActivityPlansEnabled&&can("finance.transactions.read")&&<ActivityChargeLinks key={`${schoolId}-links-${activityLinkSeed.visit}`} initialActivityId={activityLinkSeed.id} schoolId={schoolId} accountId={data.account.id} invoices={data.invoices??[]} canRecord={can("finance.transactions.record")}/>}<ActivityPlanning key={`${schoolId}-${activitySeedVisit}`} initialActivities={activitySeed}/></div>}
+                {tab === "activities" && <div id="finance-panel-activities" tabIndex={-1}>{activityRegisterEnabled&&<ActivityRegister key={schoolId} schoolId={schoolId} accountId={data.account.id} personId={data.personId} actions={school.actions} onAddToLearner={familyActivityPlansEnabled&&can("finance.transactions.record")?id=>setActivityLinkSeed(seed=>({id,visit:seed.visit+1})):undefined} onExplore={rows=>{setActivitySeed(rows);setActivitySeedVisit(n=>n+1);}}/>}{familyActivityPlansEnabled&&can("finance.transactions.read")&&<ActivityChargeLinks key={`${schoolId}-links-${activityLinkSeed.visit}`} participationEnabled={participationEnabled} initialActivityId={activityLinkSeed.id} schoolId={schoolId} accountId={data.account.id} invoices={data.invoices??[]} canRecord={can("finance.transactions.record")}/>}<ActivityPlanning key={`${schoolId}-${activitySeedVisit}`} initialActivities={activitySeed}/></div>}
                 {tab === "accounts" && (
                   <div id="finance-panel-accounts" tabIndex={-1}>
                     <section className={s.card}>
@@ -837,7 +839,7 @@ export default function FinanceClient({
                 {tab === "review" && (
                   <div id="finance-panel-review" tabIndex={-1}>
                     {paymentProofsEnabled&&can("finance.transactions.read")&&<PaymentProofReview key={`${schoolId}-proofs`} schoolId={schoolId} accountId={data.account.id} payments={data.payments??[]} canRecord={can("finance.transactions.record")} onReceipts={()=>openSection("accounts","finance-receipt-register")}/>}
-                    {familyFinanceEnabled&&can("finance.policy.manage")&&<FamilyBillingAccess key={schoolId} schoolId={schoolId} plansEnabled={familyActivityPlansEnabled} proofsEnabled={paymentProofsEnabled}/>}
+                    {familyFinanceEnabled&&can("finance.policy.manage")&&<FamilyBillingAccess key={schoolId} schoolId={schoolId} plansEnabled={familyActivityPlansEnabled} participationEnabled={participationEnabled} proofsEnabled={paymentProofsEnabled}/>}
                     <section className={s.card}>
                       <h2 id="finance-independent-review" tabIndex={-1} className={s.sectionTitle}><FinanceIcon name="review"/>Independent checks &amp; approvals</h2>
                       <p>
