@@ -5,6 +5,7 @@ import { z } from "zod";
 import { expenseCategories, formatZar, randToMinor } from "./forms";
 import type { FinanceAction } from "../../platform/finance/peosAuthorization";
 import s from "./finance.module.css";
+import ActivityOffers from "./ActivityOffers";
 import ActivityChargeLinks from "./ActivityChargeLinks";
 import PaymentProofReview from "./PaymentProofReview";
 import FamilyBillingAccess from "./FamilyBillingAccess";
@@ -488,7 +489,7 @@ export default function FinanceClient({
                   </p>
                 )}
                 <div id="finance-panel-intake" tabIndex={-1} hidden={tab !== "intake"}>{intakeEnabled&&<PaymentIntake key={`${schoolId}-${data.account.id}`} schoolId={schoolId} accountId={data.account.id} canRecord={can("finance.transactions.record")} enabled={intakeEnabled} active={tab === "intake"} onReported={()=>setRefresh(v=>v+1)}/>}</div>
-                {tab === "activities" && <div id="finance-panel-activities" tabIndex={-1}>{activityRegisterEnabled&&<ActivityRegister key={schoolId} schoolId={schoolId} accountId={data.account.id} personId={data.personId} actions={school.actions} onAddToLearner={familyActivityPlansEnabled&&can("finance.transactions.record")?id=>setActivityLinkSeed(seed=>({id,visit:seed.visit+1})):undefined} onExplore={rows=>{setActivitySeed(rows);setActivitySeedVisit(n=>n+1);}}/>}{familyActivityPlansEnabled&&can("finance.transactions.read")&&<ActivityChargeLinks key={`${schoolId}-links-${activityLinkSeed.visit}`} participationEnabled={participationEnabled} initialActivityId={activityLinkSeed.id} schoolId={schoolId} accountId={data.account.id} invoices={data.invoices??[]} canRecord={can("finance.transactions.record")}/>}<ActivityPlanning key={`${schoolId}-${activitySeedVisit}`} initialActivities={activitySeed}/></div>}
+                {tab === "activities" && <div id="finance-panel-activities" tabIndex={-1}>{participationEnabled&&can("finance.transactions.record")&&<ActivityOffers key={`${schoolId}-offers-${activityLinkSeed.visit}`} schoolId={schoolId} accountId={data.account.id} initialActivityId={activityLinkSeed.id}/>}{activityRegisterEnabled&&<ActivityRegister key={schoolId} schoolId={schoolId} accountId={data.account.id} personId={data.personId} actions={school.actions} onAddToLearner={familyActivityPlansEnabled&&can("finance.transactions.record")?id=>setActivityLinkSeed(seed=>({id,visit:seed.visit+1})):undefined} onExplore={rows=>{setActivitySeed(rows);setActivitySeedVisit(n=>n+1);}}/>}{familyActivityPlansEnabled&&can("finance.transactions.read")&&<details><summary>More options · connect an existing invoice</summary><ActivityChargeLinks key={`${schoolId}-links-${activityLinkSeed.visit}`} participationEnabled={participationEnabled} initialActivityId={activityLinkSeed.id} schoolId={schoolId} accountId={data.account.id} invoices={data.invoices??[]} canRecord={can("finance.transactions.record")}/></details>}<ActivityPlanning key={`${schoolId}-${activitySeedVisit}`} initialActivities={activitySeed}/></div>}
                 {tab === "accounts" && (
                   <div id="finance-panel-accounts" tabIndex={-1}>
                     <section className={s.card}>

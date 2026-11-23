@@ -71,3 +71,24 @@ export async function decideParticipation(pool:Pool,grantId:string,value:z.infer
   await financeAudit(db,scope,'FINANCE_ACTIVITY_PARTICIPATION_DECIDED','ACTIVITY_OFFER',input.offerId,{choice:input.choice});return {id,choice:input.choice,invoiceId};
  });
 }
+
+/** One reviewed selection, one transaction. Existing offers/charges are retained and skipped. */
+export async function offerActivityBatch(pool:Pool,scope:FinanceScope,value:unknown,authorize:FinanceAuthority,resolve:(refs:string[])=>Promise<{personId:string;admissionNumber:string}[]>){
+ const {batchOfferInput}=await import('./offerContracts');const input=batchOfferInput.parse(value);
+ await financeAuthority(scope,'finance.transactions.record',authorize);
+ const checked=await resolve(input.references);
+ function identities(rows:typeof checked){if(rows.length!==input.references.length||new Set(rows.map(r=>r.personId)).size!==rows.length||new Set(rows.map(r=>r.admissionNumber)).size!==rows.length||rows.some(r=>!input.references.includes(r.admissionNumber)||!z.string().uuid().safeParse(r.personId).success))throw new ParticipationError('ACTIVITY_LEARNER_CHANGED');return new Map(rows.map(r=>[r.admissionNumber,r.personId]));}
+ const before=identities(checked);
+ return financeTransaction(pool,async db=>{
+  await lockFinanceAccount(db,scope);await published(db,scope.accountId,input.activityId,input.revision);
+  const after=identities(await resolve(input.references));if(input.references.some(r=>before.get(r)!==after.get(r)))throw new ParticipationError('ACTIVITY_LEARNER_CHANGED');await financeAuthority(scope,'finance.transactions.record',authorize);
+  const results=[];
+  for(const reference of input.references){const learner=before.get(reference)!;
+   if((await db.query('SELECT id FROM school_finance.activity_charge_links WHERE account_id=$1 AND activity_id=$2 AND learner_person_id=$3',[scope.accountId,input.activityId,learner])).rowCount){results.push({reference,status:'ALREADY_CHARGED' as const});continue;}
+   const prior=(await db.query('SELECT id,activity_revision FROM school_finance.activity_offers WHERE account_id=$1 AND activity_id=$2 AND learner_person_id=$3',[scope.accountId,input.activityId,learner])).rows[0];
+   if(prior){if(prior.activity_revision!==input.revision)throw new ParticipationError('ACTIVITY_OFFER_CHANGED');results.push({reference,status:'EXISTING' as const,id:prior.id as string});continue;}
+   const id=randomUUID();await db.query('INSERT INTO school_finance.activity_offers(id,account_id,activity_id,activity_revision,learner_person_id,offered_by) VALUES($1,$2,$3,$4,$5,$6)',[id,scope.accountId,input.activityId,input.revision,learner,scope.actorPersonId]);await financeAudit(db,scope,'FINANCE_ACTIVITY_OFFERED','ACTIVITY_OFFER',id);results.push({reference,status:'OFFERED' as const,id});
+  }
+  return {results};
+ });
+}

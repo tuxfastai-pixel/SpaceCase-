@@ -108,3 +108,15 @@ export async function requireFinanceLearner(request:Request,schoolId:string,refe
   throw new FinanceAuthorizationError(503,"PEOS_INVALID_LEARNER_RESPONSE");
  }
 }
+
+/** Bounded canonical reference resolution for an explicitly reviewed learner selection. */
+export async function requireFinanceLearners(request:Request,schoolId:string,references:string[],fetchImpl:typeof fetch=fetch){
+ const authorization=resolvePeosAuthorization(request),env=readServerEnvironment();
+ if(!authorization)throw new FinanceAuthorizationError(401,'UNAUTHENTICATED');if(!env.PEOS_BASE_URL)throw new FinanceAuthorizationError(503,'PEOS_UNAVAILABLE');
+ const {offerReferences,pickerLearner}=await import('../../domains/school-activities/offerContracts');const refs=offerReferences.parse(references);
+ let response:Response;try{response=await fetchImpl(new URL(`/v1/finance/schools/${encodeURIComponent(schoolId)}/learners`,env.PEOS_BASE_URL),{method:'POST',headers:{...financeRequestHeaders(request,authorization),'content-type':'application/json'},body:JSON.stringify({references:refs}),cache:'no-store',signal:AbortSignal.timeout(10000)});}catch{throw new FinanceAuthorizationError(503,'PEOS_UNAVAILABLE');}
+ if(!response.ok)throw new FinanceAuthorizationError(response.status===401?401:response.status===403?403:503,'FINANCE_LEARNERS_UNAVAILABLE');
+ try{const data=z.object({contractVersion:z.literal('finance-learner-picker-v1'),learners:z.array(pickerLearner).max(50)}).strict().parse(await response.json());
+ if(data.learners.length!==refs.length||new Set(data.learners.map(r=>r.personId)).size!==refs.length||new Set(data.learners.map(r=>r.admissionNumber)).size!==refs.length||data.learners.some(r=>!refs.includes(r.admissionNumber)))throw Error();return data.learners;
+ }catch{throw new FinanceAuthorizationError(503,'PEOS_INVALID_LEARNER_RESPONSE');}
+}

@@ -1,7 +1,7 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import {randomUUID} from 'node:crypto';import {Pool} from 'pg';
 import {initializeFinance,type FinanceAuthority} from '../../domains/school-finance/workspaceService';
 import {writeActivityRegister} from '../../domains/school-activities/registerService';import {registerCommand} from '../../domains/school-activities/registerContracts';
-import {offerActivity,decideParticipation,readActivityOffers} from '../../domains/school-activities/participationService';
+import {offerActivity,offerActivityBatch,decideParticipation,readActivityOffers} from '../../domains/school-activities/participationService';
 import {readFamilyActivityPlans} from '../../domains/school-activities/familyPlanService';
 import type {FamilyBillingDecision} from '../../platform/family/billingContracts';import {samplePolicy} from './fixtures';
 test('optional participation: school offers, current parent consent charges once, decline and stale/revoked scopes never charge',{timeout:60000},async t=>{
@@ -42,6 +42,12 @@ test('optional participation: school offers, current parent consent charges once
   const racingDecision={...decision,offerId:racingOffer.id};
   const racing=await Promise.all([decideParticipation(pool,grantId,racingDecision,()=>auth('family.finance.activity.accept',racingLearner)),decideParticipation(pool,secondGrant,racingDecision,async()=>({...await auth('family.finance.activity.accept',racingLearner),grantId:secondGrant,personId:secondPerson}))]);assert.deepEqual(racing[0],racing[1]);
   assert.equal((await pool.query('SELECT count(*)::int AS n FROM school_finance.invoices WHERE account_id=$1 AND peos_learner_id=$2',[accountId,racingLearner])).rows[0].n,1);
+  const batchLearners=[{personId:randomUUID(),admissionNumber:'BATCH-1'},{personId:randomUUID(),admissionNumber:'BATCH-2'}];const batch={activityId:activity.id,revision:activity.revision,references:['BATCH-1','BATCH-2'],eligibilityChecked:true};
+  const baseline=Number((await pool.query('SELECT count(*)::int AS n FROM school_finance.activity_offers WHERE account_id=$1',[accountId])).rows[0].n);
+  let resolutions=0;await assert.rejects(offerActivityBatch(pool,scope(),batch,authority(officer),async()=>++resolutions===1?batchLearners:[batchLearners[0],{...batchLearners[1],personId:randomUUID()}]),/ACTIVITY_LEARNER_CHANGED/);
+  assert.equal((await pool.query('SELECT count(*)::int AS n FROM school_finance.activity_offers WHERE account_id=$1',[accountId])).rows[0].n,baseline);
+  const batchResult=await offerActivityBatch(pool,scope(),batch,authority(officer),async()=>batchLearners);assert.deepEqual(batchResult.results.map(r=>r.status),['OFFERED','OFFERED']);
+  const again=await offerActivityBatch(pool,scope(),batch,authority(officer),async()=>batchLearners);assert.deepEqual(again.results.map(r=>r.status),['EXISTING','EXISTING']);assert.deepEqual(again.results.map(r=>r.id),batchResult.results.map(r=>r.id));
   const declinedLearner=randomUUID(),declined=await offerActivity(pool,scope(),input(),authority(officer),async()=>declinedLearner);
   await decideParticipation(pool,grantId,{...decision,offerId:declined.id,choice:'DECLINE'},()=>auth('family.finance.activity.accept',declinedLearner));
   const staleLearner=randomUUID(),stale=await offerActivity(pool,scope(),input(),authority(officer),async()=>staleLearner);
