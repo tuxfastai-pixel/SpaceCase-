@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import styles from "./workspaceIcon.module.css";
 
 const artwork = {
+  notices: <><rect x="3" y="4" width="18" height="15" rx="2"/><path d="M8 3v3M16 3v3M7 10h10M7 14h5M8 19v2M16 19v2"/><path d="m16 14 2 2 3-3"/></>,
   today: <><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></>,
   class: <><path d="M3 7.5 12 3l9 4.5L12 12 3 7.5Z"/><path d="M6 10v5c3 3 9 3 12 0v-5M21 8v7"/></>,
   people: <><circle cx="9" cy="8" r="3"/><path d="M3.5 19v-1.5a5.5 5.5 0 0 1 11 0V19M17 5a3 3 0 0 1 0 6M17 14a4 4 0 0 1 3.5 4V19"/></>,
