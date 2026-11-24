@@ -37,6 +37,8 @@ test('Finance notices/private conversations preserve school/parent boundaries, c
    await conversation(runtime,target,p,{command:'MESSAGE',message:{requestId:randomUUID(),body:'Restricted runtime reply'}});assert.equal((await conversation(runtime,target,p) as {messages:unknown[]}).messages.length,50);
    assert.deepEqual((await client.query("SELECT has_table_privilege(current_user,'school_comms.messages','UPDATE') AS overwrite,has_table_privilege(current_user,'school_comms.messages','DELETE') AS erase,has_table_privilege(current_user,'school_comms.delivery_events','SELECT') AS outbox")).rows[0],{overwrite:false,erase:false,outbox:false});
   }finally{await client.query('RESET ROLE');client.release();}
+  for(let n=0;n<20;n++)await pool.query("INSERT INTO school_comms.messages(id,account_id,thread_id,request_id,author_person_id,author_kind,body,digest) VALUES($1,$2,$3,$4,$5,'PARENT','Synthetic rate fixture',$6)",[randomUUID(),accountId,sent.threadId,randomUUID(),parent,'0'.repeat(64)]);
+  await assert.rejects(conversation(pool,target,p,{command:'MESSAGE',message:{requestId:randomUUID(),body:'Over the rate limit'}}),/CONVERSATION_RATE_LIMIT/);
   for(const table of ['invoices','payments','allocations'])assert.equal((await pool.query(`SELECT count(*)::int AS n FROM school_finance.${table} WHERE account_id=$1`,[accountId])).rows[0].n,0);
   const logs=JSON.stringify((await pool.query('SELECT metadata FROM school_finance.audit_events WHERE account_id=$1',[accountId])).rows);assert.equal(logs.includes('Can I ask'),false);
  }finally{
