@@ -1,10 +1,9 @@
-import {createHash,randomUUID} from 'node:crypto';import type {Pool,PoolClient} from 'pg';import {z} from 'zod';
+import {createHash,randomUUID} from 'node:crypto';import type {Pool} from 'pg';import {z} from 'zod';
 import {parentContext,staffDirectory,staffAudience,publishNotice,type ParentContext,type StaffDirectory,type StaffAudience} from './contracts';
 import {conversationCommand,type ConversationCommand} from '../school-communications/contracts';
-export class NoticeError extends Error{constructor(public code:string,public status=409){super(code);}}
-async function tx<T>(pool:Pool,run:(db:PoolClient)=>Promise<T>){const db=await pool.connect();try{await db.query('BEGIN');const out=await run(db);await db.query('COMMIT');return out;}catch(e){await db.query('ROLLBACK');throw e;}finally{db.release();}}
-function fresh(d:{expiresAt:string}){const expiry=Date.parse(d.expiresAt);if(!Number.isFinite(expiry)||expiry<=Date.now()||expiry>Date.now()+60000)throw new NoticeError('NOTICE_FORBIDDEN',403);}
-async function audit(db:PoolClient,school:string,actor:string,action:string,id:string){await db.query('INSERT INTO school_board.audit(id,school_id,actor_person_id,action,resource_id) VALUES($1,$2,$3,$4,$5)',[randomUUID(),school,actor,action,id]);}
+import {NoticeError,noticeTransaction as tx,noticeFresh as fresh,noticeAudit as audit} from './storage';
+export {NoticeError} from './storage';
+import {prepareDraftPublication,completeDraftPublication} from './drafts';
 const withdrawn=`EXISTS(SELECT 1 FROM school_board.events e WHERE e.notice_id=n.id AND e.action='WITHDRAW')`;
 const latest=`COALESCE((SELECT max(m.sequence) FROM school_board.messages m WHERE m.thread_id=r.thread_id),0)`;
 const resolved=`COALESCE((SELECT e.action='RESOLVE' AND e.through_sequence>=${latest} FROM school_board.events e WHERE e.thread_id=r.thread_id AND e.action IN ('RESOLVE','REOPEN') ORDER BY e.sequence DESC LIMIT 1),false)`;
@@ -14,12 +13,14 @@ function audienceKey(a:StaffAudience){return JSON.stringify([a.personId,a.school
 export async function publishSchoolNotice(pool:Pool,authorize:()=>Promise<StaffAudience>,value:unknown){const input=publishNotice.parse(value),d=staffAudience.parse(await authorize());fresh(d);if(d.schoolId!==input.schoolId||d.classId!==input.classId)throw new NoticeError('NOTICE_FORBIDDEN',403);
  return tx(pool,async db=>{await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[`school-notice:${d.schoolId}`]);
  const hash=digest(input),prior=(await db.query('SELECT id,digest FROM school_board.notices WHERE school_id=$1 AND author_person_id=$2 AND request_id=$3',[d.schoolId,d.personId,input.requestId])).rows[0];if(prior){if(prior.digest!==hash)throw new NoticeError('NOTICE_REQUEST_CONFLICT');return {id:prior.id,replayed:true};}
+ let draftPublication:Awaited<ReturnType<typeof prepareDraftPublication>>|undefined;if(input.draft){draftPublication=await prepareDraftPublication(db,input,d);if(draftPublication.noticeId)return {id:draftPublication.noticeId,replayed:true};}
  if(input.parentPersonIds?.some(id=>!d.recipients.some(r=>r.parentPersonId===id)))throw new NoticeError('NOTICE_RECIPIENTS_CHANGED');const selected=input.parentPersonIds?d.recipients.filter(r=>input.parentPersonIds!.includes(r.parentPersonId)):d.recipients;if(!selected.length)throw new NoticeError('NOTICE_NO_RECIPIENTS');if(JSON.stringify(selected.map(r=>r.relationshipId).sort())!==JSON.stringify(input.expectedRelationshipIds.slice().sort()))throw new NoticeError('NOTICE_RECIPIENTS_CHANGED');
  const rate=(await db.query("SELECT count(*)::int AS n FROM school_board.notices WHERE school_id=$1 AND author_person_id=$2 AND published_at>clock_timestamp()-interval '1 hour'",[d.schoolId,d.personId])).rows[0].n;if(rate>=20)throw new NoticeError('NOTICE_RATE_LIMIT',429);
  const again=staffAudience.parse(await authorize());fresh(again);if(audienceKey(again)!==audienceKey(d))throw new NoticeError('NOTICE_RECIPIENTS_CHANGED');
  const id=randomUUID();await db.query('INSERT INTO school_board.notices(id,school_id,author_person_id,request_id,title,body,class_id,class_label,school_label,replies_allowed,digest) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',[id,d.schoolId,d.personId,input.requestId,input.title,input.body,d.classId,d.className,d.schoolName,input.repliesAllowed,hash]);
  const parents=new Map<string,typeof d.recipients>();for(const r of selected)parents.set(r.parentPersonId,[...(parents.get(r.parentPersonId)??[]),r]);
  for(const [person,relationships]of parents)await db.query('INSERT INTO school_board.recipients(thread_id,notice_id,parent_person_id,relationship_ids,parent_label,learner_labels) VALUES($1,$2,$3,$4,$5,$6::jsonb)',[randomUUID(),id,person,relationships.map(r=>r.relationshipId),relationships[0].parentName,JSON.stringify([...new Set(relationships.map(r=>r.learnerName))])]);
+ if(input.draft)await completeDraftPublication(db,input.draft,d.personId,input.requestId,id);
  await audit(db,d.schoolId,d.personId,'NOTICE_PUBLISHED',id);return {id,recipients:parents.size,replayed:false};
  });}
 function parentKey(d:ParentContext){return JSON.stringify([d.personId,d.relationships.map(r=>[r.relationshipId,r.schoolId,...r.classIds.slice().sort()]).sort()]);}
