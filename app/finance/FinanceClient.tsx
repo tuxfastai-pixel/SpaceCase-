@@ -462,7 +462,7 @@ export default function FinanceClient({
                 <nav id="finance-sections" className={s.tabs} aria-label="Finance sections">
                   {financeSections.filter(section=>section.key!=="intake"||intakeEnabled).filter(section=>section.key!=="messages"||parentInboxEnabled).filter(section=>section.key!=="team"||teamAllowed).filter(section=>section.key!=="audit"||Boolean(data.audit)).map(({key,label,hint,icon})=>(
                     <button key={key} aria-pressed={tab===key} aria-controls={tab===key?`finance-panel-${key}`:undefined} onClick={()=>openSection(key)}>
-                      <FinanceIcon name={icon}/><span>{label}<small>{hint}</small></span>
+                      <>{key==='messages'?<InboxBadge schoolId={schoolId} iconOnly/>:<FinanceIcon name={icon}/>}</><span>{label}<small>{hint}</small></span>
                     </button>
                   ))}
                 </nav>

@@ -1,3 +1,6 @@
+import Image from 'next/image';
+import {cookies} from 'next/headers';
+import {LOGIN_SCHOOL_COOKIE,loginBranding} from '../../platform/appearance/loginBranding';
 import {noticeReturn} from '../../platform/auth/noticeReturn';
 import {googleSignInEnabled} from "../../platform/auth/googleSignInAvailability";
 import { redirect } from "next/navigation";
@@ -13,19 +16,20 @@ const messages: Record<string, string> = {
 };
 
 export const metadata={title:'Sign in | SpaceCase'};
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string;onboarding?:string;returnTo?:string }> }) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string;onboarding?:string;returnTo?:string;school?:string }> }) {
   const query=await searchParams;const initialPath=onboardingPath(query.onboarding)??"existing";
   let signedIn = false;
   try { signedIn = Boolean(await currentSession()); } catch { /* Show sign-in without granting access. */ }
   if (signedIn&&noticeReturn(query.returnTo))redirect(noticeReturn(query.returnTo)!);
   if (signedIn) redirect(initialPath==="parent"?"/parent":"/dashboard");
   const { error } = query;
+  const brand=await loginBranding(query.school??(await cookies()).get(LOGIN_SCHOOL_COOKIE)?.value);
   return <main className={styles.page}>
     <section className={styles.card} aria-labelledby="welcome">
-      <span className={styles.mark} aria-hidden="true">S</span>
+      {brand?.logo?<Image className={styles.schoolLogo} unoptimized src={brand.logo} alt={`${brand.name} logo`} width={112} height={112}/>:<span className={styles.mark} aria-hidden="true">S</span>}
       <p className={styles.brand}>SPACECASE</p>
-      <h1 id="welcome">More time for what matters.</h1>
-      <p>A calmer space for teaching, learning and supporting your school community.</p>
+      <h1 id="welcome">{brand?`Welcome to ${brand.name}`:"More time for what matters."}</h1>
+      <p>{brand?"Your school community, connected through SpaceCase.":"A calmer space for teaching, learning and supporting your school community."}</p>
       {googleSignInEnabled() ? <SignInForm initialPath={initialPath} returnTo={noticeReturn(query.returnTo)??undefined}/> : <p role="status">Sign-in is temporarily unavailable. Please try again later.</p>}
       <p className={styles.note}>Choose the Google account you want to use. Signing out of SpaceCase does not sign you out of Google on this device.</p>
       <p className={styles.note}>New here? Your account is created when you continue. No separate password needed.</p>
