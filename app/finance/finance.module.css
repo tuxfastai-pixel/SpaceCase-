@@ -351,3 +351,7 @@
 @media(max-width:600px){.workspaceLayout>.tabs{grid-template-columns:repeat(2,minmax(0,1fr));}.workspaceLayout>.tabs button:last-child:nth-child(odd){grid-column:auto;}.welcome{padding:1rem;}.taskGrid{grid-template-columns:1fr;}.taskRow{flex-wrap:wrap;}.overviewList li{flex-wrap:wrap;}}
 @media print{.workspaceLayout{display:block;}.workspaceLayout>.tabs,.welcome,.taskRow button{display:none;}.overviewColumns{display:block;}}
 .planningFields{border:0;border-top:1px solid #dce7e3;padding:1.2rem 0;margin:1rem 0;display:grid;gap:1rem;min-width:0;}.planningFields legend{font-weight:700;padding:.5rem 0;}.planningEvent{background:#f5f8f6;border:1px solid #dce7e3;border-radius:.75rem;padding:1rem;}.planningEvent h3{margin-top:0;}.planningGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;align-items:end;}.planningFields>button{justify-self:start;}.planningEvent>button{margin-top:1rem;}.planningFields p{margin:.3rem 0;}
+
+.page input[type=checkbox]{width:auto;min-height:auto;accent-color:#155e69;vertical-align:middle;margin-inline-end:8px}
+
+.page label:has(>input[type=checkbox]){display:flex;align-items:center;gap:8px}.page input[type=checkbox]{justify-self:start;flex-shrink:0}

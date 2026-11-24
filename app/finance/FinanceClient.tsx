@@ -1,4 +1,5 @@
 "use client";
+import SchoolNoticeLink from "../ui/SchoolNoticeLink";
 import InboxBadge from '../ui/InboxBadge';
 import ParentConversations from './ParentConversations';
 import {SchoolWatermark,SchoolLogo} from "../ui/appearance/Appearance";
@@ -369,7 +370,7 @@ export default function FinanceClient({
     <main className={s.page}><SchoolWatermark school={schoolId} view="finance"/>
       <header className={s.header}>
         <a href="/dashboard">SpaceCase</a>
-        <nav aria-label="Workspace">{parentInboxEnabled&&can("finance.transactions.read")&&<InboxBadge schoolId={schoolId}/>}
+        <nav aria-label="Workspace">{can("finance.policy.manage")&&<SchoolNoticeLink schoolId={schoolId}/>}{parentInboxEnabled&&can("finance.transactions.read")&&<InboxBadge schoolId={schoolId}/>}
           {can("finance.policy.manage")&&<a href={`/principal?school=${schoolId}`}><FinanceIcon name="review"/>Principal overview</a>}
           {can("finance.policy.manage")&&<a href={`/admin?school=${schoolId}`}><FinanceIcon name="team"/>School administration</a>}
           <a href="/support"><FinanceIcon name="help"/>Need help?</a>
