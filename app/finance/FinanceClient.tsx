@@ -1,4 +1,6 @@
 "use client";
+import InboxBadge from '../ui/InboxBadge';
+import ParentConversations from './ParentConversations';
 import {SchoolWatermark,SchoolLogo} from "../ui/appearance/Appearance";
 import { useEffect, useState, useRef, type FormEvent } from "react";
 import { z } from "zod";
@@ -187,6 +189,7 @@ export default function FinanceClient({
   familyFinanceEnabled = false,
   familyActivityPlansEnabled = false,
   participationEnabled = false,
+  parentInboxEnabled = false,
   paymentProofsEnabled = false,
 }: {
   schools: School[];
@@ -198,6 +201,7 @@ export default function FinanceClient({
   familyFinanceEnabled?: boolean;
   familyActivityPlansEnabled?: boolean;
   participationEnabled?: boolean;
+  parentInboxEnabled?: boolean;
   paymentProofsEnabled?: boolean;
 }) {
   const [schoolId, setSchoolId] = useState(initialSchool),
@@ -232,11 +236,11 @@ export default function FinanceClient({
     can = (action: FinanceAction) => school.actions.includes(action);
   const teamAllowed=can("finance.policy.manage"),financeReady=Boolean(data?.account);
   useEffect(()=>{
-    if(!financeReady||!teamAllowed)return;
-    const followTeamLink=()=>{if(window.location.hash==='#finance-team'){setTab('team');setDestination('finance-panel-team');}};
+    if(!financeReady)return;
+    const followTeamLink=()=>{if(parentInboxEnabled&&window.location.hash==='#parent-messages'){setTab('messages');setDestination('finance-panel-messages');}if(teamAllowed&&window.location.hash==='#finance-team'){setTab('team');setDestination('finance-panel-team');}};
     followTeamLink();window.addEventListener('hashchange',followTeamLink);
     return()=>window.removeEventListener('hashchange',followTeamLink);
-  },[schoolId,financeReady,teamAllowed]);
+  },[schoolId,financeReady,teamAllowed,parentInboxEnabled]);
   useEffect(() => {
     if(loadedSchool.current !== schoolId) setData(null);
     setError("");
@@ -365,7 +369,7 @@ export default function FinanceClient({
     <main className={s.page}><SchoolWatermark school={schoolId} view="finance"/>
       <header className={s.header}>
         <a href="/dashboard">SpaceCase</a>
-        <nav aria-label="Workspace">
+        <nav aria-label="Workspace">{parentInboxEnabled&&can("finance.transactions.read")&&<InboxBadge schoolId={schoolId}/>}
           {can("finance.policy.manage")&&<a href={`/principal?school=${schoolId}`}><FinanceIcon name="review"/>Principal overview</a>}
           {can("finance.policy.manage")&&<a href={`/admin?school=${schoolId}`}><FinanceIcon name="team"/>School administration</a>}
           <a href="/support"><FinanceIcon name="help"/>Need help?</a>
@@ -456,7 +460,7 @@ export default function FinanceClient({
                 </p>
                 <div className={s.workspaceLayout}>
                 <nav id="finance-sections" className={s.tabs} aria-label="Finance sections">
-                  {financeSections.filter(section=>section.key!=="intake"||intakeEnabled).filter(section=>section.key!=="team"||teamAllowed).filter(section=>section.key!=="audit"||Boolean(data.audit)).map(({key,label,hint,icon})=>(
+                  {financeSections.filter(section=>section.key!=="intake"||intakeEnabled).filter(section=>section.key!=="messages"||parentInboxEnabled).filter(section=>section.key!=="team"||teamAllowed).filter(section=>section.key!=="audit"||Boolean(data.audit)).map(({key,label,hint,icon})=>(
                     <button key={key} aria-pressed={tab===key} aria-controls={tab===key?`finance-panel-${key}`:undefined} onClick={()=>openSection(key)}>
                       <FinanceIcon name={icon}/><span>{label}<small>{hint}</small></span>
                     </button>
@@ -836,6 +840,7 @@ export default function FinanceClient({
                     )}
                   </div>
                 )}
+                {tab === "messages" && parentInboxEnabled && <div id="finance-panel-messages" tabIndex={-1}><ParentConversations key={schoolId} schoolId={schoolId}/></div>}
                 {tab === "team" && teamAllowed && <div id="finance-panel-team" tabIndex={-1}><FinanceStaff key={schoolId} schoolId={schoolId} schoolName={school.displayName}/></div>}
                 {tab === "review" && (
                   <div id="finance-panel-review" tabIndex={-1}>

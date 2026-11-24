@@ -1,3 +1,4 @@
+import {communicationEvent} from '../school-communications/events';
 import {randomUUID} from 'node:crypto';
 import type {Pool,PoolClient} from 'pg';
 import {z} from 'zod';
@@ -32,7 +33,7 @@ export async function offerActivity(pool:Pool,scope:FinanceScope,value:z.infer<t
   await financeAuthority(scope,'finance.transactions.record',authorize);
   if(prior)return {id:prior.id as string};
   const id=randomUUID();await db.query('INSERT INTO school_finance.activity_offers(id,account_id,activity_id,activity_revision,learner_person_id,offered_by) VALUES($1,$2,$3,$4,$5,$6)',[id,scope.accountId,input.activityId,input.revision,learner,scope.actorPersonId]);
-  await financeAudit(db,scope,'FINANCE_ACTIVITY_OFFERED','ACTIVITY_OFFER',id);return {id};
+  await communicationEvent(db,scope.accountId,'ACTIVITY_OFFERED',id);await financeAudit(db,scope,'FINANCE_ACTIVITY_OFFERED','ACTIVITY_OFFER',id);return {id};
  });
 }
 /** Read includes persistent outcomes so a lost response can be checked before retry. */
@@ -87,7 +88,7 @@ export async function offerActivityBatch(pool:Pool,scope:FinanceScope,value:unkn
    if((await db.query('SELECT id FROM school_finance.activity_charge_links WHERE account_id=$1 AND activity_id=$2 AND learner_person_id=$3',[scope.accountId,input.activityId,learner])).rowCount){results.push({reference,status:'ALREADY_CHARGED' as const});continue;}
    const prior=(await db.query('SELECT id,activity_revision FROM school_finance.activity_offers WHERE account_id=$1 AND activity_id=$2 AND learner_person_id=$3',[scope.accountId,input.activityId,learner])).rows[0];
    if(prior){if(prior.activity_revision!==input.revision)throw new ParticipationError('ACTIVITY_OFFER_CHANGED');results.push({reference,status:'EXISTING' as const,id:prior.id as string});continue;}
-   const id=randomUUID();await db.query('INSERT INTO school_finance.activity_offers(id,account_id,activity_id,activity_revision,learner_person_id,offered_by) VALUES($1,$2,$3,$4,$5,$6)',[id,scope.accountId,input.activityId,input.revision,learner,scope.actorPersonId]);await financeAudit(db,scope,'FINANCE_ACTIVITY_OFFERED','ACTIVITY_OFFER',id);results.push({reference,status:'OFFERED' as const,id});
+   const id=randomUUID();await db.query('INSERT INTO school_finance.activity_offers(id,account_id,activity_id,activity_revision,learner_person_id,offered_by) VALUES($1,$2,$3,$4,$5,$6)',[id,scope.accountId,input.activityId,input.revision,learner,scope.actorPersonId]);await communicationEvent(db,scope.accountId,'ACTIVITY_OFFERED',id);await financeAudit(db,scope,'FINANCE_ACTIVITY_OFFERED','ACTIVITY_OFFER',id);results.push({reference,status:'OFFERED' as const,id});
   }
   return {results};
  });
