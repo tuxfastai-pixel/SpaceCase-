@@ -10,3 +10,12 @@ Additive 20261124220000_notice_drafts.sql stores private author-owned heads, app
 Prepared tests cover private ownership/school boundaries, idempotent saves, stale revision rejection, revoked scope, partial text, discard/history, restricted runtime, rollback during publication finalization and one notice per draft across concurrent/new-key retries. Local boundary tests pass; complete CI, guarded isolated migration/release and signed-in Save/Resume/Publish acceptance remain pending. No PEOS contract/role/grant changes, external messages, financial operations or Production changes. WhatsApp testing remains deferred.
 
 Acceptance: save an unfinished synthetic notice, leave/reopen Notices & messages, resume/edit/review the current audience and publish once. Confirm no parent update before publication; another staff account cannot read the draft. Also check two-tab conflict recovery, unknown-save retry and discard. Retention/large-audience pagination and off-app delivery remain separate unfinished items.
+
+
+## Private notice drafts — isolated Preview release, 24 November 2026
+
+Source a6857b4e3a312e8f625fbe843fcfeb9b8b9d4cc1 is fast-forwarded to feature/finance-workspace-completion after Validate run 45476388903 / job 138737610186 passed: 414 application tests and 23 service tests, migrations, restricted runtime/restore checks, typecheck, lint and both builds. Draft PR #117 records the source change. Local typecheck, lint, boundary tests and Next build also passed.
+
+The guarded additive 20261124220000_notice_drafts.sql was applied only to spacecase_finance_synthetic_20261112 on the existing isolated Finance branch. Journal SHA256 ddd708e7dfe3edaacd216fd0f668f3a269ee12b7b1b59d41eb69b51fe3df6f91 matches source. Readback found zero draft heads, versions or events; runtime SELECT/INSERT true and UPDATE/DELETE false. Existing school-notice gates stay unchanged; no PEOS changes or grants. No hosted draft, notice or message was created by this release.
+
+Vercel dpl_D5Ru3pU3tBLU535CWeyKqiQZvo3U is READY at the exact source SHA and protected ref, assigned and read back at spacecase-finance-test-git-feat-1e5700-tuxfastai-3244s-projects.vercel.app. Production and other preview aliases are unchanged. Signed-in Save/Resume/Discard/Publish, two-tab conflict, parent visibility and phone acceptance remain pending; CI is not a live walkthrough. WhatsApp delivery/testing remains deferred. Next action: use Notices & messages, Save draft, leave/reopen, Resume, review refreshed audience and publish once; confirm parents see nothing before publication.
