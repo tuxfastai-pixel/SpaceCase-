@@ -1,4 +1,5 @@
 'use client';
+import InboxBadge from '../../ui/InboxBadge';
 import {LearnerAvatar,ChooseLearnerPhoto,SchoolWatermark,SchoolLogo} from '../../ui/appearance/Appearance';
 import {browserAccountKey} from '../../../platform/family/accountNavigation';
 import FamilyActivityParticipation from './FamilyActivityParticipation';
@@ -9,7 +10,7 @@ import {selectAccount} from '../../../platform/family/accountNavigation';
 import {useEffect,useRef,useState} from 'react';import {z} from 'zod';import {familyBillingDirectory} from '../../../platform/family/billingContracts';import {formatZar} from '../../finance/forms';import {financeDateLabel,financeWords} from '../../finance/presentation';import s from '../../finance/finance.module.css';
 const amount=z.string().regex(/^\d+$/);const accountSchema=z.object({invoices:z.array(z.object({id:z.string().uuid(),invoiceNumber:z.string(),description:z.string(),category:z.string(),dueDate:z.string(),status:z.string(),amountMinor:amount,allocatedMinor:amount})).max(100),totals:z.object({invoicedMinor:amount,allocatedMinor:amount}),truncated:z.boolean()});
 type Directory=z.infer<typeof familyBillingDirectory>;type Account=z.infer<typeof accountSchema>;
-export default function FamilyFinance({plansEnabled=false,proofsEnabled=false,statementsEnabled=false,participationEnabled=false}:{plansEnabled?:boolean;proofsEnabled?:boolean;statementsEnabled?:boolean;participationEnabled?:boolean}){
+export default function FamilyFinance({plansEnabled=false,proofsEnabled=false,statementsEnabled=false,participationEnabled=false,inboxEnabled=false}:{inboxEnabled?:boolean;plansEnabled?:boolean;proofsEnabled?:boolean;statementsEnabled?:boolean;participationEnabled?:boolean}){
  const selectedGrant=useRef('');
  const [planEntry,setPlanEntry]=useState<{grantId:string;invoiceId:string;nonce:number}|null>(null),[accountRevision,setAccountRevision]=useState(0);
  const [directory,setDirectory]=useState<Directory|null>(null),[grantId,setGrantId]=useState(''),[account,setAccount]=useState<Account|null>(null),[error,setError]=useState(''),[refresh,setRefresh]=useState(0),[loading,setLoading]=useState(true);
@@ -20,7 +21,7 @@ export default function FamilyFinance({plansEnabled=false,proofsEnabled=false,st
  const [accountKey,setAccountKey]=useState('');
  useEffect(()=>{let active=true;setAccountKey('');if(grantId)void browserAccountKey(grantId).then(key=>{if(active)setAccountKey(key);});return()=>{active=false;};},[grantId]);
  const selected=directory?.scopes.find(s=>s.grantId===grantId);
- return <main className={s.page}>{account&&accountKey&&<SchoolWatermark account={accountKey}/>}<header className={s.header}><a href='/parent'>SpaceCase</a><a href='/parent'>Back to your family workspace</a><form action='/auth/logout' method='post'><button>Sign out</button></form></header><div className={s.content}><p className={s.eyebrow}>Your family</p><h1>Your school account</h1><p>A clear view of the fees and confirmed allocations for the learner you are authorised to support.</p>
+ return <main className={s.page}>{account&&accountKey&&<SchoolWatermark account={accountKey}/>}<header className={s.header}><a href='/parent'>SpaceCase</a><a href='/parent'>Back to your family workspace</a>{inboxEnabled&&<InboxBadge/>}<form action='/auth/logout' method='post'><button>Sign out</button></form></header><div className={s.content}><p className={s.eyebrow}>Your family</p><h1>Your school account</h1><p>A clear view of the fees and confirmed allocations for the learner you are authorised to support.</p>
  {error&&<p role='alert' className={s.error}>{error}</p>}{loading&&<p role='status'>Checking access and loading your account…</p>}
  {directory&&!directory.scopes.length&&<section className={s.card}><h2>Your school needs to confirm billing access</h2><p>A school connection and financial access are separate. Ask the school Principal to confirm that you may view this learner’s account. No financial information is shared until that check is complete.</p><a href='/family/connections'>View school connections</a></section>}
  {!!directory?.scopes.length&&<div className={s.toolbar}><label>Choose a learner and school<select value={grantId} onChange={e=>{selectedGrant.current=e.target.value;setGrantId(e.target.value);}}><option value='' disabled>Choose an available learner</option>{directory.scopes.map(row=><option key={row.grantId} value={row.grantId}>{row.givenName} {row.familyName} · {row.learnerReference} · {row.schoolName}</option>)}</select></label><button disabled={loading} onClick={()=>setRefresh(v=>v+1)}>Refresh account</button></div>}

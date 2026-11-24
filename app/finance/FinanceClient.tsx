@@ -460,7 +460,7 @@ export default function FinanceClient({
                   Keep supporting documents in your approved records; document references here do not upload or validate them.
                 </p>
                 <div className={s.workspaceLayout}>
-                <nav id="finance-sections" className={s.tabs} aria-label="Finance sections">
+                <nav id="finance-sections" className={s.tabs} aria-label="Finance sections">{can("finance.policy.manage")&&<SchoolNoticeLink schoolId={schoolId} className={s.noticeNavLink}/>}
                   {financeSections.filter(section=>section.key!=="intake"||intakeEnabled).filter(section=>section.key!=="messages"||parentInboxEnabled).filter(section=>section.key!=="team"||teamAllowed).filter(section=>section.key!=="audit"||Boolean(data.audit)).map(({key,label,hint,icon})=>(
                     <button key={key} aria-pressed={tab===key} aria-controls={tab===key?`finance-panel-${key}`:undefined} onClick={()=>openSection(key)}>
                       <>{key==='messages'?<InboxBadge schoolId={schoolId} iconOnly/>:<FinanceIcon name={icon}/>}</><span>{label}<small>{hint}</small></span>
