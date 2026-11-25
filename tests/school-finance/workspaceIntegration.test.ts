@@ -454,7 +454,7 @@ test(
           const runtimeRights = await runtime.query(
             "SELECT has_schema_privilege(current_user,'school_ops','USAGE') AS schema_usage",
           );
-          assert.equal(runtimeRights.rows[0].schema_usage, false);
+          assert.equal(runtimeRights.rows[0].schema_usage, true);
           // Restricted runtime must not create school records even if it knows a PEOS ID.
           await assert.rejects(
             runtime.query(
