@@ -1,0 +1,85 @@
+{
+  "source": "92f1effa569ee4cb8d580a713d33661f8b485543",
+  "deployment": "dpl_CMREWXFLn2QcWwr6SXru7QvmHp85",
+  "scope": "isolated synthetic Finance test pair",
+  "checks": [
+    {
+      "check": "unauthenticated intake denied",
+      "status": 401
+    },
+    {
+      "check": "officer queue discovery",
+      "status": 200
+    },
+    {
+      "check": "statement preview",
+      "status": 200
+    },
+    {
+      "check": "statement import",
+      "status": 200
+    },
+    {
+      "check": "same statement replay",
+      "status": 200
+    },
+    {
+      "check": "saved mapping and imported queue",
+      "status": 200
+    },
+    {
+      "check": "prepare reported payment",
+      "status": 200
+    },
+    {
+      "check": "repeat reporting is idempotent",
+      "status": 200
+    },
+    {
+      "check": "officer cannot verify payment",
+      "status": 403
+    },
+    {
+      "check": "manager independently verifies synthetic payment",
+      "status": 201
+    },
+    {
+      "check": "overlapping statement duplicate preview",
+      "status": 200
+    },
+    {
+      "check": "overlapping statement import",
+      "status": 200
+    },
+    {
+      "check": "duplicate queue discovery",
+      "status": 200
+    },
+    {
+      "check": "duplicate cannot become payment",
+      "status": 409
+    },
+    {
+      "check": "source transaction ID cannot be overridden",
+      "status": 409
+    },
+    {
+      "check": "dismiss overlapping duplicate with reason",
+      "status": 200
+    },
+    {
+      "check": "cross-school intake denied",
+      "status": 403
+    },
+    {
+      "check": "cross-origin intake denied",
+      "status": 403
+    },
+    {
+      "check": "final queue state",
+      "status": 200
+    }
+  ],
+  "passed": 19,
+  "limits": "Synthetic engineering sessions; not a human CSV-import/phone walkthrough or a bank connection."
+}

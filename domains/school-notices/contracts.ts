@@ -1,0 +1,18 @@
+import {z} from 'zod';
+export const uuid=z.string().uuid().toLowerCase();
+const text=(max:number)=>z.string().trim().min(1).max(max).regex(/^[^\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]*$/);
+export const publishNotice=z.object({command:z.literal('PUBLISH'),requestId:uuid,schoolId:uuid,classId:uuid.nullable(),title:text(160),body:text(5000),repliesAllowed:z.boolean(),expectedRelationshipIds:z.array(uuid).min(1).max(500).refine(v=>new Set(v).size===v.length),parentPersonIds:z.array(uuid).min(1).max(500).refine(v=>new Set(v).size===v.length).optional(),reviewed:z.literal(true),draft:z.object({id:uuid,revision:z.number().int().min(1).max(2147483647)}).strict().optional()}).strict();
+export const noticeCommand=z.discriminatedUnion('command',[publishNotice,z.object({command:z.literal('WITHDRAW'),requestId:uuid}).strict()]);
+const expiry=z.string().datetime();
+export const relationship=z.object({relationshipId:uuid,schoolId:uuid,parentPersonId:uuid,learnerPersonId:uuid,schoolName:text(200),parentName:text(200),learnerName:text(200),classIds:z.array(uuid).max(200)}).strict();
+export const parentContext=z.object({contractVersion:z.literal('school-notices-v1'),personId:uuid,expiresAt:expiry,relationships:z.array(relationship).max(500)}).strict().refine(v=>v.relationships.every(r=>r.parentPersonId===v.personId));
+export const staffDirectory=z.object({contractVersion:z.literal('school-notices-v1'),personId:uuid,expiresAt:expiry,schools:z.array(z.object({schoolId:uuid,schoolName:text(200),schoolWide:z.boolean(),classes:z.array(z.object({id:uuid,name:text(200)})).max(200)})).max(100)}).strict();
+export const staffAudience=z.object({contractVersion:z.literal('school-notices-v1'),personId:uuid,expiresAt:expiry,schoolId:uuid,schoolName:text(200),schoolWide:z.boolean(),classId:uuid.nullable(),className:text(200).nullable(),recipients:z.array(relationship).max(500)}).strict().refine(v=>v.recipients.every(r=>r.schoolId===v.schoolId&&(!v.classId||r.classIds.includes(v.classId))));
+export type ParentContext=z.infer<typeof parentContext>;export type StaffAudience=z.infer<typeof staffAudience>;export type StaffDirectory=z.infer<typeof staffDirectory>;
+
+const draftText=(max:number)=>z.string().max(max).regex(/^[^\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]*$/);
+export const draftContent=z.object({classId:uuid.nullable(),title:draftText(160),body:draftText(5000),repliesAllowed:z.boolean(),parentPersonIds:z.array(uuid).max(500).refine(v=>new Set(v).size===v.length).nullable()}).strict().refine(v=>Boolean(v.title.trim()||v.body.trim()));
+export const saveDraftInput=z.object({command:z.literal('SAVE'),id:uuid,requestId:uuid,schoolId:uuid,expectedRevision:z.number().int().min(0).max(2147483646),content:draftContent}).strict();
+export const discardDraftInput=z.object({command:z.literal('DISCARD'),id:uuid,requestId:uuid,expectedRevision:z.number().int().min(1).max(2147483647)}).strict();
+export const draftCommand=z.discriminatedUnion('command',[saveDraftInput,discardDraftInput]);
+export type DraftContent=z.infer<typeof draftContent>;

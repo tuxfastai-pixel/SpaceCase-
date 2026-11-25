@@ -1,0 +1,242 @@
+{
+  "verifiedAtUtc": "2026-11-12T16:31:30.545405+00:00",
+  "spacecaseCommit": "6eeb90182a0a152056fa2f41586b2173678ebd20",
+  "peosCommit": "eec230d1aaddfd949ad08f4b2bfce101aac309cb",
+  "spacecaseDeploymentId": "dpl_7c5NEDRG9H9XdXFwAuij3maKpn4S",
+  "peosDeploymentId": "dpl_G4GigxAChWgLxnQWqWazfJbMir4c",
+  "mode": "isolated Preview, synthetic canonical identities and short-lived hashed sessions",
+  "checksPassed": 40,
+  "reports": [
+    {
+      "service": "PEOS",
+      "checks": [
+        {
+          "actor": "principal",
+          "path": "/v1/finance/schools/d89a607b-b7d6-40b5-9b47-31e83d9b3dfd/authorize",
+          "status": 200
+        },
+        {
+          "actor": "officer",
+          "path": "/v1/finance/schools/d89a607b-b7d6-40b5-9b47-31e83d9b3dfd/authorize",
+          "status": 403
+        },
+        {
+          "actor": "manager",
+          "path": "/v1/finance/schools/d89a607b-b7d6-40b5-9b47-31e83d9b3dfd/authorize",
+          "status": 200
+        },
+        {
+          "actor": "manager",
+          "path": "/v1/finance/schools/d89a607b-b7d6-40b5-9b47-31e83d9b3dfd/authorize",
+          "status": 403
+        },
+        {
+          "actor": "teacher",
+          "path": "/v1/finance/schools/d89a607b-b7d6-40b5-9b47-31e83d9b3dfd/authorize",
+          "status": 403
+        },
+        {
+          "actor": "otherPrincipal",
+          "path": "/v1/finance/schools/d89a607b-b7d6-40b5-9b47-31e83d9b3dfd/authorize",
+          "status": 403
+        },
+        {
+          "actor": "officer",
+          "path": "/v1/finance/schools",
+          "status": 200
+        },
+        {
+          "actor": "teacher",
+          "path": "/v1/finance/schools",
+          "status": 200
+        },
+        {
+          "actor": "officer",
+          "path": "/v1/finance/schools/d89a607b-b7d6-40b5-9b47-31e83d9b3dfd/learner",
+          "status": 200
+        },
+        {
+          "actor": "officer",
+          "path": "/v1/finance/schools/f54f623d-d5a8-47c7-bf08-eb670d67a5b0/learner",
+          "status": 403
+        }
+      ],
+      "result": "passed"
+    },
+    {
+      "service": "SpaceCase-to-PEOS deployed synthetic API",
+      "checks": [
+        {
+          "actor": "principal",
+          "path": "/api/finance/workspace",
+          "status": 200
+        },
+        {
+          "actor": "teacher",
+          "path": "/api/finance/workspace",
+          "status": 403
+        },
+        {
+          "actor": "otherPrincipal",
+          "path": "/api/finance/workspace",
+          "status": 403
+        },
+        {
+          "actor": "officer",
+          "path": "/api/finance/learner",
+          "status": 200
+        },
+        {
+          "actor": "officer",
+          "path": "/api/finance/workspace",
+          "status": 409
+        },
+        {
+          "actor": "officer",
+          "path": "/api/finance/workspace",
+          "status": 403
+        },
+        {
+          "actor": "manager",
+          "path": "/api/finance/workspace",
+          "status": 201
+        },
+        {
+          "actor": "officer",
+          "path": "/api/finance/workspace",
+          "status": 201
+        },
+        {
+          "actor": "officer",
+          "path": "/api/finance/workspace",
+          "status": 201
+        },
+        {
+          "actor": "manager",
+          "path": "/api/finance/workspace",
+          "status": 403
+        },
+        {
+          "actor": "principal",
+          "path": "/api/finance/workspace",
+          "status": 201
+        },
+        {
+          "actor": "officer",
+          "path": "/api/finance/workspace",
+          "status": 201
+        },
+        {
+          "actor": "principal",
+          "path": "/api/finance/workspace",
+          "status": 201
+        },
+        {
+          "actor": "officer",
+          "path": "/api/finance/workspace",
+          "status": 201
+        },
+        {
+          "actor": "principal",
+          "path": "/api/finance/workspace",
+          "status": 409
+        },
+        {
+          "actor": "officer",
+          "path": "/api/finance/workspace",
+          "status": 201
+        },
+        {
+          "actor": "officer",
+          "path": "/api/finance/workspace",
+          "status": 201
+        },
+        {
+          "actor": "principal",
+          "path": "/api/finance/workspace",
+          "status": 201
+        },
+        {
+          "actor": "principal",
+          "path": "/api/finance/audit",
+          "status": 200
+        },
+        {
+          "actor": "officer",
+          "path": "/api/finance/audit",
+          "status": 403
+        },
+        {
+          "actor": "manager",
+          "path": "/api/finance/audit",
+          "status": 403
+        },
+        {
+          "actor": "principal",
+          "path": "/api/finance/audit",
+          "status": 200
+        },
+        {
+          "actor": "principal",
+          "path": "/finance",
+          "status": 200
+        },
+        {
+          "actor": "manager",
+          "path": "/api/finance/workspace",
+          "status": 201
+        },
+        {
+          "actor": "manager",
+          "path": "/api/finance/workspace",
+          "status": 409
+        },
+        {
+          "actor": "principal",
+          "path": "/api/finance/workspace",
+          "status": 200
+        }
+      ],
+      "financeAccountId": "37b26482-88dc-40d2-afa5-4a4aded81ccc",
+      "schoolId": "d89a607b-b7d6-40b5-9b47-31e83d9b3dfd",
+      "result": "passed"
+    },
+    {
+      "result": "passed",
+      "scope": "manual synthetic invitation creation/denial/revocation; no delivery",
+      "checks": [
+        {
+          "actor": "principal",
+          "method": "POST",
+          "status": 201
+        },
+        {
+          "actor": "manager",
+          "method": "POST",
+          "status": 403
+        },
+        {
+          "actor": "principal",
+          "method": "DELETE",
+          "status": 200
+        }
+      ]
+    },
+    {
+      "scenario": "Active session loses Finance access after role termination",
+      "status": 403,
+      "result": "passed"
+    }
+  ],
+  "cleanup": {
+    "syntheticSessionsRevoked": true,
+    "temporaryEngineeringAccessRevoked": true,
+    "serverOnlyPeosTestConnectionRetained": true
+  },
+  "notVerified": [
+    "Google/OIDC login",
+    "physical phone/browser walkthrough",
+    "real-user account switching",
+    "Production activation"
+  ]
+}

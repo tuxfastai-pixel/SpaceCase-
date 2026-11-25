@@ -1,3 +1,4 @@
+import {NOTICE_RETURN_COOKIE,readNoticeReturn,noticeReturnCookie} from '../../../platform/auth/noticeReturn';
 import { NextResponse } from "next/server";
 import { authConfiguration, createAuthClient } from "../../../platform/auth/supabase";
 import { POST as exchangeSession } from "../../api/v1/auth/session/route";
@@ -11,7 +12,7 @@ export async function GET(request: Request) {
   const { origin } = authConfiguration();
   const params = new URL(request.url).searchParams;
   const code = params.get("code");
-  function finish(response:NextResponse){response.headers.append("set-cookie",onboardingCookie("existing",process.env.NODE_ENV==="production",true));response.headers.set("cache-control","no-store");return response;}
+  function finish(response:NextResponse){response.headers.append('set-cookie',noticeReturnCookie(null,process.env.NODE_ENV==='production'));response.headers.append("set-cookie",onboardingCookie("existing",process.env.NODE_ENV==="production",true));response.headers.set("cache-control","no-store");return response;}
   if (!code || params.has("error")) return finish(NextResponse.redirect(`${origin}/login?error=signin`, 303));
   try {
     const client = await createAuthClient();
@@ -19,11 +20,17 @@ export async function GET(request: Request) {
     const result = await completeSignIn(code,
       (value) => client.auth.exchangeCodeForSession(value),
       (token) => exchangeSession(new Request(`${origin}/api/v1/auth/session`, {
-        method: "POST", headers: { authorization: `Bearer ${token}` },
+        method: "POST", headers: {
+          authorization: `Bearer ${token}`,
+          // Vercel supplies this on the server-side callback request at runtime.
+          ...(process.env.VERCEL_ENV === "preview" && request.headers.get("x-vercel-oidc-token")
+            ? { "x-vercel-oidc-token": request.headers.get("x-vercel-oidc-token")! }
+            : {}),
+        },
       })));
     if ("cookie" in result) {
       const jar=await cookies();
-      const destination=signInDestination({familyInvitation:familyInvitationsEnabled()&&jar.has(FAMILY_INVITATION_COOKIE),staffInvitation:jar.has(INVITATION_COOKIE),path:jar.get(ONBOARDING_PATH_COOKIE)?.value});
+      const destination=signInDestination({familyInvitation:familyInvitationsEnabled()&&jar.has(FAMILY_INVITATION_COOKIE),staffInvitation:jar.has(INVITATION_COOKIE),path:jar.get(ONBOARDING_PATH_COOKIE)?.value,returnTo:readNoticeReturn(jar.get(NOTICE_RETURN_COOKIE)?.value)});
       const response = NextResponse.redirect(`${origin}${destination}`, 303);
       response.headers.append("set-cookie", result.cookie);
       response.headers.set("cache-control", "no-store");

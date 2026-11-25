@@ -1,0 +1,3 @@
+import {z} from 'zod';
+export const parentHomeSchema=z.object({stage:z.enum(['READY','CONNECTED','WAITING','ATTENTION','START','UNAVAILABLE']),schools:z.array(z.string()).max(200),learners:z.array(z.object({name:z.string(),schoolName:z.string(),reference:z.string(),schoolKey:z.string().regex(/^[a-f0-9]{64}$/),accountKey:z.string().regex(/^[a-f0-9]{64}$/),canPlan:z.boolean()})).max(100),canOpenAccount:z.boolean(),canPlan:z.boolean(),accessCheckIncomplete:z.boolean(),hasSchoolHistory:z.boolean(),moreAvailable:z.boolean(),readyNoticeKey:z.string().regex(/^[a-f0-9]{64}$/).nullable(),readyAcknowledged:z.boolean().default(false)}).strict();
+export type ParentHomeState=z.infer<typeof parentHomeSchema>;

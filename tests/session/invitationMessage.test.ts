@@ -52,3 +52,17 @@ test("email drafts reject recipient and subject header injection", () => {
   }
   assert.throws(() => invitationEmailDraft("teacher@example.test", { ...message, subject: "Invite\r\nBcc: other@example.test" }));
 });
+
+test('parent WhatsApp drafts preserve the private invitation and never add learner details', async () => {
+  const {prepareFamilyInvitationMessage,invitationWhatsAppDraft}=await import('../../platform/invitations/message');
+  const message=prepareFamilyInvitationMessage(input);
+  const url=new URL(invitationWhatsAppDraft(message));
+  assert.equal(url.origin,'https://wa.me');
+  assert.equal(url.searchParams.get('text'),message.text);
+  assert.equal(url.hash,'');
+  assert.equal(new URL(message.link).pathname,'/family/invitation');
+  assert.equal(new URL(message.link).hash,`#token=${input.token}`);
+  assert.equal(new URL(message.link).search,'');
+  assert.ok(!message.text.includes('Pilot School'));
+  assert.match(message.text,/exact email address/);
+});

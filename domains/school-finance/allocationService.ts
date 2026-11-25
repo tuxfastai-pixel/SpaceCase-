@@ -1,3 +1,4 @@
+import {enqueueFinanceEvent} from "./financeOutbox";
 import type { Pool, PoolClient } from "pg";
 import { planVerifiedAllocation, minorUnits, SchoolFinanceError } from "./money";
 
@@ -28,15 +29,19 @@ export async function allocateVerifiedSchoolPayment(
     );
     if (!account.rows[0] || account.rows[0].currency !== "ZAR")
       throw new SchoolFinanceError("FINANCE_ACCOUNT_UNAVAILABLE");
+    // All Finance mutations serialize on the locked account. The immutable invoice
+    // needs no UPDATE grant merely to acquire an additional row lock.
     const payment = await client.query<{amount_minor:string;verification:string}>(
-      "SELECT amount_minor::text,verification FROM school_finance.payments WHERE id=$1 AND account_id=$2 FOR UPDATE",
+      "SELECT amount_minor::text,verification FROM school_finance.payments WHERE id=$1 AND account_id=$2",
       [input.paymentId,input.accountId],
     );
-    const invoice = await client.query<{amount_minor:string;status:string}>(
-      "SELECT amount_minor::text,status FROM school_finance.invoices WHERE id=$1 AND account_id=$2 FOR UPDATE",
+    const invoice = await client.query<{amount_minor:string;status:string;peos_learner_id:string}>(
+      "SELECT amount_minor::text,status,peos_learner_id FROM school_finance.invoices WHERE id=$1 AND account_id=$2",
       [input.invoiceId,input.accountId],
     );
     if (!payment.rows[0] || !invoice.rows[0]) throw new SchoolFinanceError("FINANCE_RECORD_NOT_FOUND");
+    const proofScope=await client.query<{learner_person_id:string}>("SELECT p.learner_person_id FROM school_finance.payment_proof_reviews r JOIN school_finance.payment_proof_cases p ON p.id=r.proof_id AND p.account_id=r.account_id WHERE r.account_id=$1 AND r.payment_id=$2 AND r.status='LINKED'",[input.accountId,input.paymentId]);
+    if(proofScope.rows.some(row=>row.learner_person_id!==invoice.rows[0].peos_learner_id))throw new SchoolFinanceError('PAYMENT_LEARNER_MISMATCH');
     const sums = await client.query<{payment_allocated:string;invoice_allocated:string}>(
       `SELECT
         (SELECT COALESCE(SUM(amount_minor),0)::text FROM school_finance.allocations WHERE payment_id=$1 AND account_id=$3) AS payment_allocated,
@@ -62,6 +67,7 @@ export async function allocateVerifiedSchoolPayment(
        VALUES ($1,$2,'FINANCE_PAYMENT_ALLOCATED','ALLOCATION',$3,$4::jsonb)`,
       [input.accountId,input.actorPersonId,inserted.rows[0].id,JSON.stringify({paymentId:input.paymentId,invoiceId:input.invoiceId,amountMinor:plan.allocatedMinor})],
     );
+    await enqueueFinanceEvent(client,input.accountId,'ALLOCATION_CHANGED','ALLOCATION',inserted.rows[0].id);
     await client.query("COMMIT");
     return {allocationId:inserted.rows[0].id,...plan};
   } catch(error) {

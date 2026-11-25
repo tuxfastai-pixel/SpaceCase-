@@ -1,0 +1,2 @@
+import type {PoolClient} from 'pg';
+export async function enqueueFinanceEvent(db:Pick<PoolClient,'query'>,accountId:string,kind:'PROOF_SUBMITTED'|'PROOF_REVIEWED'|'STATEMENT_READY'|'RECEIPT_CHANGED'|'ALLOCATION_CHANGED',resourceType:string,resourceId:string){await db.query('INSERT INTO school_finance.family_finance_outbox(account_id,event_key,kind,resource_type,resource_id) VALUES($1,$2,$3,$4,$5)',[accountId,`${kind}:${resourceId}`,kind,resourceType,resourceId]);}

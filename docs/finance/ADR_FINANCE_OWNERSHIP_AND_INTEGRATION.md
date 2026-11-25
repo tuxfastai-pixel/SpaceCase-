@@ -1,6 +1,6 @@
 # ADR: School finance ownership and PEOS integration boundary
 
-Status: Proposed — integration not activated
+Status: Implemented in prepared services/workspace — production integration not activated
 
 ## Context
 
@@ -33,3 +33,6 @@ No school finance writes without PEOS-current authority; no unverified payment a
 ## Explicitly out of scope
 
 Bank integration, payment gateway, debit orders, payroll, automatic suspension/reconnection fees, multi-currency, external tax filing, and production data migration until separately designed and verified.
+
+
+2 November implementation: FIN-A–D schemas/services and FIN-E workspace are prepared on a feature branch; FIN-F requires fresh DB CI plus signed-in role/migration evidence. The prototype ledger in PEOS remains untouched. Payment verification is a dedicated current permission with independent review in SpaceCase. Reconciliation stores immutable submissions and detects period-record changes; it does not close periods or claim bank settlement. The workspace supports bounded staff projections and explicit activation gates, not a guardian statement API or full accounting ledger.

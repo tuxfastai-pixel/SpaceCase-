@@ -1,12 +1,15 @@
 "use client";
+import SchoolNoticeLink from "../ui/SchoolNoticeLink";
 
 import { useEffect, useState } from "react";
 
+import {SchoolWatermark,SchoolLogo} from "../ui/appearance/Appearance";
 import styles from "./dashboard.module.css";
 import WorkspaceIcon from "../ui/WorkspaceIcon";
 
+import {SearchMatch,SearchResults} from "../ui/search/SearchResults";
 import ClassTools from "./ClassTools";
-import EntryPaths from "../onboarding/EntryPaths";
+import UnassignedWorkspace from "./UnassignedWorkspace";
 import DayOverview from "./DayOverview";
 import {schoolContextSchema,orderedClasses,classPath,type SchoolContext} from "./workspaceModel";
 
@@ -17,7 +20,7 @@ type DashboardState =
   | { status: "onboarding" }
   | { status: "unavailable" };
 
-export default function DashboardClient() {
+export default function DashboardClient({teacherIntent=false}:{teacherIntent?:boolean}) {
   const [state, setState] = useState<DashboardState>({ status: "loading" });
 
   useEffect(() => {
@@ -67,30 +70,28 @@ export default function DashboardClient() {
   }, []);
 
   if (state.status === "loading") {
-    return <DashboardShell><StatusPanel title="Checking your workspace" body="Checking your school and current class access…" /></DashboardShell>;
+    return <DashboardShell teacherIntent={teacherIntent}><StatusPanel title="Checking your workspace" body="Checking your school and current class access…" /></DashboardShell>;
   }
 
   if (state.status === "unauthenticated") {
     return (
-      <DashboardShell>
+      <DashboardShell teacherIntent={teacherIntent}>
         <StatusPanel
           title="Sign in required"
           body="Your session has ended. Sign in again to continue."
         />
-        <a href="/login">Continue to sign in</a>
+        <a href={teacherIntent?"/login?onboarding=teacher":"/login"}>Continue to sign in</a>
       </DashboardShell>
     );
   }
 
   if (state.status === "onboarding") {
-    return <DashboardShell>
-      <StatusPanel title="Welcome to SpaceCase" body="You’re signed in. Your school workspace will appear here once your school connects your account. Ask your school administrator to arrange access—there’s no need to create another account." /><EntryPaths/>
-    </DashboardShell>;
+    return teacherIntent?<DashboardShell teacherIntent><section className={styles.statusPanel}><p className={styles.eyebrow}>Teacher workspace</p><h1>Teacher access is not connected yet</h1><p>This signed-in account has no current teaching workspace. Use the Google email your school invited as Teacher. Accept that invitation, then ask the school administrator to assign your class.</p><p><a href='/join'>Accept a staff invitation</a> · <a href='/teacher'>Check teacher access again</a> · <a href='/dashboard'>Open my assigned workspace</a></p><p>Choosing Teacher does not change your school role or grant access to learner records.</p></section></DashboardShell>:<UnassignedWorkspace/>;
   }
 
   if (state.status === "unavailable") {
     return (
-      <DashboardShell>
+      <DashboardShell teacherIntent={teacherIntent}>
         <StatusPanel
           title="Workspace temporarily unavailable"
           body="We couldn’t load your school workspace. Please refresh and try again. No learner records have been shown."
@@ -101,7 +102,7 @@ export default function DashboardClient() {
 
   const { context } = state;
   if (context.setupStatus === "CLASS_ASSIGNMENT_REQUIRED") {
-    return <DashboardShell><StatusPanel title="You’ve joined your school" body="Your teacher account is connected. Your school administrator needs to assign your classes before your teaching workspace is ready. You don’t need to accept the invitation again." /><p><button type="button" onClick={() => window.location.reload()}>Refresh workspace</button></p></DashboardShell>;
+    return <DashboardShell teacherIntent={teacherIntent}><StatusPanel title="You’ve joined your school" body="Your teacher account is connected. Your school administrator needs to assign your classes before your teaching workspace is ready. You don’t need to accept the invitation again." /><p><button type="button" onClick={() => window.location.reload()}>Refresh workspace</button></p></DashboardShell>;
   }
   return <WorkspaceHome context={context}/>;
 }
@@ -114,13 +115,13 @@ export function WorkspaceHome({context}:{context:SchoolContext}){
   const selected=classes.find(c=>c.classId===selectedId)??classes[0];
   const matches=orderedClasses(context.classes,classSearch);
   const operational=context.setupStatus!=="CLASSROOM_SETUP_REQUIRED"&&context.schoolWorkspace.configured===true;
-  return <DashboardShell>
-    <section className={styles.hero} aria-labelledby="dashboard-heading"><div><p className={styles.eyebrow}>Teacher workspace</p><h1 id="dashboard-heading">Your teaching day</h1><p className={styles.lead}>A little less admin. More space to teach. Pick up your class work below.</p></div><div className={styles.authorityBadge}><span>Academic year</span><strong>{context.schoolWorkspace.academicYearLabel??"School year not set"}</strong></div></section>
-    <nav className={styles.workspaceNav} aria-label="Workspace sections">{operational&&selected?.workspaceConfigured?<a href="#day-heading">Today</a>:null}<a href="#classes-heading">Classes</a>{operational&&selected?.workspaceConfigured?<a href={classPath(context.schoolId,selected.classId,"assessments")}>Assessments</a>:null}<a href="#tools-heading">All tools</a><a href="#teacher-examples">Help & examples</a></nav>
+  return <DashboardShell teacherIntent><SchoolWatermark school={context.schoolId} view="teacher"/>
+    <section className={styles.hero} aria-labelledby="dashboard-heading"><div><SchoolLogo school={context.schoolId} view="teacher"/><p className={styles.eyebrow}>Teacher workspace</p><h1 id="dashboard-heading">Your teaching day</h1><p className={styles.lead}>A little less admin. More space to teach. Pick up your class work below.</p></div><div className={styles.authorityBadge}><span>Academic year</span><strong>{context.schoolWorkspace.academicYearLabel??"School year not set"}</strong></div></section>
+    <SchoolNoticeLink schoolId={context.schoolId} variant="tile"/><nav className={styles.workspaceNav} aria-label="Workspace sections">{operational&&selected?.workspaceConfigured?<a href="#day-heading">Today</a>:null}<a href="#classes-heading">Classes</a>{operational&&selected?.workspaceConfigured?<a href={classPath(context.schoolId,selected.classId,"assessments")}>Assessments</a>:null}<a href="#tools-heading">All tools</a><a href="#teacher-examples">Help & examples</a></nav>
     {operational&&selected?.workspaceConfigured?<section className={styles.quickStart} aria-label="Quick actions for current class"><div><p className={styles.eyebrow}>Let’s get started</p><h2>{selected.name??"Your class"}</h2><p>Choose what you’d like to do next.</p></div><div className={styles.quickActions}><a href={classPath(context.schoolId,selected.classId,"attendance")}><WorkspaceIcon name="attendance"/>Take attendance <span aria-hidden="true">↗</span></a><a href={`${classPath(context.schoolId,selected.classId,"assessments")}?scan=1`}><WorkspaceIcon name="camera"/>Scan / upload work <span aria-hidden="true">↗</span></a><a href={classPath(context.schoolId,selected.classId,"planner")}><WorkspaceIcon name="planner"/>Plan a lesson <span aria-hidden="true">↗</span></a></div></section>:null}
     <section className={styles.classPicker} aria-labelledby="classes-heading"><div className={styles.sectionHeader}><div><p className={styles.eyebrow}>{classes.length} assigned {classes.length===1?"class":"classes"}</p><h2 id="classes-heading">Choose your class</h2></div><button className={styles.secondaryButton} type="button" onClick={()=>window.location.reload()}>Refresh class access</button></div>
       <div className={styles.pickerFields}><label>Find a class<input type="search" value={classSearch} onChange={e=>setClassSearch(e.target.value)} placeholder="Search by class name"/></label><label>Current class<select value={selected?.classId??""} onChange={e=>chooseClass(e.target.value)}>{classes.map((c,i)=><option key={c.classId} value={c.classId}>{c.name??`Assigned class ${i+1}`}{c.academicYear?` · ${c.academicYear}`:""}</option>)}</select></label></div>
-      {classSearch?<div className={styles.classChips} aria-label="Class search results">{matches.length?matches.map(c=><button type="button" key={c.classId} aria-pressed={selected?.classId===c.classId} onClick={()=>chooseClass(c.classId)}>{c.name??"Assigned class"}</button>):<p>No assigned classes match this search.</p>}</div>:null}
+      {classSearch?<SearchResults active><div className={styles.classChips} aria-label="Class search results">{matches.length?matches.map(c=><button type="button" key={c.classId} aria-pressed={selected?.classId===c.classId} onClick={()=>chooseClass(c.classId)}><SearchMatch text={c.name??"Assigned class"} query={classSearch}/></button>):<p>No assigned classes match this search.</p>}</div></SearchResults>:null}
       <p className={styles.subtle}>Only your current assigned classes appear here. Contact your school administrator if a class is missing.</p>
     </section>
     {selected?<>{operational&&selected.workspaceConfigured?<DayOverview key={`${context.schoolId}:${selected.classId}`} schoolId={context.schoolId} classId={selected.classId}/>:null}<ClassTools schoolId={context.schoolId} classroom={selected} schoolConfigured={operational}/></>:<p className={styles.emptyState}>No current class assignments are available. Ask your school administrator to assign your classes.</p>}
@@ -129,7 +130,7 @@ export function WorkspaceHome({context}:{context:SchoolContext}){
   </DashboardShell>;
 }
 
-function DashboardShell({ children }: Readonly<{ children: React.ReactNode }>) {
+function DashboardShell({ children,teacherIntent=false }: Readonly<{ children: React.ReactNode;teacherIntent?:boolean }>) {
   return (
     <main className={styles.page}>
       <header className={styles.topbar}>
@@ -140,7 +141,7 @@ function DashboardShell({ children }: Readonly<{ children: React.ReactNode }>) {
             <span>A little room to grow</span>
           </div>
         </div>
-        <div><form action="/auth/google?choose_account=1" method="post"><button type="submit">Use another Google account</button></form><form action="/auth/logout" method="post"><button type="submit">Sign out</button></form></div>
+        <div><form action="/auth/google?choose_account=1" method="post">{teacherIntent&&<input type="hidden" name="onboarding" value="teacher"/>}<button type="submit">Use another Google account</button></form><form action="/auth/logout" method="post"><button type="submit">Sign out</button></form></div>
       </header>
       <div className={styles.content}>{children}</div>
     </main>
