@@ -80,7 +80,7 @@ export default function DashboardClient({teacherIntent=false}:{teacherIntent?:bo
           title="Sign in required"
           body="Your session has ended. Sign in again to continue."
         />
-        <a href="/login">Continue to sign in</a>
+        <a href={teacherIntent?"/login?onboarding=teacher":"/login"}>Continue to sign in</a>
       </DashboardShell>
     );
   }
