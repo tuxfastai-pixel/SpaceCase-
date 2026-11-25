@@ -1,0 +1,10 @@
+# Explicit teacher destination
+
+
+## Explicit teacher destination — 25 November 2026
+
+User reports Teacher opening administration/Finance. Screenshots show /principal denying non-principal access and /finance displaying the Finance UI on the isolated current alias. Those screens do not identify the active Google account. Read-only identity checks for the user-specified teacher test email found a Supabase user but no matching PEOS credential in the isolated synthetic authority database. No account/role was rebound. /dashboard is a generic assigned-workspace router, prioritising founder, Principal, administrator and Finance; the earlier link labelled Teacher was misleading for an existing session with one of those roles.
+
+Add an explicit /teacher route using the existing authenticated teacher-context API. Teacher sign-in and the My teaching workspace entry now select /teacher; legacy /onboarding?path=teacher redirects there before generic role discovery. This route never selects administration or Finance, and choosing Teacher grants no role or learner access. Current teacher context, class assignment and operational checks remain authoritative. Missing teacher context explains the invitation/class setup; changing Google account preserves teacher intent. Generic /dashboard remains the assigned-workspace destination. Pending staff/family invitations retain priority at sign-in. No identity, role, class, billing or school data changes.
+
+Local typecheck and lint passed; sign-in destination regression assertions updated for explicit Teacher and invitation priority. Full CI and isolated deployment pending at preparation. Signed-in Google-account selection, teacher invitation acceptance/class assignment and phone acceptance remain pending; no teacher grant is inferred from CI or navigation. WhatsApp and Production unchanged. Next: deploy passing source, open /teacher, choose the intended teacher Google account, have the authorised school administrator invite that exact email as Teacher in this isolated school and assign its class after acceptance.

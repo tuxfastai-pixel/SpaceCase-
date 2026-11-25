@@ -6,6 +6,6 @@ export function signInDestination(input:{familyInvitation:boolean;staffInvitatio
  if(input.familyInvitation)return '/family/invitation';
  if(input.staffInvitation)return '/join';
  const target=noticeReturn(input.returnTo);if(target)return target;
- switch(onboardingPath(input.path)){case 'parent':return '/parent';case 'teacher':return '/onboarding?path=teacher';case 'school':return '/onboarding?path=school';default:return '/dashboard';}
+ switch(onboardingPath(input.path)){case 'parent':return '/parent';case 'teacher':return '/teacher';case 'school':return '/onboarding?path=school';default:return '/dashboard';}
 }
 export function onboardingCookie(path:OnboardingPath,secure:boolean,clear=false){return `${ONBOARDING_PATH_COOKIE}=${clear?'':path}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${clear?0:600}${secure?'; Secure':''}`;}
